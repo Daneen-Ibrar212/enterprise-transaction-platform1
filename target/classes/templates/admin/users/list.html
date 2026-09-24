@@ -2,105 +2,563 @@
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
-    <title>User Management</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        h1 { margin-bottom: 10px; }
-        .filters { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; }
-        .filters input, .filters select { padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
-        .filters button { padding: 6px 15px; background: #2d7a3a; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .filters button:hover { background: #1e5c2a; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #f2f2f2; }
-        .btn { padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 0.85em; }
-        .btn-edit { background: #3498db; color: white; }
-        .btn-impersonate { background: #f39c12; color: white; }
-        .btn-edit:hover, .btn-impersonate:hover { opacity: 0.8; }
-        .btn-revoke { background: #c0392b; color: white; }
-        .btn-revoke:hover { background: #a93226; }
-        .badge { padding: 2px 8px; border-radius: 12px; color: white; }
-        .badge-active { background: #2d7a3a; }
-        .badge-inactive { background: #c0392b; }
-        .pagination { margin-top: 20px; }
-        .pagination a { margin-right: 8px; }
-        .create-link { display: inline-block; margin-bottom: 15px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+            margin-top: 16px;
+        }
+        .back-link,
+        .header-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+        }
+        .back-link {
+            color: rgba(255,255,255,0.9);
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(255,255,255,0.2);
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+        .chip-create {
+            background: rgba(255,255,255,0.95);
+            color: #0b1a33;
+        }
+        .chip-create:hover { background: white; transform: translateY(-1px); }
+
+        /* Flash */
+        .flash {
+            padding: 14px 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .flash-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+        /* Filter */
+        .filter-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+        .filter-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            align-items: end;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .filter-group label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .filter-group input,
+        .filter-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-weight: 300;
+            color: #0f172a;
+            background: white;
+            transition: all 0.15s ease;
+        }
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 3px rgba(45, 107, 184, 0.12);
+        }
+        .filter-actions { display: flex; gap: 8px; align-items: flex-end; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            overflow: hidden;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .data-table td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover td { background: #fafbfc; }
+        .data-table td.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #0f172a;
+        }
+        .data-table td.email-cell { font-weight: 400; color: #0f172a; }
+
+        .role-chip {
+            display: inline-block;
+            padding: 3px 10px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            margin: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .badge-active { background: #d1fae5; color: #065f46; }
+        .badge-inactive { background: #fee2e2; color: #991b1b; }
+        .badge-2fa-on { background: #dbeafe; color: #1e40af; }
+        .badge-2fa-off { background: #fef3c7; color: #92400e; }
+        .badge-2fa-override { background: #fed7aa; color: #9a3412; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 6px 16px rgba(11,26,51,0.2);
+            padding: 10px 20px;
+            font-size: 0.8125rem;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(11,26,51,0.3); }
+        .btn-outline { background: white; color: #475569; border: 1px solid #e2e8f0; }
+        .btn-outline:hover { border-color: #2d6bb8; color: #2d6bb8; background: #f8faff; }
+        .btn-edit { background: #3b82f6; color: white; box-shadow: 0 4px 12px rgba(59,130,246,0.2); }
+        .btn-edit:hover { background: #2563eb; transform: translateY(-1px); }
+        .btn-impersonate { background: #f59e0b; color: white; box-shadow: 0 4px 12px rgba(245,158,11,0.2); }
+        .btn-impersonate:hover { background: #d97706; transform: translateY(-1px); }
+        .btn-revoke { background: #f1f5f9; color: #475569; }
+        .btn-revoke:hover { background: #fee2e2; color: #dc2626; }
+        .btn-2fa-disable { background: #f59e0b; color: white; box-shadow: 0 4px 12px rgba(245,158,11,0.2); }
+        .btn-2fa-disable:hover { background: #d97706; transform: translateY(-1px); }
+        .btn-2fa-enable { background: #10b981; color: white; box-shadow: 0 4px 12px rgba(16,185,129,0.2); }
+        .btn-2fa-enable:hover { background: #059669; transform: translateY(-1px); }
+
+        .action-cell { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+        .empty { text-align: center; padding: 60px 20px; color: #94a3b8; font-size: 0.875rem; }
+        .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(11, 26, 51, 0.55);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 20px;
+            padding: 32px 36px;
+            max-width: 520px;
+            width: 100%;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+            animation: modalFadeIn 0.2s ease;
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(-12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .modal h3 {
+            margin: 0 0 12px 0;
+            color: #0f172a;
+            font-weight: 500;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .modal .modal-sub {
+            color: #64748b;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+        .modal .modal-sub strong { color: #0f172a; font-weight: 500; }
+        .modal .field-group { margin-bottom: 16px; }
+        .modal .field-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .modal .field-group select {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            background: white;
+        }
+        .modal .field-group select:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 3px rgba(45, 107, 184, 0.12);
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        @media (max-width: 1100px) {
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
+        }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>👥 User Management</h1>
-    <a href="/dashboard">← Back to Dashboard</a>
 
-    <div style="margin: 15px 0;">
-        <a href="/admin/users/create" class="btn" style="background:#2d7a3a; color:white; padding:8px 16px;">+ Create New User</a>
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">👥</span> User Management</h1>
+        <div class="header-actions">
+            <a href="/admin/users/create" class="header-chip chip-create">➕ Create New User</a>
+        </div>
+    </div>
+
+    <!-- Flash -->
+    <div th:if="${success}" class="flash flash-success">
+        <span style="font-size:1.125rem;">✅</span>
+        <span th:text="${success}">Success</span>
+    </div>
+    <div th:if="${error}" class="flash flash-error">
+        <span style="font-size:1.125rem;">❌</span>
+        <span th:text="${error}">Error</span>
     </div>
 
     <!-- Filters -->
-    <div class="filters">
+    <div class="filter-card">
         <form method="get" th:action="@{/admin/users}">
-            <label>Search: <input type="text" name="search" th:value="${search}" placeholder="Email" /></label>
-            <label>Role:
-                <select name="role">
-                    <option value="">All</option>
-                    <option th:each="role : ${allRoles}" th:value="${role.name}" th:text="${role.name}" th:selected="${role.name == selectedRole}"></option>
-                </select>
-            </label>
-            <button type="submit">Apply</button>
-            <a th:href="@{/admin/users}" style="margin-left:10px;">Reset</a>
+            <div class="filter-form">
+                <div class="filter-group">
+                    <label for="search">Search</label>
+                    <input type="text" id="search" name="search" th:value="${search}" placeholder="Search by email..." />
+                </div>
+                <div class="filter-group">
+                    <label for="role">Role</label>
+                    <select id="role" name="role">
+                        <option value="">All</option>
+                        <option th:each="role : ${allRoles}" th:value="${role.name}" th:text="${role.name}" th:selected="${role.name == selectedRole}"></option>
+                    </select>
+                </div>
+                <div class="filter-actions">
+                    <button type="submit" class="btn btn-primary">🔍 Apply</button>
+                    <a th:href="@{/admin/users}" class="btn btn-outline">Reset</a>
+                </div>
+            </div>
         </form>
     </div>
 
     <!-- Table -->
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Email</th>
-                <th>Roles</th>
-                <th>Tenant</th>
-                <th>Status</th>
-                <th>Created</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="user : ${users}">
-                <td th:text="${user.id}">1</td>
-                <td th:text="${user.email}">user@example.com</td>
-                <td>
-                    <span th:each="role : ${user.roles}" th:text="${role.name}" style="display:inline-block; background:#e0e0e0; padding:2px 8px; border-radius:4px; margin:2px;"></span>
-                </td>
-                <td th:text="${user.tenantName}">Tenant A</td>
-                <td>
-                    <span class="badge" th:classappend="${user.active ? 'badge-active' : 'badge-inactive'}" th:text="${user.active ? '✅ Active' : '❌ Inactive'}">Active</span>
-                </td>
-                <td th:text="${user.createdAt}">2026-01-01</td>
-                <td>
-                    <!-- Edit -->
-                    <a th:href="@{/admin/users/{id}/edit(id=${user.id})}" class="btn btn-edit">Edit</a>
-                    <!-- Impersonate (only for ADMINs and if user is active) -->
-                    <form method="post" th:action="@{/admin/users/{id}/impersonate(id=${user.id})}" style="display:inline;" th:if="${user.active}">
-                        <button type="submit" class="btn btn-impersonate">Impersonate</button>
-                    </form>
-                    <!-- Revoke (only if active) -->
-                    <form method="post" th:action="@{/admin/users/revoke/{id}(id=${user.id})}" style="display:inline;" th:if="${user.active}">
-                        <button type="submit" class="btn btn-revoke" onclick="return confirm('Revoke this user?')">Revoke</button>
-                    </form>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+    <div class="card">
+        <table class="data-table" th:unless="${users.empty}">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Email</th>
+                    <th>Roles</th>
+                    <th>Tenant</th>
+                    <th>Status</th>
+                    <th>2FA</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="user : ${users}">
+                    <td class="mono" th:text="${user.id}">1</td>
+                    <td class="email-cell" th:text="${user.email}">user@example.com</td>
+                    <td>
+                        <span th:each="role : ${user.roles}" class="role-chip" th:text="${role.name}">ROLE</span>
+                    </td>
+                    <td th:text="${user.tenantName}">Tenant A</td>
+                    <td>
+                        <span th:if="${user.active}" class="badge badge-active">Active</span>
+                        <span th:unless="${user.active}" class="badge badge-inactive">Inactive</span>
+                    </td>
 
-    <!-- Pagination (if needed) -->
-    <div th:if="${users} and ${users.size() > 0}" class="pagination">
-        <!-- Add pagination controls if you implement pagination -->
+                    <!-- 2FA STATUS -->
+                    <td>
+                        <span th:if="${user.twoFactorDisabledByAdmin}" class="badge badge-2fa-override"
+                              th:title="'Disabled by admin. Reason: ' + ${user.twoFactorDisableReason}">
+                            🔓 Override
+                        </span>
+                        <span th:if="${!user.twoFactorDisabledByAdmin and user.twoFactorEnabled}" class="badge badge-2fa-on">
+                            ✅ Enabled
+                        </span>
+                        <span th:if="${!user.twoFactorDisabledByAdmin and !user.twoFactorEnabled}" class="badge badge-2fa-off">
+                            ⚠️ Not Set
+                        </span>
+                    </td>
+
+                    <td th:text="${#temporals.format(user.createdAt, 'dd MMM yyyy')}">01 Jan 2026</td>
+                    <td>
+                        <div class="action-cell">
+                            <a th:href="@{/admin/users/{id}/edit(id=${user.id})}" class="btn btn-edit">✏️ Edit</a>
+
+                            <form method="post" th:action="@{/admin/users/{id}/impersonate(id=${user.id})}"
+                                  style="display:inline;" th:if="${user.active}">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <button type="submit" class="btn btn-impersonate">🎭 Impersonate</button>
+                            </form>
+
+                            <!-- 2FA OVERRIDE (Super Admin only) -->
+                            <div sec:authorize="hasRole('SUPER_ADMIN')" style="display:inline-block;">
+                                <form th:if="${user.twoFactorDisabledByAdmin}"
+                                      method="post"
+                                      th:action="@{/admin/users/{id}/enable-2fa(id=${user.id})}"
+                                      style="display:inline;">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                    <button type="submit" class="btn btn-2fa-enable"
+                                            onclick="return confirm('Re-enable 2FA for this user?')"
+                                            title="Re-enable 2FA">
+                                        🔒 Re-enable 2FA
+                                    </button>
+                                </form>
+
+                                <button th:unless="${user.twoFactorDisabledByAdmin}"
+                                        type="button"
+                                        class="btn btn-2fa-disable"
+                                        th:attr="data-user-id=${user.id}, data-user-email=${user.email}"
+                                        onclick="openTwoFactorModal(this)"
+                                        title="Temporarily disable 2FA (Super Admin override)">
+                                    🔓 Disable 2FA
+                                </button>
+                            </div>
+
+                            <form method="post" th:action="@{/admin/users/revoke/{id}(id=${user.id})}"
+                                  style="display:inline;" th:if="${user.active}">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <button type="submit" class="btn btn-revoke"
+                                        onclick="return confirm('Revoke this user?')">🚫 Revoke</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div th:if="${users.empty}" class="empty">
+            <span class="emoji">👥</span>
+            <p>No users found.</p>
+        </div>
     </div>
 
-    <div th:if="${users.empty}" style="text-align:center; color:#888; padding:30px;">
-        No users found.
+</div>
+
+<!-- ============================================================ -->
+<!-- 2FA OVERRIDE MODAL -->
+<!-- ============================================================ -->
+<div id="twoFactorModal" class="modal-overlay">
+    <div class="modal">
+        <h3>🔓 Disable 2FA for User</h3>
+        <p class="modal-sub">
+            This will temporarily disable 2FA for <strong id="modalUserEmail">user@example.com</strong>.<br/>
+            Use this when a user has lost their device and backup codes.
+        </p>
+
+        <form id="twoFactorForm" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+
+            <div class="field-group">
+                <label for="modalReason">Reason</label>
+                <select id="modalReason" name="reason" required>
+                    <option value="Lost device">📱 Lost device</option>
+                    <option value="Lost backup codes">🔑 Lost backup codes</option>
+                    <option value="Locked out">🔒 Locked out</option>
+                    <option value="Device replaced">📲 Device replaced</option>
+                    <option value="Other">📝 Other</option>
+                </select>
+            </div>
+
+            <div class="field-group">
+                <label for="modalHours">Duration</label>
+                <select id="modalHours" name="hoursValid">
+                    <option value="1">⏱️ 1 hour</option>
+                    <option value="24" selected>⏱️ 24 hours</option>
+                    <option value="72">⏱️ 3 days</option>
+                    <option value="168">⏱️ 1 week</option>
+                    <option value="">♾️ Permanent (until manually re-enabled)</option>
+                </select>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeTwoFactorModal()">
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-2fa-disable">
+                    🔓 Disable 2FA
+                </button>
+            </div>
+        </form>
     </div>
 </div>
+
+<script>
+    function openTwoFactorModal(button) {
+        const userId = button.getAttribute('data-user-id');
+        const userEmail = button.getAttribute('data-user-email');
+
+        document.getElementById('modalUserEmail').textContent = userEmail;
+        document.getElementById('twoFactorForm').action = '/admin/users/' + userId + '/disable-2fa';
+        document.getElementById('twoFactorModal').classList.add('show');
+    }
+
+    function closeTwoFactorModal() {
+        document.getElementById('twoFactorModal').classList.remove('show');
+    }
+
+    document.getElementById('twoFactorModal').addEventListener('click', function (e) {
+        if (e.target === this) closeTwoFactorModal();
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeTwoFactorModal();
+    });
+</script>
+
 </body>
 </html>

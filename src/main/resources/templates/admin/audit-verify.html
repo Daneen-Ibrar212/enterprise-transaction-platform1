@@ -1,15 +1,166 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Audit Verification</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Verification · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        .valid { color: green; }
-        .invalid { color: red; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 640px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .status-card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            text-align: center;
+        }
+
+        .icon-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 0 auto 20px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.25rem;
+        }
+        .icon-valid {
+            background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+            color: #065f46;
+            box-shadow: 0 8px 24px rgba(16,185,129,0.25);
+        }
+        .icon-invalid {
+            background: linear-gradient(135deg, #fee2e2, #fecaca);
+            color: #991b1b;
+            box-shadow: 0 8px 24px rgba(239,68,68,0.25);
+        }
+
+        h2 {
+            font-size: 1.25rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            font-size: 0.875rem;
+            color: #64748b;
+            font-weight: 300;
+            margin-bottom: 24px;
+        }
+
+        .status-value {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 9999px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .status-valid {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status-invalid {
+            background: #fee2e2;
+            color: #991b1b;
+        }
     </style>
 </head>
 <body>
-    <h1>🔐 Audit Chain Verification</h1>
-    <p>Status: <span th:text="${status}" th:classappend="${valid ? 'valid' : 'invalid'}"></span></p>
-    <a href="/dashboard">← Back to Dashboard</a>
+<div class="container">
+
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">🔐</span> Audit Chain Verification</h1>
+    </div>
+
+    <div class="status-card">
+        <div th:if="${valid}" class="icon-circle icon-valid">✅</div>
+        <div th:unless="${valid}" class="icon-circle icon-invalid">❌</div>
+
+        <h2 th:if="${valid}">Chain is Valid</h2>
+        <h2 th:unless="${valid}">Chain is Broken</h2>
+
+        <p class="subtitle">
+            <span th:if="${valid}">All audit entries pass the hash chain verification.</span>
+            <span th:unless="${valid}">The audit chain failed verification. Data may have been tampered with.</span>
+        </p>
+
+        <span th:if="${valid}" class="status-value status-valid" th:text="${status}">INTEGRITY_VALID</span>
+        <span th:unless="${valid}" class="status-value status-invalid" th:text="${status}">INTEGRITY_BROKEN</span>
+    </div>
+
+</div>
 </body>
 </html>

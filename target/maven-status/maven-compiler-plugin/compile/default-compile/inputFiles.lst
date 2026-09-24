@@ -36,6 +36,7 @@
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/DashboardController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/DebugFilter.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/ErrorResponse.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/ExecutiveReportController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/ExportController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/FieldError.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/GlobalControllerAdvice.java
@@ -204,6 +205,7 @@
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/reporting/ReportingService.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/scheduler/RecurringScheduler.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/scheduler/ReportScheduler.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/scheduler/TwoFactorOverrideCleanupScheduler.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/scheduler/WebhookRetryScheduler.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/security/ActiveUserFilter.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/security/ApiKeyAuthenticationFilter.java
@@ -219,6 +221,7 @@
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/security/RateLimitingFilter.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/security/TOTPService.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/security/TwoFactorAuthenticationFilter.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/security/TwoFactorOverrideService.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/security/UnlockExpiredLocksScheduler.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/service/BulkJobService.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/simulator/SimulatorService.java

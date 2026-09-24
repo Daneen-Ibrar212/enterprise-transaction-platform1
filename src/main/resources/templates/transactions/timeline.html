@@ -1,60 +1,261 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Transaction Timeline</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction Timeline · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .transaction-info { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-        .timeline { position: relative; padding-left: 30px; }
-        .timeline::before { content: ''; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px; background: #ddd; }
-        .event { position: relative; margin-bottom: 20px; padding-left: 20px; }
-        .event::before { content: ''; position: absolute; left: -6px; top: 5px; width: 14px; height: 14px; border-radius: 50%; background: #2d7a3a; border: 2px solid white; box-shadow: 0 0 0 2px #2d7a3a; }
-        .event .time { font-size: 0.85em; color: #888; }
-        .event .details { background: #f1f1f1; padding: 10px; border-radius: 4px; margin-top: 5px; font-family: monospace; font-size: 0.9em; }
-        .event .badge { padding: 2px 8px; border-radius: 12px; color: white; font-size: 0.75em; display: inline-block; margin-left: 10px; }
-        .badge-transaction_created { background: #3498db; }
-        .badge-transaction_pending { background: #3498db; }
-        .badge-transaction_authorised { background: #f39c12; }
-        .badge-transaction_settled { background: #2d7a3a; }
-        .badge-transaction_refunded { background: #8e44ad; }
-        .badge-transaction_failed { background: #c0392b; }
-        .badge-payment_settled { background: #2d7a3a; }
-        .badge-invoice_created { background: #3498db; }
-        .badge-invoice_approved { background: #2d7a3a; }
-        .badge-invoice_rejected { background: #c0392b; }
-        /* fallback for unknown event types */
-        .badge-default { background: #6c757d; }
-        .btn { padding: 4px 10px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
-        .btn:hover { opacity: 0.8; }
-        .back { display: inline-block; margin-bottom: 15px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 860px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        /* Transaction info card */
+        .info-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px 26px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 24px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 20px;
+        }
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .info-label {
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .info-value {
+            font-size: 0.9375rem;
+            font-weight: 500;
+            color: #0f172a;
+        }
+        .info-value.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+        }
+
+        /* Timeline */
+        .timeline-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px 28px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+        .timeline {
+            position: relative;
+            padding-left: 40px;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 14px;
+            top: 8px;
+            bottom: 8px;
+            width: 2px;
+            background: linear-gradient(to bottom, #e2e8f0 0%, #e2e8f0 100%);
+        }
+        .event {
+            position: relative;
+            margin-bottom: 24px;
+            padding-bottom: 4px;
+        }
+        .event:last-child { margin-bottom: 0; }
+        .event::before {
+            content: '';
+            position: absolute;
+            left: -34px;
+            top: 4px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #0b1a33;
+            border: 3px solid white;
+            box-shadow: 0 0 0 2px #cbd5e1, 0 2px 8px rgba(11,26,51,0.2);
+            z-index: 1;
+        }
+        .event-type-badge {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .badge-transaction_created { background: #dbeafe; color: #1e40af; }
+        .badge-transaction_pending { background: #dbeafe; color: #1e40af; }
+        .badge-transaction_authorised { background: #fef3c7; color: #92400e; }
+        .badge-transaction_settled { background: #d1fae5; color: #065f46; }
+        .badge-transaction_refunded { background: #ede9fe; color: #5b21b6; }
+        .badge-transaction_failed { background: #fee2e2; color: #991b1b; }
+        .badge-payment_settled { background: #d1fae5; color: #065f46; }
+        .badge-invoice_created { background: #dbeafe; color: #1e40af; }
+        .badge-invoice_approved { background: #d1fae5; color: #065f46; }
+        .badge-invoice_rejected { background: #fee2e2; color: #991b1b; }
+        .badge-default { background: #f1f5f9; color: #475569; }
+
+        .event-time {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-weight: 400;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .event-details {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.75rem;
+            color: #334155;
+            line-height: 1.5;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .empty .emoji {
+            font-size: 2.5rem;
+            display: block;
+            margin-bottom: 12px;
+        }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>Timeline for Transaction #<span th:text="${transaction.id}">1</span></h1>
-    <a href="/transactions" class="back">← Back to Transactions</a>
 
-    <div class="transaction-info">
-        <p><strong>Invoice:</strong> <span th:text="${transaction.invoiceId}">1</span></p>
-        <p><strong>Amount:</strong> <span th:text="${transaction.amount}">100.00</span> <span th:text="${transaction.currency}">GBP</span></p>
-        <p><strong>Status:</strong> <span th:text="${transaction.status}">SETTLED</span></p>
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/transactions" class="back-link">← Back to Transactions</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">⏳</span> Timeline · Transaction #<span th:text="${transaction.id}">1</span></h1>
     </div>
 
-    <div class="timeline">
-        <div th:each="event : ${events}" class="event">
-            <div class="time" th:text="${event.createdAt}">2026-01-01 12:00:00</div>
-            <div>
-                <strong th:text="${event.eventType}">PAYMENT_SETTLED</strong>
-                <!-- ✅ Use the raw event type with underscores to match CSS classes -->
-                <span class="badge" th:classappend="'badge-' + ${event.eventType.toLowerCase()}"> </span>
-            </div>
-            <div class="details" th:text="${event.details}">{"key":"value"}</div>
+    <!-- Transaction summary -->
+    <div class="info-card">
+        <div class="info-item">
+            <span class="info-label">Invoice</span>
+            <span class="info-value mono" th:text="${transaction.invoiceId}">1</span>
         </div>
-        <div th:if="${events.empty}">
+        <div class="info-item">
+            <span class="info-label">Amount</span>
+            <span class="info-value" th:text="${currencyHelper.getFormattedAmount(transaction.amount, transaction.currency)}">£ 100.00</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Status</span>
+            <span class="info-value" th:text="${transaction.status}">SETTLED</span>
+        </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="timeline-card">
+
+        <div th:if="${events.empty}" class="empty">
+            <span class="emoji">📭</span>
             <p>No timeline events found for this transaction.</p>
         </div>
+
+        <div class="timeline" th:unless="${events.empty}">
+            <div th:each="event : ${events}" class="event">
+                <div class="event-time">
+                    <span>🕐</span>
+                    <span th:text="${#temporals.format(event.createdAt, 'dd MMM yyyy · HH:mm:ss')}">01 Jan 2026 · 12:00:00</span>
+                </div>
+                <div>
+                    <span th:with="eventClass=${'badge-' + event.eventType.toLowerCase()}"
+                          th:classappend="${eventClass}"
+                          class="event-type-badge"
+                          th:text="${event.eventType}">PAYMENT_SETTLED</span>
+                </div>
+                <div class="event-details" th:text="${event.details}">{"key":"value"}</div>
+            </div>
+        </div>
+
     </div>
+
 </div>
 </body>
 </html>

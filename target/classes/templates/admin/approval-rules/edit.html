@@ -1,47 +1,251 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Edit Approval Rule</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Approval Rule · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        label { display: block; margin: 10px 0 5px; }
-        input, select, textarea { width: 100%; max-width: 500px; padding: 8px; box-sizing: border-box; }
-        textarea { height: 60px; }
-        button { padding: 8px 20px; background: #2d7a3a; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #1e5c2a; }
-        .checkbox-group { margin: 10px 0; }
-        .checkbox-group label { display: inline; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 720px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+
+        .form-group { margin-bottom: 18px; }
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.9375rem;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-weight: 300;
+            color: #0f172a;
+            background: white;
+            transition: all 0.15s ease;
+        }
+        .form-group textarea {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.875rem;
+            min-height: 90px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 4px rgba(45, 107, 184, 0.12);
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 0;
+        }
+        .checkbox-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #2d6bb8;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .checkbox-row label {
+            font-size: 0.875rem;
+            color: #334155;
+            font-weight: 400;
+            cursor: pointer;
+            text-transform: none;
+            letter-spacing: 0;
+            margin-bottom: 0;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+            padding-top: 20px;
+            border-top: 1px solid #f1f5f9;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(11,26,51,0.25);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(11,26,51,0.35); }
+        .btn-outline {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-outline:hover { border-color: #94a3b8; background: #f8fafc; }
+
+        .help-text {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 6px;
+            font-weight: 300;
+            line-height: 1.5;
+        }
+        .help-text code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.7rem;
+            color: #4f46e5;
+        }
     </style>
 </head>
 <body>
-    <h1>✏️ Edit Approval Rule #<span th:text="${rule.id}">1</span></h1>
-    <a href="/admin/approval-rules">← Back to Rules</a>
+<div class="container">
 
-    <form method="post" th:action="@{/admin/approval-rules/{id}(id=${rule.id})}">
-        <label for="priority">Priority (lower = higher priority):</label>
-        <input type="number" id="priority" name="priority" th:value="${rule.priority}" min="0" required />
-
-        <label for="conditionExpression">Condition Expression (SpEL):</label>
-        <textarea id="conditionExpression" name="conditionExpression" required th:text="${rule.conditionExpression}"></textarea>
-
-        <div class="checkbox-group">
-            <label>
-                <input type="checkbox" name="requiresApproval" value="true" th:checked="${rule.requiresApproval}" />
-                Requires Approval
-            </label>
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/admin/approval-rules" class="back-link">← Back to Rules</a>
         </div>
+        <h1><span style="font-size:1.5rem;">✏️</span> Edit Rule #<span th:text="${rule.id}">1</span></h1>
+    </div>
 
-        <label for="description">Description:</label>
-        <input type="text" id="description" name="description" th:value="${rule.description}" />
+    <!-- Form -->
+    <div class="card">
+        <form method="post" th:action="@{/admin/approval-rules/{id}(id=${rule.id})}">
 
-        <div class="checkbox-group">
-            <label>
-                <input type="checkbox" name="active" value="true" th:checked="${rule.active}" />
-                Active
-            </label>
-        </div>
+            <div class="form-group">
+                <label for="priority">Priority</label>
+                <input type="number" id="priority" name="priority" th:value="${rule.priority}" min="0" required />
+                <div class="help-text">Lower numbers = higher priority. Rules are evaluated in order.</div>
+            </div>
 
-        <button type="submit">Update Rule</button>
-    </form>
+            <div class="form-group">
+                <label for="conditionExpression">Condition Expression (SpEL)</label>
+                <textarea id="conditionExpression" name="conditionExpression" required th:text="${rule.conditionExpression}"></textarea>
+                <div class="help-text">
+                    Example: <code>#amount &gt; 10000 &amp;&amp; #description.toLowerCase().contains("international")</code>
+                </div>
+            </div>
+
+            <div class="checkbox-row">
+                <input type="checkbox" id="requiresApproval" name="requiresApproval" value="true" th:checked="${rule.requiresApproval}" />
+                <label for="requiresApproval">Requires approval when condition matches</label>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <input type="text" id="description" name="description" th:value="${rule.description}" placeholder="e.g., High-value invoices need approval" />
+            </div>
+
+            <div class="checkbox-row">
+                <input type="checkbox" id="active" name="active" value="true" th:checked="${rule.active}" />
+                <label for="active">Rule is active</label>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="btn btn-primary">💾 Update Rule</button>
+                <a href="/admin/approval-rules" class="btn btn-outline">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+</div>
 </body>
 </html>

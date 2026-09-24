@@ -4,172 +4,257 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reliability Dashboard</title>
+    <title>Reliability Dashboard · PayFlow</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        /* ===== RESET & BASE ===== */
-        * { box-sizing: border-box; }
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background: #f3f4f6;
-            margin: 0;
-            padding: 20px;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
-        .container {
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 0 16px;
-        }
-        h1 { font-size: 28px; font-weight: 700; color: #1f2937; margin: 0; }
-        h2 { font-size: 18px; font-weight: 600; color: #374151; margin: 0 0 12px 0; }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1300px; margin: 0 auto; }
 
         /* ===== HEADER ===== */
-        .header {
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 32px;
             flex-wrap: wrap;
             gap: 12px;
+            position: relative;
+            z-index: 1;
         }
-        .header-right {
-            font-size: 14px;
-            color: #6b7280;
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
         }
-        .header-right span { font-weight: 600; color: #1f2937; }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+        .last-updated {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.7);
+            font-weight: 300;
+            position: relative;
+            z-index: 1;
+            margin-top: 12px;
+        }
+        .last-updated strong { color: white; font-weight: 500; }
 
         /* ===== TOAST ===== */
         .toast {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #10b981;
+            bottom: 24px;
+            right: 24px;
+            background: linear-gradient(135deg, #10b981, #059669);
             color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            font-weight: 600;
-            transition: opacity 0.3s ease;
+            padding: 14px 24px;
+            border-radius: 12px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+            font-weight: 400;
+            font-size: 0.875rem;
+            transition: opacity 0.3s ease, transform 0.3s ease;
             opacity: 0;
+            transform: translateY(20px);
             pointer-events: none;
             z-index: 999;
         }
-        .toast.show { opacity: 1; }
+        .toast.show { opacity: 1; transform: translateY(0); }
 
         /* ===== WIDGET GRID ===== */
         .widget-grid {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 24px;
-        }
-        @media (min-width: 768px) {
-            .widget-grid { grid-template-columns: 1fr 1fr; }
-        }
-        @media (min-width: 1024px) {
-            .widget-grid { grid-template-columns: 1fr 1fr 1fr 1fr; }
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
         }
 
         .widget {
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            padding: 20px;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
             transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
         }
         .widget:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px -8px rgba(0,20,50,0.12);
+            border-color: #cbd5e1;
         }
 
         .widget-title {
             display: flex;
             align-items: center;
-            font-size: 18px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 12px;
+            gap: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #0f172a;
+            margin-bottom: 16px;
+            letter-spacing: -0.015em;
         }
-        .widget-title .icon { margin-right: 8px; }
+        .widget-title .icon { font-size: 1.125rem; }
 
-        /* ===== STATUS BADGE ===== */
+        /* ===== STATUS BADGES ===== */
         .status-badge {
+            display: inline-flex;
+            align-items: center;
             padding: 4px 12px;
             border-radius: 9999px;
-            font-weight: 600;
-            font-size: 12px;
-            display: inline-block;
+            font-weight: 500;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
         }
         .status-green { background: #d1fae5; color: #065f46; }
-        .status-red   { background: #fee2e2; color: #991b1b; }
+        .status-red { background: #fee2e2; color: #991b1b; }
         .status-yellow { background: #fef3c7; color: #92400e; }
 
         /* ===== DLQ SUMMARY ===== */
         .dlq-row {
             display: flex;
             justify-content: space-between;
-            font-size: 14px;
-            padding: 2px 0;
+            align-items: center;
+            font-size: 0.875rem;
+            padding: 6px 0;
+            border-bottom: 1px solid #f8fafc;
         }
-        .dlq-label { color: #6b7280; }
-        .dlq-value { font-family: monospace; font-weight: 700; }
+        .dlq-row:last-child { border-bottom: none; }
+        .dlq-label { color: #64748b; font-weight: 300; }
+        .dlq-value {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-weight: 500;
+            font-size: 0.9375rem;
+        }
         .dlq-pending { color: #d97706; }
         .dlq-retrying { color: #2563eb; }
-        .dlq-resolved { color: #16a34a; }
+        .dlq-resolved { color: #059669; }
         .dlq-failed { color: #dc2626; }
 
         .widget-footer {
-            margin-top: 12px;
-            text-align: right;
+            margin-top: auto;
+            padding-top: 14px;
+            display: flex;
+            justify-content: flex-end;
         }
         .widget-footer a {
-            color: #2563eb;
+            color: #4f46e5;
             text-decoration: none;
-            font-size: 14px;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            transition: color 0.15s ease;
         }
-        .widget-footer a:hover { text-decoration: underline; }
+        .widget-footer a:hover { color: #3730a3; text-decoration: underline; }
 
         /* ===== CIRCUIT BREAKERS ===== */
         .cb-list {
-            max-height: 128px;
+            max-height: 140px;
             overflow-y: auto;
-            font-size: 14px;
         }
+        .cb-list::-webkit-scrollbar { width: 4px; }
+        .cb-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .cb-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 4px 0;
-            border-bottom: 1px solid #f3f4f6;
+            padding: 8px 0;
+            border-bottom: 1px solid #f8fafc;
+            font-size: 0.8125rem;
         }
+        .cb-item:last-child { border-bottom: none; }
         .cb-name {
-            color: #374151;
+            color: #334155;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.75rem;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        .cb-status {
-            flex-shrink: 0;
-            margin-left: 12px;
-        }
-        .cb-empty { color: #9ca3af; font-size: 14px; }
+        .cb-status { flex-shrink: 0; margin-left: 12px; }
+        .cb-empty { color: #94a3b8; font-size: 0.8125rem; padding: 12px 0; font-weight: 300; }
         .cb-footer {
             margin-top: 12px;
-            text-align: right;
-            font-size: 14px;
-            color: #6b7280;
+            padding-top: 12px;
+            border-top: 1px solid #f1f5f9;
+            font-size: 0.75rem;
+            color: #64748b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .cb-footer span:last-child {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-weight: 500;
+            color: #0f172a;
         }
 
         /* ===== RECONCILIATION ===== */
         .rec-row {
             display: flex;
             justify-content: space-between;
-            font-size: 14px;
-            padding: 2px 0;
+            align-items: center;
+            font-size: 0.8125rem;
+            padding: 6px 0;
+            border-bottom: 1px solid #f8fafc;
         }
-        .rec-label { color: #6b7280; }
-        .rec-value { font-family: monospace; }
-        .rec-mismatch { font-weight: 700; }
-        .rec-mismatch-danger { color: #dc2626; }
+        .rec-row:last-child { border-bottom: none; }
+        .rec-label { color: #64748b; font-weight: 300; }
+        .rec-value {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-weight: 500;
+            color: #0f172a;
+            font-size: 0.8125rem;
+        }
+        .rec-mismatch-danger { color: #dc2626; font-weight: 500; }
 
         /* ===== AUDIT ===== */
         .audit-row {
@@ -177,171 +262,207 @@
             justify-content: space-between;
             align-items: center;
         }
-        .audit-label { font-size: 14px; color: #6b7280; }
+        .audit-label { font-size: 0.8125rem; color: #64748b; font-weight: 300; }
         .audit-hash-info {
-            margin-top: 8px;
-            font-size: 12px;
-            color: #9ca3af;
+            margin-top: 10px;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-weight: 300;
         }
         .audit-footer {
-            margin-top: 12px;
-            text-align: right;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid #f1f5f9;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
         }
         .audit-footer a {
-            color: #2563eb;
+            color: #4f46e5;
             text-decoration: none;
-            font-size: 14px;
-            margin-left: 12px;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            transition: color 0.15s ease;
         }
-        .audit-footer a:hover { text-decoration: underline; }
-        .btn-link {
-            background: none;
-            border: none;
-            color: #2563eb;
-            font-size: 14px;
-            cursor: pointer;
-            padding: 0;
-        }
-        .btn-link:hover { text-decoration: underline; }
+        .audit-footer a:hover { color: #3730a3; text-decoration: underline; }
 
-        /* ===== POLICY LINKS SECTION ===== */
+        /* ===== POLICY LINKS ===== */
         .policy-links {
-            margin-top: 32px;
-            padding: 20px;
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            text-align: center;
+            border-radius: 16px;
+            padding: 28px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+        }
+        .policy-links h2 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #0f172a;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: -0.015em;
+        }
+        .policy-links-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
         }
         .policy-links .btn {
-            display: inline-block;
-            padding: 8px 16px;
-            border-radius: 4px;
-            background: #2563eb;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
             color: white;
             text-decoration: none;
-            font-size: 14px;
+            font-size: 0.875rem;
+            font-weight: 400;
             border: none;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s ease;
+            box-shadow: 0 8px 20px rgba(11,26,51,0.25);
         }
         .policy-links .btn:hover {
-            background: #1d4ed8;
+            transform: translateY(-1px);
+            box-shadow: 0 12px 28px rgba(11,26,51,0.35);
         }
     </style>
 </head>
 <body>
 
-    <!-- Toast container -->
-    <div id="toast" class="toast">✅ Dashboard refreshed!</div>
+<div id="toast" class="toast">✅ Dashboard refreshed!</div>
 
-    <div class="container">
+<div class="container">
 
-        <!-- ===== HEADER ===== -->
-        <div class="header">
-            <h1>🔧 Reliability & Operations Dashboard</h1>
-            <div class="header-right">
-                Last updated: <span id="lastUpdated">just now</span>
+    <!-- ===== HEADER ===== -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">🔧</span> Reliability & Operations Dashboard</h1>
+        <div class="last-updated">
+            <span>Last updated:</span>
+            <strong id="lastUpdated">just now</strong>
+        </div>
+    </div>
+
+    <!-- ===== WIDGET GRID ===== -->
+    <div class="widget-grid">
+
+        <!-- 1. DLQ Summary -->
+        <div id="dlq-widget" th:fragment="dlq-widget" class="widget">
+            <div class="widget-title"><span class="icon">📨</span> DLQ Entries</div>
+            <div>
+                <div class="dlq-row">
+                    <span class="dlq-label">Pending</span>
+                    <span class="dlq-value dlq-pending" th:text="${dlqSummary != null ? dlqSummary.pending : 0}">0</span>
+                </div>
+                <div class="dlq-row">
+                    <span class="dlq-label">Retrying</span>
+                    <span class="dlq-value dlq-retrying" th:text="${dlqSummary != null ? dlqSummary.retrying : 0}">0</span>
+                </div>
+                <div class="dlq-row">
+                    <span class="dlq-label">Resolved</span>
+                    <span class="dlq-value dlq-resolved" th:text="${dlqSummary != null ? dlqSummary.resolved : 0}">0</span>
+                </div>
+                <div class="dlq-row">
+                    <span class="dlq-label">Failed</span>
+                    <span class="dlq-value dlq-failed" th:text="${dlqSummary != null ? dlqSummary.failed : 0}">0</span>
+                </div>
+            </div>
+            <div class="widget-footer"><a href="/admin/dlq">View all →</a></div>
+        </div>
+
+        <!-- 2. Circuit Breakers -->
+        <div id="cb-widget" th:fragment="cb-widget" class="widget">
+            <div class="widget-title"><span class="icon">🔌</span> Circuit Breakers</div>
+            <div class="cb-list">
+                <div th:each="cb : ${circuitBreakers}" class="cb-item">
+                    <span class="cb-name" th:text="${cb.operationType}">op</span>
+                    <span th:if="${cb.state == 'CLOSED'}" class="cb-status status-badge status-green">Closed</span>
+                    <span th:if="${cb.state == 'OPEN'}" class="cb-status status-badge status-red">Open</span>
+                    <span th:if="${cb.state != 'CLOSED' and cb.state != 'OPEN'}" class="cb-status status-badge status-yellow" th:text="${cb.state}">Half-Open</span>
+                </div>
+                <div th:if="${circuitBreakers == null or circuitBreakers.empty}" class="cb-empty">No circuit breakers defined</div>
+            </div>
+            <div class="cb-footer">
+                <span>Open circuits</span>
+                <span th:text="${openCircuits != null ? openCircuits : 0}">0</span>
             </div>
         </div>
 
-        <!-- ===== WIDGET GRID ===== -->
-        <div class="widget-grid">
-
-            <!-- 1. DLQ Summary -->
-            <div id="dlq-widget" th:fragment="dlq-widget" class="widget">
-                <div class="widget-title"><span class="icon">📨</span> DLQ Entries</div>
-                <div>
-                    <div class="dlq-row"><span class="dlq-label">Pending</span> <span class="dlq-value dlq-pending" th:text="${dlqSummary.pending}">0</span></div>
-                    <div class="dlq-row"><span class="dlq-label">Retrying</span> <span class="dlq-value dlq-retrying" th:text="${dlqSummary.retrying}">0</span></div>
-                    <div class="dlq-row"><span class="dlq-label">Resolved</span> <span class="dlq-value dlq-resolved" th:text="${dlqSummary.resolved}">0</span></div>
-                    <div class="dlq-row"><span class="dlq-label">Failed</span> <span class="dlq-value dlq-failed" th:text="${dlqSummary.failed}">0</span></div>
+        <!-- 3. Reconciliation -->
+        <div id="reconciliation-widget" th:fragment="reconciliation-widget" class="widget">
+            <div class="widget-title"><span class="icon">🔄</span> Last Reconciliation</div>
+            <div th:if="${lastReconciliation != null}">
+                <div class="rec-row">
+                    <span class="rec-label">Status</span>
+                    <span th:if="${lastReconciliation.status == 'PASS'}" class="status-badge status-green">Pass</span>
+                    <span th:unless="${lastReconciliation.status == 'PASS'}" class="status-badge status-red" th:text="${lastReconciliation.status}">Fail</span>
                 </div>
-                <div class="widget-footer"><a href="/admin/dlq">View all →</a></div>
-            </div>
-
-            <!-- 2. Circuit Breakers -->
-            <div id="cb-widget" th:fragment="cb-widget" class="widget">
-                <div class="widget-title"><span class="icon">🔌</span> Circuit Breakers</div>
-                <div class="cb-list">
-                    <div th:each="cb : ${circuitBreakers}" class="cb-item">
-                        <span class="cb-name" th:text="${cb.operationType}">op</span>
-                        <span class="cb-status status-badge"
-                              th:class="${cb.state == 'CLOSED'} ? 'status-green' : (${cb.state == 'OPEN'} ? 'status-red' : 'status-yellow')"
-                              th:text="${cb.state}">CLOSED</span>
-                    </div>
-                    <div th:if="${circuitBreakers.empty}" class="cb-empty">No circuit breakers defined</div>
+                <div class="rec-row">
+                    <span class="rec-label">Total Tx</span>
+                    <span class="rec-value" th:text="${lastReconciliation.totalTransactions}">0</span>
                 </div>
-                <div class="cb-footer">Open: <span th:text="${openCircuits}">0</span></div>
-            </div>
-
-            <!-- 3. Reconciliation -->
-            <div id="reconciliation-widget" th:fragment="reconciliation-widget" class="widget">
-                <div class="widget-title"><span class="icon">🔄</span> Last Reconciliation</div>
-                <div th:if="${lastReconciliation != null}">
-                    <div class="rec-row"><span class="rec-label">Status</span>
-                        <span class="status-badge"
-                              th:class="${lastReconciliation.status == 'PASS'} ? 'status-green' : 'status-red'"
-                              th:text="${lastReconciliation.status}">PASS</span>
-                    </div>
-                    <div class="rec-row"><span class="rec-label">Total Tx</span> <span class="rec-value" th:text="${lastReconciliation.totalTransactions}">0</span></div>
-                    <div class="rec-row"><span class="rec-label">Mismatches</span>
-                        <span class="rec-value rec-mismatch" th:classappend="${lastReconciliation.mismatchedTransactions > 0} ? 'rec-mismatch-danger' : ''" th:text="${lastReconciliation.mismatchedTransactions}">0</span>
-                    </div>
-                    <div class="rec-row"><span class="rec-label">Completed</span> <span class="rec-value" th:text="${#dates.format(lastReconciliation.completedAt, 'HH:mm')}">--</span></div>
+                <div class="rec-row">
+                    <span class="rec-label">Mismatches</span>
+                    <span class="rec-value" th:classappend="${lastReconciliation.mismatchedTransactions > 0} ? 'rec-mismatch-danger' : ''" th:text="${lastReconciliation.mismatchedTransactions}">0</span>
                 </div>
-                <div th:if="${lastReconciliation == null}" style="color:#9ca3af; font-size:14px;">No reconciliation run yet.</div>
-                <div class="widget-footer"><a href="/admin/reconciliation">View details →</a></div>
-            </div>
-
-            <!-- 4. Audit Chain -->
-            <div id="audit-widget" th:fragment="audit-widget" class="widget">
-                <div class="widget-title"><span class="icon">🔐</span> Audit Chain</div>
-                <div class="audit-row">
-                    <span class="audit-label">Integrity</span>
-                    <span class="status-badge"
-                          th:class="${auditChainValid} ? 'status-green' : 'status-red'"
-                          th:text="${auditChainValid} ? '✅ VALID' : '❌ BROKEN'">VALID</span>
-                </div>
-                <div class="audit-hash-info">Hash-chained verification</div>
-                <div class="audit-footer">
-                    <a href="/admin/audit">View audit →</a>
+                <div class="rec-row">
+                    <span class="rec-label">Completed</span>
+                    <span class="rec-value" th:text="${lastReconciliation.completedAt != null ? #temporals.format(lastReconciliation.completedAt, 'HH:mm') : '—'}">--</span>
                 </div>
             </div>
+            <div th:if="${lastReconciliation == null}" class="cb-empty">No reconciliation run yet.</div>
+            <div class="widget-footer"><a href="/admin/reconciliation">View details →</a></div>
+        </div>
 
-        </div><!-- /widget-grid -->
-
-        <!-- ===== POLICY MANAGEMENT LINKS ===== -->
-        <div class="policy-links">
-            <h2>⚙️ Reliability Policy Management</h2>
-            <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
-                <a href="/admin/reliability/policies/retry" class="btn">Retry Policies</a>
-                <a href="/admin/reliability/policies/circuit-breaker" class="btn">Circuit Breaker Policies</a>
-                <a href="/admin/reliability/policies/failure-classification" class="btn">Failure Classification</a>
+        <!-- 4. Audit Chain -->
+        <div id="audit-widget" th:fragment="audit-widget" class="widget">
+            <div class="widget-title"><span class="icon">🔐</span> Audit Chain</div>
+            <div class="audit-row">
+                <span class="audit-label">Integrity</span>
+                <span th:if="${auditChainValid}" class="status-badge status-green">✅ Valid</span>
+                <span th:unless="${auditChainValid}" class="status-badge status-red">❌ Broken</span>
+            </div>
+            <div class="audit-hash-info">Hash-chained verification of all audit events</div>
+            <div class="audit-footer">
+                <a href="/admin/audit">View audit →</a>
             </div>
         </div>
 
-        <!-- ===== JAVASCRIPT ===== -->
-        <script>
-            function showToast(message) {
-                const toast = document.getElementById('toast');
-                toast.textContent = message;
-                toast.classList.add('show');
-                clearTimeout(toast._timeout);
-                toast._timeout = setTimeout(function() {
-                    toast.classList.remove('show');
-                }, 3000);
-            }
+    </div>
 
-            // Set initial timestamp on page load
-            document.addEventListener('DOMContentLoaded', function() {
-                document.getElementById('lastUpdated').innerText = new Date().toLocaleTimeString();
-            });
+    <!-- ===== POLICY MANAGEMENT LINKS ===== -->
+    <div class="policy-links">
+        <h2>⚙️ Reliability Policy Management</h2>
+        <div class="policy-links-row">
+            <a href="/admin/reliability/policies/retry" class="btn">🔄 Retry Policies</a>
+            <a href="/admin/reliability/policies/circuit-breaker" class="btn">🔌 Circuit Breaker Policies</a>
+            <a href="/admin/reliability/policies/failure-classification" class="btn">🔍 Failure Classification</a>
+        </div>
+    </div>
 
-            // If you want auto-refresh every 30 seconds:
-            // setInterval(refreshAllWidgets, 30000);
-        </script>
+</div>
 
-    </div><!-- /container -->
+<script>
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(toast._timeout);
+        toast._timeout = setTimeout(function() {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('lastUpdated').innerText = new Date().toLocaleTimeString();
+    });
+</script>
 </body>
 </html>

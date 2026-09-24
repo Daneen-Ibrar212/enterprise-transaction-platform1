@@ -2,54 +2,226 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Retry Policies</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retry Policies · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { color: #1f2937; margin-top: 0; }
-        .header-actions { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
-        .btn { display: inline-block; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 14px; border: none; cursor: pointer; }
-        .btn-primary { background: #2563eb; color: white; }
-        .btn-primary:hover { background: #1d4ed8; }
-        .btn-secondary { background: #6b7280; color: white; }
-        .btn-secondary:hover { background: #4b5563; }
-        .btn-warning { background: #f59e0b; color: white; }
-        .btn-warning:hover { background: #d97706; }
-        .btn-danger { background: #dc2626; color: white; }
-        .btn-danger:hover { background: #b91c1c; }
-        .btn-sm { padding: 4px 10px; font-size: 12px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-        th { background: #f9fafb; text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; border-bottom: 1px solid #e5e7eb; }
-        td { padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; vertical-align: middle; }
-        tr:hover { background: #f9fafb; }
-        .badge { padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; display: inline-block; }
-        .badge-success { background: #d1fae5; color: #065f46; }
-        .badge-danger { background: #fee2e2; color: #991b1b; }
-        .actions form { display: inline; margin: 0 2px; }
-        .empty { text-align: center; color: #6b7280; padding: 20px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+            margin-top: 16px;
+        }
+        .back-link,
+        .header-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+        }
+        .back-link {
+            color: rgba(255,255,255,0.9);
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(255,255,255,0.2);
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+        .chip-create {
+            background: rgba(255,255,255,0.95);
+            color: #0b1a33;
+        }
+        .chip-create:hover { background: white; transform: translateY(-1px); }
+
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
-        .toast { padding: 12px 20px; margin-bottom: 10px; border-radius: 8px; color: white; font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1); opacity: 1; transition: opacity 0.3s ease; max-width: 400px; }
-        .toast-success { background: #10b981; }
-        .toast-error { background: #ef4444; }
+        .toast {
+            padding: 14px 22px;
+            margin-bottom: 10px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            font-size: 0.875rem;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+            opacity: 1;
+            transition: opacity 0.3s ease;
+            max-width: 400px;
+        }
+        .toast-success { background: linear-gradient(135deg, #10b981, #059669); }
+        .toast-error { background: linear-gradient(135deg, #ef4444, #dc2626); }
         .toast.hide { opacity: 0; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            overflow: hidden;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .data-table td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover td { background: #fafbfc; }
+        .data-table td.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #0f172a;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .badge-active { background: #d1fae5; color: #065f46; }
+        .badge-inactive { background: #fee2e2; color: #991b1b; }
+
+        .bool-yes { color: #059669; font-weight: 500; }
+        .bool-no { color: #94a3b8; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+        .btn-edit { background: #3b82f6; color: white; box-shadow: 0 4px 12px rgba(59,130,246,0.2); }
+        .btn-edit:hover { background: #2563eb; transform: translateY(-1px); }
+        .btn-toggle { background: #f59e0b; color: white; box-shadow: 0 4px 12px rgba(245,158,11,0.2); }
+        .btn-toggle:hover { background: #d97706; transform: translateY(-1px); }
+        .btn-delete { background: #f1f5f9; color: #475569; }
+        .btn-delete:hover { background: #fee2e2; color: #dc2626; }
+
+        .action-cell { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+        @media (max-width: 900px) {
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
+        }
     </style>
 </head>
 <body>
 
-    <div id="toast-container" class="toast-container">
-        <div th:if="${success}" class="toast toast-success" th:text="${success}"></div>
-        <div th:if="${error}" class="toast toast-error" th:text="${error}"></div>
+<div class="toast-container">
+    <div th:if="${success}" class="toast toast-success" th:text="${success}"></div>
+    <div th:if="${error}" class="toast toast-error" th:text="${error}"></div>
+</div>
+
+<div class="container">
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/admin/reliability-dashboard" class="back-link">← Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">🔄</span> Retry Policies</h1>
+        <div class="header-actions">
+            <a href="/admin/reliability/policies/retry/create" class="header-chip chip-create">➕ Create New</a>
+        </div>
     </div>
 
-    <div class="container">
-        <h1>Retry Policies</h1>
-        <div class="header-actions">
-            <a href="/admin/reliability/policies/retry/create" class="btn btn-primary">➕ Create New</a>
-            <a href="/admin/reliability-dashboard" class="btn btn-secondary">← Dashboard</a>
-        </div>
-
-        <table>
+    <div class="card">
+        <table class="data-table" th:unless="${policies.empty}">
             <thead>
                 <tr>
                     <th>Operation</th>
@@ -58,47 +230,58 @@
                     <th>Base (ms)</th>
                     <th>Max (ms)</th>
                     <th>Jitter</th>
-                    <th>Active</th>
+                    <th>Status</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <tr th:each="p : ${policies}">
-                    <td th:text="${p.operationType}">payment</td>
-                    <td th:text="${p.maxAttempts}">3</td>
-                    <td th:text="${p.backoffStrategy}">EXPONENTIAL</td>
-                    <td th:text="${p.baseDelayMs}">1000</td>
-                    <td th:text="${p.maxDelayMs}">30000</td>
-                    <td th:text="${p.jitterEnabled} ? '✅' : '❌'">✅</td>
-                    <td><span class="badge" th:class="${p.active} ? 'badge-success' : 'badge-danger'" th:text="${p.active} ? 'Active' : 'Inactive'">Active</span></td>
-                    <td class="actions">
-                        <a th:href="'/admin/reliability/policies/retry/' + ${p.id} + '/edit'" class="btn btn-primary btn-sm">Edit</a>
-                        <form th:action="'/admin/reliability/policies/retry/' + ${p.id} + '/toggle'" method="post">
-                            <button type="submit" class="btn btn-warning btn-sm">Toggle</button>
-                        </form>
-                        <!-- Delete only if NOT system -->
-                        <form th:if="${!p.system}" th:action="'/admin/reliability/policies/retry/' + ${p.id} + '/delete'" method="post" onsubmit="return confirm('Delete this policy?');">
-                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                        </form>
+                    <td class="mono" th:text="${p.operationType}">payment</td>
+                    <td class="mono" th:text="${p.maxAttempts}">3</td>
+                    <td class="mono" th:text="${p.backoffStrategy}">EXPONENTIAL</td>
+                    <td class="mono" th:text="${p.baseDelayMs}">1000</td>
+                    <td class="mono" th:text="${p.maxDelayMs}">30000</td>
+                    <td>
+                        <span th:if="${p.jitterEnabled}" class="bool-yes">✅</span>
+                        <span th:unless="${p.jitterEnabled}" class="bool-no">—</span>
                     </td>
-                </tr>
-                <tr th:if="${policies.empty}">
-                    <td colspan="8" class="empty">No retry policies found.</td>
+                    <td>
+                        <span th:if="${p.active}" class="badge badge-active">Active</span>
+                        <span th:unless="${p.active}" class="badge badge-inactive">Inactive</span>
+                    </td>
+                    <td>
+                        <div class="action-cell">
+                            <a th:href="'/admin/reliability/policies/retry/' + ${p.id} + '/edit'" class="btn btn-edit">✏️ Edit</a>
+                            <form th:action="'/admin/reliability/policies/retry/' + ${p.id} + '/toggle'" method="post" style="display:inline;">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <button type="submit" class="btn btn-toggle">🔄 Toggle</button>
+                            </form>
+                            <form th:if="${!p.system}" th:action="'/admin/reliability/policies/retry/' + ${p.id} + '/delete'" method="post" style="display:inline;" onsubmit="return confirm('Delete this policy?');">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <button type="submit" class="btn btn-delete">🗑️</button>
+                            </form>
+                        </div>
+                    </td>
                 </tr>
             </tbody>
         </table>
-    </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const toasts = document.querySelectorAll('.toast');
-            toasts.forEach(function(toast, index) {
-                setTimeout(function() {
-                    toast.classList.add('hide');
-                    setTimeout(function() { toast.remove(); }, 300);
-                }, 4000 + (index * 500));
-            });
+        <div th:if="${policies.empty}" class="empty">
+            <span class="emoji">🔄</span>
+            <p>No retry policies found.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.toast').forEach(function(toast, index) {
+            setTimeout(function() {
+                toast.classList.add('hide');
+                setTimeout(function() { toast.remove(); }, 300);
+            }, 4000 + (index * 500));
         });
-    </script>
+    });
+</script>
 </body>
 </html>

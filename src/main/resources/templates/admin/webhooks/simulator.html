@@ -1,213 +1,453 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Webhook Simulator</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webhook Simulator · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; }
-        h1 { margin-bottom: 10px; }
-        .form-group { margin: 15px 0; }
-        .form-group label { display: block; font-weight: bold; margin-bottom: 4px; }
-        .form-group input, .form-group select, .form-group textarea {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 14px;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
         }
-        .form-group textarea { height: 200px; }
-        .btn { padding: 8px 20px; border: none; border-radius: 4px; cursor: pointer; }
-        .btn-primary { background: #2d7a3a; color: white; }
-        .btn-primary:hover { background: #1e5c2a; }
-        .response-box { margin-top: 20px; border: 1px solid #ccc; border-radius: 4px; padding: 15px; background: #f9f9f9; display: none; }
-        .response-box h3 { margin-top: 0; }
-        .response-box .status { font-weight: bold; }
-        .status-2xx { color: #2d7a3a; }
-        .status-4xx, .status-5xx { color: #c0392b; }
-        .response-box pre { background: #eee; padding: 10px; border-radius: 4px; overflow-x: auto; }
-        .error { color: #c0392b; }
-        .back-link { display: inline-block; margin-bottom: 20px; }
-        .row { display: flex; gap: 20px; flex-wrap: wrap; }
-        .col { flex: 1; min-width: 250px; }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 900px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .page-header p {
+            font-size: 0.875rem;
+            color: rgba(255,255,255,0.75);
+            margin-top: 8px;
+            position: relative;
+            z-index: 1;
+            font-weight: 300;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.9375rem;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-weight: 300;
+            color: #0f172a;
+            background: white;
+            transition: all 0.15s ease;
+        }
+        .form-group textarea {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            min-height: 220px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 4px rgba(45, 107, 184, 0.12);
+        }
+        .form-group input::placeholder { color: #94a3b8; font-weight: 300; }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            align-items: end;
+        }
+        .form-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(11,26,51,0.25);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(11,26,51,0.35); }
+        .btn-sample {
+            background: #3b82f6;
+            color: white;
+            box-shadow: 0 4px 12px rgba(59,130,246,0.2);
+        }
+        .btn-sample:hover { background: #2563eb; transform: translateY(-1px); }
+        .btn-outline {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-outline:hover { border-color: #2d6bb8; color: #2d6bb8; background: #f8faff; }
+        .btn-sm { padding: 9px 16px; font-size: 0.8125rem; }
+
+        .loading-text {
+            display: none;
+            font-size: 0.8125rem;
+            color: #64748b;
+            font-weight: 400;
+            margin-left: 8px;
+        }
+
+        /* Response */
+        .response-card {
+            display: none;
+            background: white;
+            border-radius: 16px;
+            padding: 24px 28px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+        .response-card.show { display: block; }
+        .response-card h3 {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+        .status-2xx { background: #d1fae5; color: #065f46; }
+        .status-4xx, .status-5xx { background: #fee2e2; color: #991b1b; }
+        .duration-info {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-bottom: 16px;
+            font-weight: 300;
+        }
+        .response-section {
+            margin-bottom: 16px;
+        }
+        .response-section-label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .response-pre {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 14px 16px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.75rem;
+            color: #334155;
+            overflow-x: auto;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .error-card {
+            display: none;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 0.875rem;
+            font-weight: 400;
+            display: none;
+            gap: 10px;
+        }
+        .error-card.show { display: flex; }
+
+        @media (max-width: 640px) {
+            .form-row { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>📤 Webhook Simulator</h1>
-    <a href="/admin/webhooks" class="back-link">← Back to Webhooks</a>
 
-    <p>Send a test webhook to any URL. Use this to verify your webhook receiver is working correctly.</p>
-
-    <form id="simulatorForm">
-        <div class="form-group">
-            <label for="url">URL (required)</label>
-            <input type="url" id="url" name="url" placeholder="https://your-webhook-receiver.com/endpoint" required />
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/admin/webhooks" class="back-link">← Back to Webhooks</a>
         </div>
+        <h1><span style="font-size:1.5rem;">🧪</span> Webhook Simulator</h1>
+        <p>Send a test webhook to any URL to verify your webhook receiver is working correctly.</p>
+    </div>
 
-        <div class="row">
-            <div class="col">
+    <!-- Form -->
+    <div class="card">
+        <form id="simulatorForm">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+
+            <div class="form-group">
+                <label for="url">URL</label>
+                <input type="url" id="url" name="url" placeholder="https://your-webhook-receiver.com/endpoint" required />
+            </div>
+
+            <div class="form-row">
                 <div class="form-group">
                     <label for="eventType">Event Type</label>
                     <select id="eventType" name="eventType">
                         <option th:each="type : ${eventTypes}" th:value="${type}" th:text="${type}"></option>
                     </select>
                 </div>
-            </div>
-            <div class="col">
-                <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-top: 30px;">
-                    <button type="button" id="loadSampleBtn" class="btn btn-primary" style="background: #3498db;">📋 Load Sample Payload</button>
-                    <button type="button" id="formatPayloadBtn" class="btn" style="background: #6c757d; color: white;">🔧 Format JSON</button>
+                <div class="form-group">
+                    <label>Payload Helpers</label>
+                    <div class="form-actions">
+                        <button type="button" id="loadSampleBtn" class="btn btn-sample btn-sm">📋 Load Sample</button>
+                        <button type="button" id="formatPayloadBtn" class="btn btn-outline btn-sm">🔧 Format JSON</button>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="form-group">
-            <label for="payload">Payload (JSON)</label>
-            <textarea id="payload" name="payload" th:text="${samplePayload}">{"eventType":"TRANSACTION_SETTLED","timestamp":"2026-01-01T00:00:00Z"}</textarea>
-        </div>
+            <div class="form-group">
+                <label for="payload">Payload (JSON)</label>
+                <textarea id="payload" name="payload" th:text="${samplePayload}">{"eventType":"TRANSACTION_SETTLED"}</textarea>
+            </div>
 
-        <button type="submit" class="btn btn-primary">🚀 Send Test Webhook</button>
-        <span id="loading" style="display: none; margin-left: 15px;">Sending...</span>
-    </form>
-
-    <!-- Response display -->
-    <div id="responseBox" class="response-box">
-        <h3>📨 Response</h3>
-        <div id="responseStatus" class="status"></div>
-        <div id="responseDuration" style="color: #888; font-size: 0.9em;"></div>
-        <div id="responseHeaders"></div>
-        <div id="responseBody"></div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">🚀 Send Test Webhook</button>
+                <span id="loading" class="loading-text">Sending...</span>
+            </div>
+        </form>
     </div>
 
-    <div id="errorBox" class="error" style="display: none;"></div>
+    <!-- Response -->
+    <div id="responseBox" class="response-card">
+        <h3>📨 Response</h3>
+        <div id="responseStatus" class="status-badge"></div>
+        <div id="responseDuration" class="duration-info"></div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const form = document.getElementById('simulatorForm');
-            const urlInput = document.getElementById('url');
-            const eventTypeSelect = document.getElementById('eventType');
-            const payloadTextarea = document.getElementById('payload');
-            const responseBox = document.getElementById('responseBox');
-            const responseStatus = document.getElementById('responseStatus');
-            const responseDuration = document.getElementById('responseDuration');
-            const responseHeaders = document.getElementById('responseHeaders');
-            const responseBody = document.getElementById('responseBody');
-            const errorBox = document.getElementById('errorBox');
-            const loading = document.getElementById('loading');
+        <div class="response-section">
+            <div class="response-section-label">Headers</div>
+            <pre id="responseHeaders" class="response-pre"></pre>
+        </div>
 
-            // Sample payloads for different event types
-            const samplePayloads = {
-                'TRANSACTION_SETTLED': {
-                    "eventType": "TRANSACTION_SETTLED",
-                    "timestamp": new Date().toISOString(),
-                    "transactionId": 12345,
-                    "amount": "100.00",
-                    "currency": "GBP",
-                    "invoiceId": 6789,
-                    "merchantId": 1,
-                    "customerId": 2,
-                    "status": "SETTLED"
-                },
-                'REFUND_PROCESSED': {
-                    "eventType": "REFUND_PROCESSED",
-                    "timestamp": new Date().toISOString(),
-                    "refundTransactionId": 54321,
-                    "originalTransactionId": 12345,
-                    "amount": "100.00",
-                    "currency": "GBP",
-                    "reason": "Customer request"
-                }
-            };
+        <div class="response-section">
+            <div class="response-section-label">Body</div>
+            <pre id="responseBody" class="response-pre"></pre>
+        </div>
+    </div>
 
-            // Load sample payload based on selected event type
-            function loadSamplePayload() {
-                const type = eventTypeSelect.value;
-                const sample = samplePayloads[type] || samplePayloads['TRANSACTION_SETTLED'];
-                payloadTextarea.value = JSON.stringify(sample, null, 2);
+    <!-- Error -->
+    <div id="errorBox" class="error-card">
+        <span style="font-size:1.125rem;">⚠️</span>
+        <span id="errorText">Error</span>
+    </div>
+
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('simulatorForm');
+        const urlInput = document.getElementById('url');
+        const eventTypeSelect = document.getElementById('eventType');
+        const payloadTextarea = document.getElementById('payload');
+        const responseBox = document.getElementById('responseBox');
+        const responseStatus = document.getElementById('responseStatus');
+        const responseDuration = document.getElementById('responseDuration');
+        const responseHeaders = document.getElementById('responseHeaders');
+        const responseBody = document.getElementById('responseBody');
+        const errorBox = document.getElementById('errorBox');
+        const errorText = document.getElementById('errorText');
+        const loading = document.getElementById('loading');
+
+        const samplePayloads = {
+            'TRANSACTION_SETTLED': {
+                "eventType": "TRANSACTION_SETTLED",
+                "timestamp": new Date().toISOString(),
+                "transactionId": 12345,
+                "amount": "100.00",
+                "currency": "GBP",
+                "invoiceId": 6789,
+                "merchantId": 1,
+                "customerId": 2,
+                "status": "SETTLED"
+            },
+            'REFUND_PROCESSED': {
+                "eventType": "REFUND_PROCESSED",
+                "timestamp": new Date().toISOString(),
+                "refundTransactionId": 54321,
+                "originalTransactionId": 12345,
+                "amount": "100.00",
+                "currency": "GBP",
+                "reason": "Customer request"
             }
+        };
 
-            // Format JSON
-            function formatJson() {
-                try {
-                    const parsed = JSON.parse(payloadTextarea.value);
-                    payloadTextarea.value = JSON.stringify(parsed, null, 2);
-                } catch (e) {
-                    alert('Invalid JSON: ' + e.message);
-                }
+        function loadSamplePayload() {
+            const type = eventTypeSelect.value;
+            const sample = samplePayloads[type] || samplePayloads['TRANSACTION_SETTLED'];
+            payloadTextarea.value = JSON.stringify(sample, null, 2);
+        }
+
+        function formatJson() {
+            try {
+                const parsed = JSON.parse(payloadTextarea.value);
+                payloadTextarea.value = JSON.stringify(parsed, null, 2);
+            } catch (e) {
+                alert('Invalid JSON: ' + e.message);
             }
+        }
 
-            // Load sample on event type change
-            eventTypeSelect.addEventListener('change', loadSamplePayload);
-            document.getElementById('loadSampleBtn').addEventListener('click', loadSamplePayload);
-            document.getElementById('formatPayloadBtn').addEventListener('click', formatJson);
+        eventTypeSelect.addEventListener('change', loadSamplePayload);
+        document.getElementById('loadSampleBtn').addEventListener('click', loadSamplePayload);
+        document.getElementById('formatPayloadBtn').addEventListener('click', formatJson);
 
-            // Initial load
-            loadSamplePayload();
+        loadSamplePayload();
 
-            // Form submit
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
 
-                const url = urlInput.value.trim();
-                if (!url) {
-                    alert('Please enter a URL.');
+            const url = urlInput.value.trim();
+            if (!url) { alert('Please enter a URL.'); return; }
+
+            let payload = payloadTextarea.value.trim();
+            if (payload) {
+                try { JSON.parse(payload); } catch (err) {
+                    alert('Invalid JSON in payload: ' + err.message);
                     return;
                 }
+            } else {
+                payload = null;
+            }
 
-                // Validate JSON
-                let payload = payloadTextarea.value.trim();
-                if (payload) {
-                    try {
-                        JSON.parse(payload);
-                    } catch (err) {
-                        alert('Invalid JSON in payload: ' + err.message);
-                        return;
-                    }
-                } else {
-                    // Use sample
-                    payload = null;
-                }
+            const eventType = eventTypeSelect.value;
+            const formData = new FormData();
+            formData.append('url', url);
+            formData.append('eventType', eventType);
+            if (payload) formData.append('payload', payload);
 
-                const eventType = eventTypeSelect.value;
-                const formData = new FormData();
-                formData.append('url', url);
-                formData.append('eventType', eventType);
-                if (payload) {
-                    formData.append('payload', payload);
-                }
+            loading.style.display = 'inline';
+            responseBox.classList.remove('show');
+            errorBox.classList.remove('show');
 
-                loading.style.display = 'inline';
-                responseBox.style.display = 'none';
-                errorBox.style.display = 'none';
-
-                fetch('/admin/webhooks/simulator/send', {
-                    method: 'POST',
-                    body: formData
-                })
+            fetch('/admin/webhooks/simulator/send', { method: 'POST', body: formData })
                 .then(response => response.json())
                 .then(data => {
                     loading.style.display = 'none';
                     if (data.success) {
-                        responseBox.style.display = 'block';
+                        responseBox.classList.add('show');
                         const statusClass = data.statusCode >= 200 && data.statusCode < 300 ? 'status-2xx' : 'status-4xx';
-                        responseStatus.className = 'status ' + statusClass;
-                        responseStatus.textContent = 'Status: ' + data.statusCode + ' ' + data.statusText;
+                        responseStatus.className = 'status-badge ' + statusClass;
+                        responseStatus.textContent = data.statusCode + ' ' + data.statusText;
                         responseDuration.textContent = 'Duration: ' + data.durationMs + ' ms';
-                        responseHeaders.textContent = 'Headers: ' + JSON.stringify(data.headers, null, 2);
-                        responseBody.textContent = 'Body: ' + (data.body || '(empty)');
+                        responseHeaders.textContent = JSON.stringify(data.headers, null, 2);
+                        responseBody.textContent = data.body || '(empty)';
                     } else {
-                        errorBox.style.display = 'block';
-                        errorBox.textContent = 'Error: ' + data.error;
+                        errorBox.classList.add('show');
+                        errorText.textContent = data.error;
                     }
                 })
                 .catch(err => {
                     loading.style.display = 'none';
-                    errorBox.style.display = 'block';
-                    errorBox.textContent = 'Request failed: ' + err.message;
+                    errorBox.classList.add('show');
+                    errorText.textContent = 'Request failed: ' + err.message;
                 });
-            });
         });
-    </script>
+    });
+</script>
 </body>
 </html>

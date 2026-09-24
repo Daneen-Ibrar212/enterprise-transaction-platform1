@@ -1,51 +1,246 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Edit Subscription Plan</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Plan · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
-        .container { max-width: 600px; margin: 0 auto; }
-        .card { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 30px; margin: 20px 0; }
-        .form-group { margin: 15px 0; }
-        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
-        .btn-primary { background: #2d7a3a; color: white; }
-        .btn-secondary { background: #6c757d; color: white; }
-        .back-link { color: #007bff; text-decoration: none; }
-        .back-link:hover { text-decoration: underline; }
-        .flash-success { background: #d4edda; padding: 12px; border-radius: 4px; color: #155724; margin: 10px 0; }
-        .flash-error { background: #f8d7da; padding: 12px; border-radius: 4px; color: #721c24; margin: 10px 0; }
-        .checkbox-group { display: flex; align-items: center; gap: 10px; }
-        .checkbox-group input { width: auto; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 640px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .flash {
+            padding: 14px 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .flash-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+
+        .form-group { margin-bottom: 18px; }
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.9375rem;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-weight: 300;
+            color: #0f172a;
+            background: white;
+            transition: all 0.15s ease;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 4px rgba(45, 107, 184, 0.12);
+        }
+        .form-group input::placeholder { color: #94a3b8; font-weight: 300; }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 0;
+        }
+        .checkbox-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #2d6bb8;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .checkbox-row label {
+            font-size: 0.875rem;
+            color: #334155;
+            font-weight: 400;
+            cursor: pointer;
+            text-transform: none;
+            letter-spacing: 0;
+            margin-bottom: 0;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(11,26,51,0.25);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(11,26,51,0.35); }
+        .btn-outline {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-outline:hover { border-color: #94a3b8; background: #f8fafc; }
+
+        .danger-zone {
+            margin-top: 28px;
+            padding-top: 24px;
+            border-top: 1px solid #f1f5f9;
+        }
+        .danger-zone h4 {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #991b1b;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 12px;
+        }
+        .btn-danger {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        .btn-danger:hover { background: #fee2e2; border-color: #ef4444; }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>✏️ Edit Subscription Plan</h1>
-    <a href="/merchant/subscriptions/plans" class="back-link">← Back to Plans</a>
 
-    <!-- Flash Messages -->
-    <div th:if="${success}" class="flash-success" th:text="${success}"></div>
-    <div th:if="${error}" class="flash-error" th:text="${error}"></div>
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/merchant/subscriptions/plans" class="back-link">← Back to Plans</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">✏️</span> Edit Plan</h1>
+    </div>
 
+    <!-- Flash -->
+    <div th:if="${success}" class="flash flash-success">
+        <span style="font-size:1.125rem;">✅</span>
+        <span th:text="${success}">Success</span>
+    </div>
+    <div th:if="${error}" class="flash flash-error">
+        <span style="font-size:1.125rem;">❌</span>
+        <span th:text="${error}">Error</span>
+    </div>
+
+    <!-- Form -->
     <div class="card">
-        <form th:action="@{/merchant/subscriptions/plans/{id}(id=${plan.id})}" method="post">
+        <form th:action="@{/merchant/subscriptions/plans/{id}/update(id=${plan.id})}" method="post">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
 
             <div class="form-group">
-                <label>Plan Name</label>
-                <input type="text" name="name" th:value="${plan.name}" required />
+                <label for="name">Plan Name</label>
+                <input type="text" id="name" name="name" th:value="${plan.name}" required />
             </div>
 
             <div class="form-group">
-                <label>Description</label>
-                <input type="text" name="description" th:value="${plan.description}" />
+                <label for="description">Description</label>
+                <input type="text" id="description" name="description" th:value="${plan.description}" />
             </div>
 
             <div class="form-group">
-                <label>Billing Period</label>
-                <select name="billingPeriod">
+                <label for="billingPeriod">Billing Period</label>
+                <select id="billingPeriod" name="billingPeriod">
                     <option value="MONTHLY" th:selected="${plan.billingPeriod.name() == 'MONTHLY'}">Monthly</option>
                     <option value="QUARTERLY" th:selected="${plan.billingPeriod.name() == 'QUARTERLY'}">Quarterly</option>
                     <option value="YEARLY" th:selected="${plan.billingPeriod.name() == 'YEARLY'}">Yearly</option>
@@ -53,13 +248,13 @@
             </div>
 
             <div class="form-group">
-                <label>Price</label>
-                <input type="number" step="0.01" name="price" th:value="${plan.price}" required />
+                <label for="price">Price</label>
+                <input type="number" id="price" step="0.01" name="price" th:value="${plan.price}" required />
             </div>
 
             <div class="form-group">
-                <label>Currency</label>
-                <select name="currency">
+                <label for="currency">Currency</label>
+                <select id="currency" name="currency">
                     <option value="GBP" th:selected="${plan.currency == 'GBP'}">GBP (£)</option>
                     <option value="USD" th:selected="${plan.currency == 'USD'}">USD ($)</option>
                     <option value="EUR" th:selected="${plan.currency == 'EUR'}">EUR (€)</option>
@@ -67,21 +262,32 @@
             </div>
 
             <div class="form-group">
-                <label>Trial Days</label>
-                <input type="number" name="trialDays" th:value="${plan.trialDays}" placeholder="0 = no trial" />
+                <label for="trialDays">Trial Days</label>
+                <input type="number" id="trialDays" name="trialDays" th:value="${plan.trialDays}" placeholder="0 = no trial" />
             </div>
 
-            <div class="form-group checkbox-group">
-                <input type="checkbox" name="active" th:checked="${plan.isActive}" />
-                <label>Active</label>
+            <div class="checkbox-row">
+                <input type="checkbox" id="active" name="active" th:checked="${plan.isActive}" />
+                <label for="active">Plan is active and available for subscription</label>
             </div>
 
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button type="submit" class="btn btn-primary">Update Plan</button>
-                <a href="/merchant/subscriptions/plans" class="btn btn-secondary">Cancel</a>
+            <div class="actions">
+                <button type="submit" class="btn btn-primary">💾 Update Plan</button>
+                <a href="/merchant/subscriptions/plans" class="btn btn-outline">Cancel</a>
             </div>
         </form>
+
+        <!-- Delete (separate form to avoid nested forms) -->
+        <div class="danger-zone">
+            <h4>Danger Zone</h4>
+            <form th:action="@{/merchant/subscriptions/plans/{id}/delete(id=${plan.id})}" method="post"
+                  onsubmit="return confirm('Are you sure you want to delete this plan? This cannot be undone.');">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                <button type="submit" class="btn btn-danger">🗑️ Delete Plan</button>
+            </form>
+        </div>
     </div>
+
 </div>
 </body>
 </html>

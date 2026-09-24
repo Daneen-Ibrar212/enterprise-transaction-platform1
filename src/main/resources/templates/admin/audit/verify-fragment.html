@@ -4,14 +4,55 @@
     <meta charset="UTF-8">
 </head>
 <body>
-    <div th:fragment="verify-result">
-        <div th:if="${valid}" class="alert alert-success">
-            ✅ Audit chain is valid (status: <span th:text="${status}">INTEGRITY_VALID</span>)
-        </div>
-        <div th:unless="${valid}" class="alert alert-danger">
-            ❌ Audit chain is broken (status: <span th:text="${status}">INTEGRITY_BROKEN</span>)
-        </div>
-        <small>Checked at: <span th:text="${timestamp}">2026-01-01T00:00:00Z</span></small>
+
+<!-- ============================================================ -->
+<!-- HTMX FRAGMENT: verify-result                                 -->
+<!-- Rendered by: /admin/audit/verify-fragment                     -->
+<!-- Swapped into: admin/audit page (#verification-result)         -->
+<!-- ============================================================ -->
+<div th:fragment="verify-result" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+    <!-- Status badge -->
+    <div th:if="${valid}" style="display:inline-flex; align-items:center; gap:6px; padding:6px 16px; border-radius:9999px; font-size:0.75rem; font-weight:500; text-transform:uppercase; letter-spacing:0.05em; background:#d1fae5; color:#065f46;">
+        ✅ Chain valid
     </div>
+    <div th:unless="${valid}" style="display:inline-flex; align-items:center; gap:6px; padding:6px 16px; border-radius:9999px; font-size:0.75rem; font-weight:500; text-transform:uppercase; letter-spacing:0.05em; background:#fee2e2; color:#991b1b;">
+        ❌ Chain broken
+    </div>
+
+    <!-- Meta line -->
+    <span style="font-size:0.75rem; color:#64748b; font-weight:300;">
+        <span th:text="${status}">INTEGRITY_VALID</span>
+        <!-- ✅ Null-safe: works whether timestamp is String or Instant -->
+        <span th:if="${timestamp != null}">
+            · checked at
+            <span th:if="${timestamp instanceof T(java.time.temporal.Temporal)}"
+                  th:text="${#temporals.format(timestamp, 'HH:mm:ss')}">12:00:00</span>
+            <span th:unless="${timestamp instanceof T(java.time.temporal.Temporal)}"
+                  th:text="${timestamp}">12:00:00</span>
+        </span>
+    </span>
+</div>
+
+<!--
+  Fragment-scoped styles that apply when this fragment is swapped into another page.
+  These mirror the parent page's styles so nothing looks off-brand.
+-->
+<style>
+    .integrity-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+    }
+    .integrity-valid { background: #d1fae5; color: #065f46; }
+    .integrity-broken { background: #fee2e2; color: #991b1b; }
+</style>
+
 </body>
 </html>

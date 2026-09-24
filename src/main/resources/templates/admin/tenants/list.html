@@ -1,52 +1,272 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Tenants</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tenants · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        /* (same styles as before) */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+            margin-top: 16px;
+        }
+        .back-link,
+        .header-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+        }
+        .back-link {
+            color: rgba(255,255,255,0.9);
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(255,255,255,0.2);
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+        .chip-create {
+            background: rgba(255,255,255,0.95);
+            color: #0b1a33;
+        }
+        .chip-create:hover { background: white; transform: translateY(-1px); }
+
+        .flash {
+            padding: 14px 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .flash-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            overflow: hidden;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 14px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .data-table td {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover td { background: #fafbfc; }
+        .data-table td.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #0f172a;
+        }
+        .data-table td.name-cell {
+            font-weight: 500;
+            color: #0f172a;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .badge-active { background: #d1fae5; color: #065f46; }
+        .badge-inactive { background: #fee2e2; color: #991b1b; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 6px 16px rgba(11,26,51,0.2);
+            padding: 10px 20px;
+            font-size: 0.8125rem;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(11,26,51,0.3); }
+        .btn-edit { background: #3b82f6; color: white; box-shadow: 0 4px 12px rgba(59,130,246,0.2); }
+        .btn-edit:hover { background: #2563eb; transform: translateY(-1px); }
+        .btn-delete { background: #f1f5f9; color: #475569; }
+        .btn-delete:hover { background: #fee2e2; color: #dc2626; }
+
+        .action-cell { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+        @media (max-width: 768px) {
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Tenants</h1>
-        <div th:if="${success}" class="success-msg" th:text="${success}"></div>
-        <div th:if="${error}" class="error-msg" th:text="${error}"></div>
+<div class="container">
 
-        <div class="header-actions">
-            <a href="/admin/tenants/create" class="btn btn-primary">➕ Create New</a>
-            <a href="/dashboard" class="btn btn-secondary">← Dashboard</a>
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
         </div>
+        <h1><span style="font-size:1.5rem;">🏢</span> Tenants</h1>
+        <div class="header-actions">
+            <a href="/admin/tenants/create" class="header-chip chip-create">➕ Create Tenant</a>
+        </div>
+    </div>
 
-        <table>
+    <div th:if="${success}" class="flash flash-success">
+        <span style="font-size:1.125rem;">✅</span>
+        <span th:text="${success}">Success</span>
+    </div>
+    <div th:if="${error}" class="flash flash-error">
+        <span style="font-size:1.125rem;">❌</span>
+        <span th:text="${error}">Error</span>
+    </div>
+
+    <div class="card">
+        <table class="data-table" th:unless="${tenants.empty}">
             <thead>
                 <tr>
                     <th>ID</th>
                     <th>Name</th>
                     <th>Description</th>
                     <th>Base Currency</th>
-                    <th>Active</th>
+                    <th>Status</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <tr th:each="tenant : ${tenants}">
-                    <td th:text="${tenant.id}">1</td>
-                    <td th:text="${tenant.name}">Default</td>
+                    <td class="mono" th:text="${tenant.id}">1</td>
+                    <td class="name-cell" th:text="${tenant.name}">Default</td>
                     <td th:text="${tenant.description}">-</td>
-                    <td th:text="${tenant.baseCurrency}">GBP</td>
-                    <td><span class="badge" th:class="${tenant.active} ? 'badge-success' : 'badge-danger'" th:text="${tenant.active} ? 'Active' : 'Inactive'">Active</span></td>
-                    <td class="actions">
-                        <a th:href="'/admin/tenants/' + ${tenant.id} + '/edit'" class="btn btn-primary btn-sm">Edit</a>
-                        <form th:action="'/admin/tenants/' + ${tenant.id} + '/delete'" method="post" onsubmit="return confirm('Delete this tenant?');">
-                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                        </form>
+                    <td class="mono" th:text="${tenant.baseCurrency}">GBP</td>
+                    <td>
+                        <span th:if="${tenant.active}" class="badge badge-active">Active</span>
+                        <span th:unless="${tenant.active}" class="badge badge-inactive">Inactive</span>
                     </td>
-                </tr>
-                <tr th:if="${tenants.empty}">
-                    <td colspan="6" class="empty">No tenants found.</td>
+                    <td>
+                        <div class="action-cell">
+                            <a th:href="'/admin/tenants/' + ${tenant.id} + '/edit'" class="btn btn-edit">✏️ Edit</a>
+                            <form th:action="'/admin/tenants/' + ${tenant.id} + '/delete'" method="post" style="display:inline;" onsubmit="return confirm('Delete this tenant?');">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <button type="submit" class="btn btn-delete">🗑️</button>
+                            </form>
+                        </div>
+                    </td>
                 </tr>
             </tbody>
         </table>
+
+        <div th:if="${tenants.empty}" class="empty">
+            <span class="emoji">🏢</span>
+            <p>No tenants found.</p>
+        </div>
     </div>
+
+</div>
 </body>
 </html>

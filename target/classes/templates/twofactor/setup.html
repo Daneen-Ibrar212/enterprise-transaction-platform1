@@ -1,90 +1,426 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Two‑Factor Setup</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two-Factor Setup · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
-        .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 15px 0; }
-        .warning strong { color: #856404; }
-        .back-link { display: inline-block; margin: 15px 0; }
-        .btn-danger { background: #c0392b; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
-        .btn-danger:hover { background: #a93226; }
-        .btn-primary { background: #2d7a3a; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
-        .btn-primary:hover { background: #1e5c2a; }
-        .btn-secondary { background: #6c757d; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.9em; }
-        .btn-secondary:hover { background: #5a6268; }
-        .qr-container { display: inline-block; padding: 10px; background: white; border: 1px solid #ddd; border-radius: 8px; }
-        .qr-container img { display: block; max-width: 200px; height: auto; }
-        .secret-box { background: #f8f9fa; padding: 10px; border-radius: 4px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .secret-box code { font-size: 1.1em; font-weight: bold; letter-spacing: 1px; word-break: break-all; }
-        .help-text { font-size: 0.9em; color: #6c757d; margin: 5px 0; }
-        .error { color: red; padding: 10px; border: 1px solid red; background: #ffeeee; margin: 10px 0; }
-        input[type="text"] { padding: 5px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; }
-        input[type="text"]:focus { border-color: #2d7a3a; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body {
+            background: #f0f4f8;
+            color: #0f172a;
+            padding: 24px;
+            min-height: 100vh;
+        }
+        .container { max-width: 720px; margin: 0 auto; }
+
+        /* Header */
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px 28px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+        }
+        .card h2, .card h3 {
+            font-weight: 500;
+            letter-spacing: -0.015em;
+            color: #0f172a;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card h3 { font-size: 1rem; }
+        .card p {
+            font-size: 0.875rem;
+            color: #475569;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+
+        /* Warnings / alerts */
+        .alert-warning {
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            color: #92400e;
+            padding: 18px 22px;
+            border-radius: 14px;
+            margin-bottom: 20px;
+            font-size: 0.875rem;
+            line-height: 1.55;
+        }
+        .alert-warning strong {
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .alert-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 14px 18px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .alert-success {
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            color: #065f46;
+            padding: 16px 20px;
+            border-radius: 14px;
+            margin-bottom: 20px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Step labels */
+        .step-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #4f46e5;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 8px;
+        }
+        .step-number {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        /* QR */
+        .qr-wrap {
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            background: #fafbfc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 14px;
+            margin: 16px 0;
+        }
+        .qr-wrap img {
+            display: block;
+            width: 220px;
+            height: 220px;
+            border-radius: 8px;
+        }
+
+        /* Secret box */
+        .secret-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 14px 18px;
+            border-radius: 12px;
+            margin: 12px 0;
+            flex-wrap: wrap;
+        }
+        .secret-box code {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.9375rem;
+            font-weight: 400;
+            letter-spacing: 0.08em;
+            color: #0f172a;
+            word-break: break-all;
+            flex: 1;
+            min-width: 200px;
+        }
+        .btn-copy {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            color: #475569;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .btn-copy:hover {
+            border-color: #4f46e5;
+            color: #4f46e5;
+            background: #f8faff;
+        }
+
+        /* Code input */
+        .code-input {
+            width: 100%;
+            padding: 16px 18px;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 1.5rem;
+            font-weight: 400;
+            text-align: center;
+            letter-spacing: 0.5em;
+            padding-right: calc(18px + 0.5em);
+            color: #0f172a;
+            background: white;
+            transition: all 0.15s ease;
+            margin-bottom: 8px;
+        }
+        .code-input:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 4px rgba(45, 107, 184, 0.12);
+        }
+        .code-input::placeholder {
+            color: #cbd5e1;
+            font-weight: 400;
+        }
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+        .help-text {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-weight: 300;
+            line-height: 1.5;
+            margin-top: 6px;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 11px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(11,26,51,0.25);
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 28px rgba(11,26,51,0.35);
+        }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            box-shadow: 0 8px 20px rgba(239,68,68,0.25);
+        }
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+        }
+        .admin-note {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-style: italic;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
-    <h1>🔐 Two‑Factor Authentication</h1>
+<div class="container">
 
-    <div th:unless="${required}">
-        <a href="/dashboard" class="back-link">← Back to Dashboard</a>
-    </div>
-    <div th:if="${required}" class="warning">
-        <strong>⚠️ Mandatory Setup</strong>
-        <p>As an administrator, you must enable two‑factor authentication to continue.</p>
-        <p>You cannot access the dashboard until 2FA is set up.</p>
+    <!-- ===== Header ===== -->
+    <div class="page-header">
+        <a th:unless="${required}" href="/dashboard" class="back-link">← Back to Dashboard</a>
+        <h1>🔐 Two-Factor Authentication</h1>
     </div>
 
-    <div th:if="${enabled}">
-        <p>✅ Two‑factor authentication is <strong>enabled</strong> for your account.</p>
+    <!-- ===== Mandatory warning ===== -->
+    <div th:if="${required}" class="alert-warning">
+        <strong>⚠️ Mandatory Setup Required</strong>
+        <p>As an administrator, you must enable two-factor authentication to continue.</p>
+        <p style="margin-bottom:0;">You cannot access the dashboard until 2FA is set up.</p>
+    </div>
+
+    <!-- ===== Already enabled state ===== -->
+    <div th:if="${enabled}" class="card">
+        <div class="alert-success">
+            <span style="font-size:1.25rem;">✅</span>
+            <span>Two-factor authentication is <strong style="font-weight:500;">enabled</strong> for your account.</span>
+        </div>
         <form method="post" th:action="@{/2fa/disable}" th:unless="${isAdmin}">
-            <button type="submit" class="btn-danger">Disable 2FA</button>
+            <button type="submit" class="btn btn-danger">Disable 2FA</button>
         </form>
-        <p th:if="${isAdmin}" style="color: #888; font-size: 0.9em;">⚠️ Administrators cannot disable 2FA.</p>
-        <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        <p th:if="${isAdmin}" class="admin-note">⚠️ Administrators cannot disable 2FA.</p>
+        <div style="margin-top:20px;">
+            <a href="/dashboard" class="btn btn-primary">Back to Dashboard</a>
+        </div>
     </div>
 
+    <!-- ===== Setup flow ===== -->
     <div th:unless="${enabled}">
-        <h3>Step 1: Scan the QR code (or enter secret manually)</h3>
-        <p>Open your authenticator app (e.g., Google Authenticator) and scan this QR code:</p>
-        <div class="qr-container">
-            <img th:if="${otpAuthUrl}" th:src="${otpAuthUrl}" alt="QR Code" style="width:200px;height:200px;"/>
-            <p th:unless="${otpAuthUrl}" style="color:red;">QR code not available – please contact support.</p>
+
+        <!-- Step 1: QR -->
+        <div class="card">
+            <div class="step-label">
+                <span class="step-number">1</span> Scan QR Code
+            </div>
+            <h3>Scan with your authenticator app</h3>
+            <p>Open Google Authenticator, Authy, 1Password, or any TOTP app and scan the QR code below.</p>
+
+            <div class="qr-wrap">
+                <img th:if="${otpAuthUrl}" th:src="${otpAuthUrl}" alt="QR Code"/>
+                <p th:unless="${otpAuthUrl}" style="color:#991b1b;font-size:0.875rem;text-align:center;">QR code not available — please contact support.</p>
+            </div>
         </div>
 
-        <h3>Or manually enter this secret key:</h3>
-        <div class="secret-box">
-            <code th:text="${secretKey}">ABCDEFGHIJKLMNOPQRSTUVWXYZ</code>
-            <button class="btn-secondary" onclick="copySecret()">📋 Copy</button>
-        </div>
-        <div class="help-text">Make sure to copy the exact secret – it is case‑sensitive.</div>
+        <!-- Step 2: Manual secret -->
+        <div class="card">
+            <div class="step-label">
+                <span class="step-number">2</span> Manual Entry
+            </div>
+            <h3>Or enter this secret key manually</h3>
+            <p>If you can't scan the QR code, type this secret into your authenticator app. It's case-sensitive.</p>
 
-        <h3>Step 2: Enter the 6‑digit code from your authenticator app</h3>
-        <div th:if="${error}" class="error" th:text="${error}"></div>
-        <form method="post" th:action="@{/2fa/enable}">
-            <input type="hidden" name="secretKey" th:value="${secretKey}"/>
-            <label for="code">Code:</label>
-            <input type="text" id="code" name="code" maxlength="6" pattern="[0-9]{6}" required autocomplete="one-time-code" placeholder="e.g., 123456" />
-            <div class="help-text">Enter the 6‑digit code shown in your authenticator app.</div>
-            <br/>
-            <button type="submit" class="btn-primary">Enable 2FA</button>
-        </form>
+            <div class="secret-box">
+                <code th:text="${secretKey}">ABCDEFGHIJKLMNOPQRSTUVWXYZ</code>
+                <button type="button" class="btn-copy" onclick="copySecret()">📋 Copy</button>
+            </div>
+            <div class="help-text">Keep this secret safe — anyone with it can generate valid 2FA codes.</div>
+        </div>
+
+        <!-- Step 3: Verify -->
+        <div class="card">
+            <div class="step-label">
+                <span class="step-number">3</span> Verify
+            </div>
+            <h3>Enter the 6-digit code</h3>
+            <p>Enter the code currently shown in your authenticator app to complete setup.</p>
+
+            <div th:if="${error}" class="alert-error">
+                <span style="font-size:1.125rem;">⚠️</span>
+                <span th:text="${error}">Invalid code. Please try again.</span>
+            </div>
+
+            <form method="post" th:action="@{/2fa/enable}">
+                <input type="hidden" name="secretKey" th:value="${secretKey}"/>
+                <div class="form-group">
+                    <label for="code">Verification Code</label>
+                    <input type="text" id="code" name="code" maxlength="6" pattern="[0-9]{6}"
+                           required autocomplete="one-time-code" inputmode="numeric"
+                           placeholder="000000" class="code-input" autofocus/>
+                </div>
+                <button type="submit" class="btn btn-primary">Enable 2FA →</button>
+            </form>
+        </div>
     </div>
 
-    <script>
-        function copySecret() {
-            const code = document.querySelector('.secret-box code');
-            const text = code.textContent.trim();
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).then(() => {
-                    alert('Secret key copied to clipboard!');
-                }).catch(() => {
-                    prompt('Copy this secret key:', text);
-                });
-            } else {
-                prompt('Copy this secret key:', text);
-            }
+</div>
+
+<script>
+    function copySecret() {
+        const code = document.querySelector('.secret-box code');
+        const text = code.textContent.trim();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector('.btn-copy');
+                const orig = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                setTimeout(() => btn.textContent = orig, 2000);
+            }).catch(() => prompt('Copy this secret key:', text));
+        } else {
+            prompt('Copy this secret key:', text);
         }
-    </script>
+    }
+</script>
 </body>
 </html>

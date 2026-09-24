@@ -2,35 +2,295 @@
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
-    <title>Pending Approvals</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pending Approvals · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #f2f2f2; }
-        .btn { padding: 4px 10px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
-        .btn-success { background: #2d7a3a; color: white; }
-        .btn-danger { background: #c0392b; color: white; }
-        .btn-primary { background: #3498db; color: white; }
-        .btn:hover { opacity: 0.8; }
-        .bulk-bar { margin: 15px 0; padding: 15px; background: #f5f5f5; border-radius: 4px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
-        .bulk-bar select, .bulk-bar button { padding: 6px 12px; }
-        .flash-success { background: #d4edda; color: #155724; padding: 10px; border: 1px solid #c3e6cb; margin: 10px 0; }
-        .flash-error { background: #f8d7da; color: #721c24; padding: 10px; border: 1px solid #f5c6cb; margin: 10px 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .flash {
+            padding: 14px 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .flash-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        /* Bulk bar */
+        .bulk-bar {
+            background: white;
+            border-radius: 16px;
+            padding: 18px 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+        }
+        .bulk-bar-label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .bulk-bar form {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+        .bulk-bar select {
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            color: #0f172a;
+            background: white;
+            min-width: 180px;
+        }
+        .bulk-bar select:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 3px rgba(45, 107, 184, 0.12);
+        }
+        .bulk-hint {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-weight: 300;
+        }
+
+        /* Data table */
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .data-table td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover td { background: #fafbfc; }
+        .data-table td.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+        }
+        .data-table td.amount-cell {
+            font-weight: 500;
+            color: #0f172a;
+        }
+
+        /* Risk badges */
+        .risk-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .risk-green { background: #d1fae5; color: #065f46; }
+        .risk-yellow { background: #fef3c7; color: #92400e; }
+        .risk-red { background: #fee2e2; color: #991b1b; }
+        .risk-default { background: #f1f5f9; color: #64748b; }
+
+        /* Checkbox */
+        .checkbox-cell input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #2d6bb8;
+            cursor: pointer;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+        .btn-approve {
+            background: #10b981;
+            color: white;
+            box-shadow: 0 4px 12px rgba(16,185,129,0.2);
+        }
+        .btn-approve:hover { background: #059669; transform: translateY(-1px); }
+        .btn-reject {
+            background: #f1f5f9;
+            color: #dc2626;
+        }
+        .btn-reject:hover { background: #fee2e2; }
+        .btn-chat {
+            background: #8b5cf6;
+            color: white;
+            box-shadow: 0 4px 12px rgba(139,92,246,0.2);
+        }
+        .btn-chat:hover { background: #7c3aed; transform: translateY(-1px); }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 6px 16px rgba(11,26,51,0.2);
+            padding: 10px 20px;
+            font-size: 0.8125rem;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(11,26,51,0.3); }
+        .btn-sm { padding: 6px 12px; font-size: 0.7rem; }
+
+        .action-cell { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+        @media (max-width: 900px) {
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
+        }
     </style>
 </head>
 <body>
-    <h1>Pending Invoices for Approval</h1>
-    <a href="/dashboard">← Back to Dashboard</a>
+<div class="container">
 
-    <!-- Flash messages -->
-    <div th:if="${success}" class="flash-success" th:text="${success}"></div>
-    <div th:if="${error}" class="flash-error" th:text="${error}"></div>
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">⏳</span> Pending Invoices for Approval</h1>
+    </div>
 
-    <!-- Bulk Action Form -->
+    <!-- Flash -->
+    <div th:if="${success}" class="flash flash-success">
+        <span style="font-size:1.125rem;">✅</span>
+        <span th:text="${success}">Success</span>
+    </div>
+    <div th:if="${error}" class="flash flash-error">
+        <span style="font-size:1.125rem;">❌</span>
+        <span th:text="${error}">Error</span>
+    </div>
+
+    <!-- Bulk Actions -->
     <div class="bulk-bar">
-        <span><strong>Bulk Actions:</strong></span>
-        <form method="post" id="bulkForm" th:action="@{/admin/invoices/bulk/approve}" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <span class="bulk-bar-label">Bulk Actions</span>
+        <form method="post" id="bulkForm" th:action="@{/admin/invoices/bulk/approve}">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
             <select id="bulkAction" name="bulkAction">
                 <option value="">Select Action</option>
@@ -38,92 +298,103 @@
                 <option value="reject">Bulk Reject</option>
             </select>
             <button type="submit" class="btn btn-primary" onclick="return confirmBulk()">Apply to Selected</button>
-            <span style="font-size: 0.9em; color: #888;">(Select invoices below)</span>
+            <span class="bulk-hint">Select invoices below</span>
         </form>
     </div>
 
-    <!-- Table with individual action buttons -->
-    <table>
-        <thead>
-            <tr>
-                <th><input type="checkbox" id="selectAll" onclick="toggleAll()"/></th>
-                <th>ID</th>
-                <th>Amount</th>
-                <th>Description</th>
-                <th>Customer</th>
-                <th>Merchant</th>
-                <th>Risk</th>
-                <th>Action</th>
-                <th>Chat</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="inv : ${invoices}">
-                <td><input type="checkbox" name="ids" th:value="${inv.id}"/></td>
-                <td th:text="${inv.id}">1</td>
-                <td th:text="${currencyHelper.getFormattedAmount(inv.amount, inv.currency)}">£ 100.00</td>
-                <td th:text="${inv.description}">Description</td>
-                <td th:text="${inv.customerEmail}">customer@test.com</td>
-                <td th:text="${inv.merchantId}">2</td>
-                <td th:text="${inv.riskLevel}">GREEN</td>
-                <td>
-                    <!-- Single Approve Button -->
-                    <form method="post" th:action="@{/admin/invoices/{id}/approve(id=${inv.id})}" style="display:inline;">
-                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                        <button type="submit" class="btn btn-success">Approve</button>
-                    </form>
-                    <!-- Single Reject Button -->
-                    <form method="post" th:action="@{/admin/invoices/{id}/reject(id=${inv.id})}" style="display:inline;">
-                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                        <button type="submit" class="btn btn-danger">Reject</button>
-                    </form>
-                </td>
-                <td>
-                    <a th:href="@{/admin/invoices/{id}/messages(id=${inv.id})}" class="btn btn-primary">💬</a>
-                </td>
-            </tr>
-            <tr th:if="${invoices.empty}">
-                <td colspan="9">No pending invoices.</td>
-            </tr>
-        </tbody>
-    </table>
+    <!-- Table -->
+    <div class="card">
+        <table class="data-table" th:unless="${invoices.empty}">
+            <thead>
+                <tr>
+                    <th style="width:40px;"><input type="checkbox" id="selectAll" onclick="toggleAll()"/></th>
+                    <th>ID</th>
+                    <th>Amount</th>
+                    <th>Description</th>
+                    <th>Customer</th>
+                    <th>Merchant</th>
+                    <th>Risk</th>
+                    <th>Action</th>
+                    <th>Chat</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="inv : ${invoices}">
+                    <td class="checkbox-cell"><input type="checkbox" name="ids" th:value="${inv.id}"/></td>
+                    <td class="mono" th:text="${inv.id}">1</td>
+                    <td class="amount-cell" th:text="${currencyHelper.getFormattedAmount(inv.amount, inv.currency)}">£ 100.00</td>
+                    <td th:text="${inv.description}">Description</td>
+                    <td th:text="${inv.customerEmail}">customer@test.com</td>
+                    <td class="mono" th:text="${inv.merchantId}">2</td>
+                    <td>
+                        <span th:if="${inv.riskLevel == 'GREEN'}" class="risk-badge risk-green">Green</span>
+                        <span th:if="${inv.riskLevel == 'YELLOW'}" class="risk-badge risk-yellow">Yellow</span>
+                        <span th:if="${inv.riskLevel == 'RED'}" class="risk-badge risk-red">Red</span>
+                        <span th:if="${inv.riskLevel != 'GREEN' and inv.riskLevel != 'YELLOW' and inv.riskLevel != 'RED'}"
+                              class="risk-badge risk-default" th:text="${inv.riskLevel}">—</span>
+                    </td>
+                    <td>
+                        <div class="action-cell">
+                            <form method="post" th:action="@{/admin/invoices/{id}/approve(id=${inv.id})}" style="display:inline;">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <button type="submit" class="btn btn-approve btn-sm">✅ Approve</button>
+                            </form>
+                            <form method="post" th:action="@{/admin/invoices/{id}/reject(id=${inv.id})}" style="display:inline;">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <button type="submit" class="btn btn-reject btn-sm">❌ Reject</button>
+                            </form>
+                        </div>
+                    </td>
+                    <td>
+                        <a th:href="@{/admin/invoices/{id}/messages(id=${inv.id})}" class="btn btn-chat btn-sm">💬</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
 
-    <script>
-        function toggleAll() {
-            var checkboxes = document.getElementsByName('ids');
-            var selectAll = document.getElementById('selectAll');
-            for (var cb of checkboxes) {
-                cb.checked = selectAll.checked;
-            }
+        <div th:if="${invoices.empty}" class="empty">
+            <span class="emoji">🎉</span>
+            <p>No pending invoices — you're all caught up!</p>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function toggleAll() {
+        var checkboxes = document.getElementsByName('ids');
+        var selectAll = document.getElementById('selectAll');
+        for (var cb of checkboxes) {
+            cb.checked = selectAll.checked;
         }
+    }
 
-        function confirmBulk() {
-            var action = document.getElementById('bulkAction').value;
-            if (!action) {
-                alert('Please select an action.');
-                return false;
-            }
-            var checked = document.querySelectorAll('input[name="ids"]:checked');
-            if (checked.length === 0) {
-                alert('Please select at least one invoice.');
-                return false;
-            }
-            var msg = 'Are you sure you want to ' + action + ' ' + checked.length + ' invoice(s)?';
-            return confirm(msg);
+    function confirmBulk() {
+        var action = document.getElementById('bulkAction').value;
+        if (!action) {
+            alert('Please select an action.');
+            return false;
         }
+        var checked = document.querySelectorAll('input[name="ids"]:checked');
+        if (checked.length === 0) {
+            alert('Please select at least one invoice.');
+            return false;
+        }
+        var msg = 'Are you sure you want to ' + action + ' ' + checked.length + ' invoice(s)?';
+        return confirm(msg);
+    }
 
-        // ⚠️ IMPORTANT: This ONLY applies to the bulk form
-        document.getElementById('bulkForm').addEventListener('submit', function(e) {
-            var action = document.getElementById('bulkAction').value;
-            if (action === 'approve') {
-                this.action = '/admin/invoices/bulk/approve';
-            } else if (action === 'reject') {
-                this.action = '/admin/invoices/bulk/reject';
-            } else {
-                e.preventDefault();
-                alert('Please select a valid action.');
-            }
-        });
-    </script>
+    document.getElementById('bulkForm').addEventListener('submit', function(e) {
+        var action = document.getElementById('bulkAction').value;
+        if (action === 'approve') {
+            this.action = '/admin/invoices/bulk/approve';
+        } else if (action === 'reject') {
+            this.action = '/admin/invoices/bulk/reject';
+        } else {
+            e.preventDefault();
+            alert('Please select a valid action.');
+        }
+    });
+</script>
 </body>
 </html>

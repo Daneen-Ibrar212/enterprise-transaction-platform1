@@ -1,109 +1,925 @@
+```html
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Audit Event Viewer</title>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .filters { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
-        .filters input, .filters select { padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
-        .filters button { padding: 6px 15px; background: #2d7a3a; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .filters button:hover { background: #1e5c2a; }
-        .integrity-badge { padding: 4px 12px; border-radius: 20px; color: white; display: inline-block; }
-        .integrity-valid { background: #2d7a3a; }
-        .integrity-broken { background: #c0392b; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #f2f2f2; }
-        .pagination { margin-top: 20px; }
-        .pagination a { margin-right: 8px; }
-        .btn { padding: 4px 10px; border: none; border-radius: 4px; cursor: pointer; background: #3498db; color: white; text-decoration: none; }
-        .btn:hover { opacity: 0.8; }
-        .hash { font-family: monospace; font-size: 0.8em; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
-        .alert { padding: 12px; margin: 10px 0; border-radius: 4px; }
-        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-    </style>
-    <!-- HTMX from CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@1.9.10/dist/htmx.min.js"></script>
-</head>
-<body>
-    <h1>🔍 Audit Event Viewer</h1>
-    <a href="/dashboard">← Back to Dashboard</a>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Integrity Status -->
-    <div style="margin: 15px 0;">
-        <span>Chain Integrity: </span>
-        <button hx-get="/admin/audit/verify-fragment"
+    <title>Audit Event Viewer · PayFlow</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@1.9.10/dist/htmx.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            background: #f0f4f8;
+            color: #0f172a;
+            padding: 24px;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px;
+            right: -60px;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(
+                circle,
+                rgba(255,255,255,0.06) 0%,
+                rgba(255,255,255,0) 70%
+            );
+            border-radius: 50%;
+        }
+
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+
+        .back-link:hover {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        /* Verify card */
+        .verify-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px 26px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 16px;
+
+            min-width: 0;
+        }
+
+        .verify-card .label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            flex: 0 0 auto;
+        }
+
+        #verification-result {
+            flex: 1 1 250px;
+            min-width: 0;
+        }
+
+        #verification-result .alert {
+            width: 100%;
+            min-width: 0;
+        }
+
+        /* HTMX swap-in integrity badge */
+        .integrity-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            max-width: 100%;
+            white-space: normal;
+        }
+
+        .integrity-valid {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .integrity-broken {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* Filter card */
+        .filter-card {
+            background: white;
+            border-radius: 16px;
+            padding: 22px 26px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+
+            min-width: 0;
+        }
+
+        .filter-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            align-items: end;
+            width: 100%;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .filter-group label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            width: 100%;
+            min-width: 0;
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-weight: 300;
+            color: #0f172a;
+            background: white;
+            transition: all 0.15s ease;
+        }
+
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 3px rgba(45, 107, 184, 0.12);
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            min-width: 0;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+            max-width: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 6px 16px rgba(11,26,51,0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 24px rgba(11,26,51,0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 6px 16px rgba(16,185,129,0.2);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 24px rgba(16,185,129,0.3);
+        }
+
+        .btn-outline {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-outline:hover {
+            border-color: #2d6bb8;
+            color: #2d6bb8;
+            background: #f8faff;
+        }
+
+        .btn-diff {
+            background: #8b5cf6;
+            color: white;
+            box-shadow: 0 4px 12px rgba(139,92,246,0.2);
+        }
+
+        .btn-diff:hover {
+            background: #7c3aed;
+            transform: translateY(-1px);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.75rem;
+            border-radius: 8px;
+        }
+
+        /* Data card */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        /*
+         * IMPORTANT:
+         * The table itself is allowed to keep its natural width.
+         * The wrapper scrolls horizontally instead of allowing
+         * columns to overlap or crush each other.
+         */
+        .table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .data-table {
+            width: 100%;
+            min-width: 980px;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+            white-space: nowrap;
+        }
+
+        .data-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.8125rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .data-table tbody tr:hover td {
+            background: #fafbfc;
+        }
+
+        .data-table td.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        .data-table td.details-cell {
+            width: 220px;
+            max-width: 220px;
+
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.7rem;
+            color: #64748b;
+
+            /*
+             * Long JSON/details values must not force the table
+             * to grow infinitely or overlap neighbouring cells.
+             */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .data-table td.hash-cell {
+            width: 160px;
+            max-width: 160px;
+
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.7rem;
+            color: #64748b;
+
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .event-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            background: #dbeafe;
+            color: #1e40af;
+            white-space: nowrap;
+        }
+
+        /* Alerts (from HTMX verification fragment) */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.8125rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .alert-danger {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        /* Pagination */
+        .pagination-wrap {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+            padding: 0 4px;
+        }
+
+        .pagination-info {
+            font-size: 0.8125rem;
+            color: #64748b;
+            font-weight: 300;
+        }
+
+        .pagination {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .pagination a,
+        .pagination span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 38px;
+            height: 38px;
+            padding: 0 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            color: #475569;
+            background: white;
+            transition: all 0.15s ease;
+        }
+
+        .pagination a:hover {
+            border-color: #2d6bb8;
+            color: #2d6bb8;
+            background: #f8faff;
+        }
+
+        /*
+         * Tablet
+         */
+        @media (max-width: 900px) {
+            body {
+                padding: 16px;
+            }
+
+            .page-header {
+                padding: 24px;
+            }
+
+            .filter-form {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .filter-actions {
+                grid-column: 1 / -1;
+            }
+
+            .table-wrap {
+                margin: 0;
+            }
+        }
+
+        /*
+         * Mobile
+         */
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+
+            .page-header {
+                padding: 20px;
+                border-radius: 14px;
+                margin-bottom: 16px;
+            }
+
+            .page-header h1 {
+                font-size: 1.25rem;
+                margin-top: 10px;
+            }
+
+            .back-link {
+                font-size: 0.75rem;
+            }
+
+            .verify-card {
+                padding: 18px;
+                align-items: stretch;
+                gap: 12px;
+            }
+
+            .verify-card .label {
+                width: 100%;
+            }
+
+            .verify-card .btn {
+                width: 100%;
+            }
+
+            #verification-result {
+                flex-basis: 100%;
+                width: 100%;
+            }
+
+            .filter-card {
+                padding: 18px;
+                border-radius: 14px;
+            }
+
+            .filter-form {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .filter-actions {
+                grid-column: auto;
+                width: 100%;
+            }
+
+            .filter-actions .btn {
+                flex: 1 1 0;
+            }
+
+            .card {
+                border-radius: 14px;
+                padding: 4px;
+            }
+
+            .pagination-wrap {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .pagination {
+                width: 100%;
+            }
+
+            .pagination a {
+                flex: 1;
+            }
+        }
+
+        /*
+         * Very small screens
+         */
+        @media (max-width: 380px) {
+            .filter-actions {
+                flex-direction: column;
+            }
+
+            .filter-actions .btn {
+                width: 100%;
+            }
+
+            .page-header h1 {
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">
+                ← Back to Dashboard
+            </a>
+        </div>
+
+        <h1>
+            <span style="font-size:1.5rem;">🔍</span>
+            Audit Event Viewer
+        </h1>
+    </div>
+
+
+    <!-- Verify card -->
+    <div class="verify-card">
+
+        <span class="label">
+            Chain Integrity
+        </span>
+
+        <button
+                type="button"
+                hx-get="/admin/audit/verify-fragment"
                 hx-target="#verification-result"
                 hx-swap="innerHTML"
-                class="btn" style="background: #2d7a3a;">
-            Verify Chain Integrity
+                class="btn btn-success">
+
+            🛡️ Verify Chain Integrity
+
         </button>
+
         <div id="verification-result"></div>
+
     </div>
+
 
     <!-- Filters -->
-    <div class="filters">
+    <div class="filter-card">
+
         <form method="get" th:action="@{/admin/audit}">
-            <label>User ID: <input type="number" name="userId" th:value="${selectedUserId}" /></label>
-            <label>Event Type:
-                <select name="eventType">
-                    <option value="">All</option>
-                    <option th:each="type : ${eventTypes}" th:value="${type}" th:text="${type}" th:selected="${type == selectedEventType}"></option>
-                </select>
-            </label>
-            <label>Entity Type: <input type="text" name="entityType" th:value="${selectedEntityType}" placeholder="e.g. Invoice" /></label>
-            <label>From: <input type="datetime-local" name="startDate" th:value="${startDate}" /></label>
-            <label>To: <input type="datetime-local" name="endDate" th:value="${endDate}" /></label>
-            <button type="submit">Apply Filters</button>
-            <a th:href="@{/admin/audit}" style="margin-left:10px;">Reset</a>
+
+            <div class="filter-form">
+
+                <div class="filter-group">
+                    <label for="userId">User ID</label>
+
+                    <input
+                            type="number"
+                            id="userId"
+                            name="userId"
+                            th:value="${selectedUserId}"
+                            placeholder="Any">
+                </div>
+
+
+                <div class="filter-group">
+                    <label for="eventType">Event Type</label>
+
+                    <select id="eventType" name="eventType">
+
+                        <option value="">All</option>
+
+                        <option
+                                th:each="type : ${eventTypes}"
+                                th:value="${type}"
+                                th:text="${type}"
+                                th:selected="${type == selectedEventType}">
+                        </option>
+
+                    </select>
+                </div>
+
+
+                <div class="filter-group">
+                    <label for="entityType">Entity Type</label>
+
+                    <input
+                            type="text"
+                            id="entityType"
+                            name="entityType"
+                            th:value="${selectedEntityType}"
+                            placeholder="e.g. Invoice">
+                </div>
+
+
+                <div class="filter-group">
+                    <label for="startDate">From</label>
+
+                    <input
+                            type="datetime-local"
+                            id="startDate"
+                            name="startDate"
+                            th:value="${startDate}">
+                </div>
+
+
+                <div class="filter-group">
+                    <label for="endDate">To</label>
+
+                    <input
+                            type="datetime-local"
+                            id="endDate"
+                            name="endDate"
+                            th:value="${endDate}">
+                </div>
+
+
+                <div class="filter-actions">
+
+                    <button
+                            type="submit"
+                            class="btn btn-primary">
+                        🔍 Apply
+                    </button>
+
+                    <a
+                            th:href="@{/admin/audit}"
+                            class="btn btn-outline">
+                        Reset
+                    </a>
+
+                </div>
+
+            </div>
+
         </form>
+
     </div>
+
 
     <!-- Table -->
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Event Type</th>
-                <th>User ID</th>
-                <th>Entity Type</th>
-                <th>Entity ID</th>
-                <th>Details</th>
-                <th>Created</th>
-                <th>Hash Chain</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="event : ${events.content}">
-                <td th:text="${event.id}">1</td>
-                <td th:text="${event.eventType}">PAYMENT_SETTLED</td>
-                <td th:text="${event.userId}">10</td>
-                <td th:text="${event.entityType}">Invoice</td>
-                <td th:text="${event.entityId}">100</td>
-                <td th:text="${event.details}">{"key":"value"}</td>
-                <td th:text="${event.createdAt}">2026-01-01</td>
-                <td>
-                    <span class="hash" th:text="${event.currentHash}">hash</span>
-                </td>
-                <td>
-                    <a th:href="@{/admin/audit/diff/{id}(id=${event.id})}" class="btn">Diff</a>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+    <div class="card">
+
+        <div class="table-wrap">
+
+            <table class="data-table">
+
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Event Type</th>
+                    <th>User</th>
+                    <th>Entity</th>
+                    <th>Details</th>
+                    <th>Created</th>
+                    <th>Hash</th>
+                    <th>Action</th>
+                </tr>
+                </thead>
+
+
+                <tbody>
+
+                <tr th:each="event : ${events.content}">
+
+                    <td
+                            class="mono"
+                            th:text="${event.id}">
+                        1
+                    </td>
+
+
+                    <td>
+                        <span
+                                class="event-badge"
+                                th:text="${event.eventType}">
+                            PAYMENT_SETTLED
+                        </span>
+                    </td>
+
+
+                    <td
+                            class="mono"
+                            th:text="${event.userId}">
+                        10
+                    </td>
+
+
+                    <td>
+
+                        <span th:text="${event.entityType}">
+                            Invoice
+                        </span>
+
+                        <span style="color:#94a3b8;">
+                            #
+                        </span>
+
+                        <span
+                                class="mono"
+                                th:text="${event.entityId}">
+                            100
+                        </span>
+
+                    </td>
+
+
+                    <td
+                            class="details-cell"
+                            th:text="${event.details}"
+                            th:title="${event.details}">
+                        {"key":"value"}
+                    </td>
+
+
+                    <td
+                            th:text="${#temporals.format(event.createdAt, 'dd MMM yyyy · HH:mm')}">
+                        01 Jan 2026 · 12:00
+                    </td>
+
+
+                    <td
+                            class="hash-cell"
+                            th:text="${event.currentHash}"
+                            th:title="${event.currentHash}">
+                        hash
+                    </td>
+
+
+                    <td>
+
+                        <a
+                                th:href="@{/admin/audit/diff/{id}(id=${event.id})}"
+                                class="btn btn-diff btn-sm">
+                            🔍 Diff
+                        </a>
+
+                    </td>
+
+                </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
 
     <!-- Pagination -->
-    <div class="pagination">
-        <span th:if="${events.hasPrevious()}">
-            <a th:href="@{/admin/audit(page=${events.number - 1}, userId=${selectedUserId}, eventType=${selectedEventType}, entityType=${selectedEntityType}, startDate=${startDate}, endDate=${endDate})}">Previous</a>
+    <div class="pagination-wrap">
+
+        <span class="pagination-info">
+
+            Page
+
+            <strong
+                    style="font-weight:500;"
+                    th:text="${events.number + 1}">
+                1
+            </strong>
+
+            of
+
+            <strong
+                    style="font-weight:500;"
+                    th:text="${events.totalPages}">
+                1
+            </strong>
+
         </span>
-        <span>Page [[${events.number + 1}]] of [[${events.totalPages}]]</span>
-        <span th:if="${events.hasNext()}">
-            <a th:href="@{/admin/audit(page=${events.number + 1}, userId=${selectedUserId}, eventType=${selectedEventType}, entityType=${selectedEntityType}, startDate=${startDate}, endDate=${endDate})}">Next</a>
-        </span>
+
+
+        <div class="pagination">
+
+            <a
+                    th:if="${events.hasPrevious()}"
+                    th:href="@{/admin/audit(
+                        page=${events.number - 1},
+                        userId=${selectedUserId},
+                        eventType=${selectedEventType},
+                        entityType=${selectedEntityType},
+                        startDate=${startDate},
+                        endDate=${endDate}
+                    )}">
+                ← Prev
+            </a>
+
+
+            <a
+                    th:if="${events.hasNext()}"
+                    th:href="@{/admin/audit(
+                        page=${events.number + 1},
+                        userId=${selectedUserId},
+                        eventType=${selectedEventType},
+                        entityType=${selectedEntityType},
+                        startDate=${startDate},
+                        endDate=${endDate}
+                    )}">
+                Next →
+            </a>
+
+        </div>
+
     </div>
+
+</div>
 
 </body>
 </html>
+```

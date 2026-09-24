@@ -1,94 +1,238 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Reconciliation Detail</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reconciliation Detail · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-            padding: 20px;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .back-link {
-            display: inline-block;
-            margin-bottom: 20px;
-            color: #2563eb;
-            text-decoration: none;
-        }
-        .back-link:hover {
-            text-decoration: underline;
-        }
-        h1 {
-            color: #333;
-        }
-        h2 {
-            color: #333;
-            margin-top: 30px;
-        }
-        .summary-card {
-            background: white;
-            padding: 24px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
             margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
         }
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 16px;
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
         }
-        .summary-item {
-            display: flex;
-            flex-direction: column;
-        }
-        .summary-label {
-            font-size: 12px;
-            color: #6b7280;
-        }
-        .summary-value {
-            font-size: 18px;
-            font-weight: 600;
-        }
-        .text-green {
-            color: #16a34a;
-        }
-        .text-red {
-            color: #dc2626;
-        }
-        .text-gray {
-            color: #6b7280;
-        }
-        .text-blue {
-            color: #2563eb;
-        }
-        .text-blue a {
-            color: #2563eb;
-            text-decoration: none;
-        }
-        .text-blue a:hover {
-            text-decoration: underline;
-        }
-        .font-mono {
-            font-family: monospace;
-        }
-        .detail-row {
-            background: white;
-            padding: 16px 20px;
-            border-bottom: 1px solid #e5e7eb;
+        .page-header-top {
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        /* Summary card */
+        .summary-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px 28px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+        .summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .summary-header h3 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
             gap: 8px;
         }
-        .detail-row:hover {
-            background: #f9fafb;
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
-        .detail-row:last-child {
-            border-bottom: none;
+        .status-pass { background: #d1fae5; color: #065f46; }
+        .status-fail { background: #fee2e2; color: #991b1b; }
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .stat-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 16px 18px;
+            border-radius: 12px;
+            text-align: center;
+            transition: all 0.15s ease;
+        }
+        .stat-box:hover {
+            background: white;
+            border-color: #cbd5e1;
+            box-shadow: 0 8px 20px -8px rgba(0,20,50,0.08);
+        }
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+        }
+        .stat-number.green { color: #059669; }
+        .stat-number.red { color: #dc2626; }
+        .stat-label {
+            font-size: 0.65rem;
+            color: #64748b;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 6px;
+        }
+
+        /* Meta row */
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            padding-top: 16px;
+            border-top: 1px solid #f1f5f9;
+        }
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8125rem;
+        }
+        .meta-label {
+            color: #64748b;
+            font-weight: 300;
+        }
+        .meta-value {
+            font-weight: 500;
+            color: #0f172a;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+        }
+
+        /* Detail list */
+        .detail-card {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            overflow: hidden;
+        }
+        .detail-list-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .detail-list-header h3 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .detail-count {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 400;
+            background: #f1f5f9;
+            padding: 4px 12px;
+            border-radius: 9999px;
+        }
+
+        .detail-row {
+            padding: 16px 24px;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.15s ease;
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-row:hover { background: #fafbfc; }
+        .detail-main {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
         }
         .detail-left {
             display: flex;
@@ -96,97 +240,187 @@
             gap: 12px;
             flex-wrap: wrap;
         }
-        .detail-right {
-            font-size: 14px;
+        .tx-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #4f46e5;
+            text-decoration: none;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            transition: all 0.15s ease;
         }
+        .tx-link:hover {
+            background: #dbeafe;
+            border-color: #bfdbfe;
+            color: #3730a3;
+        }
+
         .badge {
+            display: inline-block;
             padding: 4px 12px;
             border-radius: 9999px;
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
         }
-        .badge-yellow {
-            background: #fef3c7;
-            color: #92400e;
+        .badge-yellow { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fee2e2; color: #991b1b; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-default { background: #f1f5f9; color: #64748b; }
+
+        .detail-amounts {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 0.8125rem;
+            flex-wrap: wrap;
         }
-        .badge-red {
-            background: #fee2e2;
-            color: #991b1b;
+        .amount-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
-        .badge-blue {
-            background: #dbeafe;
-            color: #1e40af;
+        .amount-label {
+            color: #64748b;
+            font-weight: 300;
         }
-        .empty-state {
+        .amount-value {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-weight: 500;
+            color: #0f172a;
+        }
+
+        .detail-description {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 300;
+            line-height: 1.55;
+            margin-top: 6px;
+            padding-left: 8px;
+            border-left: 3px solid #e2e8f0;
+        }
+
+        .empty {
             text-align: center;
-            color: #6b7280;
-            padding: 24px;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 0.875rem;
         }
-        .detail-list {
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+        @media (max-width: 640px) {
+            .detail-amounts { gap: 10px; }
+            .summary-card, .detail-card { padding: 18px 20px; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <a href="/admin/reconciliation" class="back-link">← Back to list</a>
+<div class="container">
 
-        <h1>Reconciliation Report #<span th:text="${record.id}">1</span></h1>
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/admin/reconciliation" class="back-link">← Back to Reports</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">📊</span> Reconciliation Report #<span th:text="${record.id}">1</span></h1>
+    </div>
 
-        <!-- Summary card -->
-        <div class="summary-card">
-            <div class="summary-grid">
-                <div class="summary-item">
-                    <span class="summary-label">Status</span>
-                    <span class="summary-value" th:class="${record.status == 'PASS'} ? 'text-green' : 'text-red'" th:text="${record.status}">PASS</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Total Tx</span>
-                    <span class="summary-value" th:text="${record.totalTransactions}">0</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Matched</span>
-                    <span class="summary-value text-green" th:text="${record.matchedTransactions}">0</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Mismatched</span>
-                    <span class="summary-value text-red" th:text="${record.mismatchedTransactions}">0</span>
-                </div>
+    <!-- Summary -->
+    <div class="summary-card">
+        <div class="summary-header">
+            <h3>📋 Summary</h3>
+            <span th:if="${record.status == 'PASS'}" class="status-badge status-pass">
+                <span class="status-dot"></span> Passed
+            </span>
+            <span th:unless="${record.status == 'PASS'}" class="status-badge status-fail">
+                <span class="status-dot"></span> <span th:text="${record.status}">Failed</span>
+            </span>
+        </div>
+
+        <div class="stat-grid">
+            <div class="stat-box">
+                <div class="stat-number" th:text="${record.totalTransactions}">0</div>
+                <div class="stat-label">Total Tx</div>
             </div>
-            <div style="margin-top:12px; display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:8px; font-size:14px;">
-                <div><span class="text-gray">Missing Ledger Entries:</span> <span class="font-mono" th:text="${record.missingLedgerCount}">0</span></div>
-                <div><span class="text-gray">Amount Mismatches:</span> <span class="font-mono" th:text="${record.amountMismatchCount}">0</span></div>
-                <div><span class="text-gray">Started:</span> <span th:text="${#dates.format(record.startedAt, 'dd/MM/yyyy HH:mm')}">--</span></div>
-                <div><span class="text-gray">Completed:</span> <span th:text="${#dates.format(record.completedAt, 'dd/MM/yyyy HH:mm')}">--</span></div>
+            <div class="stat-box">
+                <div class="stat-number green" th:text="${record.matchedTransactions}">0</div>
+                <div class="stat-label">Matched</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number red" th:text="${record.mismatchedTransactions}">0</div>
+                <div class="stat-label">Mismatched</div>
             </div>
         </div>
 
-        <!-- Details list -->
-        <h2>Mismatched Transactions</h2>
-        <div class="detail-list">
-            <div th:each="detail : ${details}" class="detail-row">
-                <div class="detail-left">
-                    <span class="font-mono text-blue">
-                        <a th:href="'/transactions/' + ${detail.transactionId}" th:text="'#' + ${detail.transactionId}">#123</a>
-                    </span>
-                    <span class="badge"
-                          th:class="${detail.discrepancyType == 'MISSING_LEDGER'} ? 'badge-yellow' :
-                                    ${detail.discrepancyType == 'AMOUNT_MISMATCH'} ? 'badge-red' : 'badge-blue'"
-                          th:text="${detail.discrepancyType}">MISSING_LEDGER</span>
-                </div>
-                <div class="detail-right">
-                    <span class="text-gray">Expected:</span>
-                    <span class="font-mono" th:text="${detail.expectedAmount}">0.00</span>
-                    <span class="text-gray" style="margin-left:12px;">Actual:</span>
-                    <span class="font-mono" th:text="${detail.actualAmount}">0.00</span>
-                </div>
-                <div style="width:100%; font-size:13px; color:#6b7280; margin-top:4px;" th:text="${detail.description}">Description</div>
+        <div class="meta-grid">
+            <div class="meta-item">
+                <span class="meta-label">Missing Ledger:</span>
+                <span class="meta-value" th:text="${record.missingLedgerCount}">0</span>
             </div>
-            <div th:if="${details.empty}" class="empty-state">No mismatches found for this reconciliation.</div>
+            <div class="meta-item">
+                <span class="meta-label">Amount Mismatches:</span>
+                <span class="meta-value" th:text="${record.amountMismatchCount}">0</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Started:</span>
+                <span class="meta-value" th:text="${#temporals.format(record.startedAt, 'dd MMM yyyy · HH:mm')}">—</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Completed:</span>
+                <span class="meta-value" th:text="${#temporals.format(record.completedAt, 'dd MMM yyyy · HH:mm')}">—</span>
+            </div>
         </div>
     </div>
+
+    <!-- Details -->
+    <div class="detail-card">
+        <div class="detail-list-header">
+            <h3>⚠️ Mismatched Transactions</h3>
+            <span class="detail-count" th:text="${#lists.size(details)} + ' items'">0 items</span>
+        </div>
+
+        <div th:if="${details.empty}" class="empty">
+            <span class="emoji">✨</span>
+            <p>No mismatches found for this reconciliation.</p>
+        </div>
+
+        <div th:each="detail : ${details}" class="detail-row">
+            <div class="detail-main">
+                <div class="detail-left">
+                    <a th:href="'/transactions/' + ${detail.transactionId}"
+                       class="tx-link"
+                       th:text="'#' + ${detail.transactionId}">#123</a>
+
+                    <span th:if="${detail.discrepancyType == 'MISSING_LEDGER'}" class="badge badge-yellow">Missing Ledger</span>
+                    <span th:if="${detail.discrepancyType == 'AMOUNT_MISMATCH'}" class="badge badge-red">Amount Mismatch</span>
+                    <span th:if="${detail.discrepancyType != 'MISSING_LEDGER' and detail.discrepancyType != 'AMOUNT_MISMATCH'}"
+                          class="badge badge-blue" th:text="${detail.discrepancyType}">Type</span>
+                </div>
+
+                <div class="detail-amounts">
+                    <div class="amount-item">
+                        <span class="amount-label">Expected:</span>
+                        <span class="amount-value" th:text="${detail.expectedAmount}">0.00</span>
+                    </div>
+                    <div class="amount-item">
+                        <span class="amount-label">Actual:</span>
+                        <span class="amount-value" th:text="${detail.actualAmount}">0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${detail.description != null}" class="detail-description" th:text="${detail.description}">Description</div>
+        </div>
+    </div>
+
+</div>
 </body>
 </html>

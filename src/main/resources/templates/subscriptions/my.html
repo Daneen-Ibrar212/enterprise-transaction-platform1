@@ -1,100 +1,351 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>My Subscriptions</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Subscriptions · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        .card { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 20px; margin: 20px 0; }
-        .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-        .badge { padding: 4px 12px; border-radius: 12px; color: white; font-size: 12px; display: inline-block; }
-        .badge-active { background: #2d7a3a; }
-        .badge-cancelled { background: #c0392b; }
-        .badge-trial { background: #f39c12; }
-        .badge-expired { background: #95a5a6; }
-        .btn { padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
-        .btn-danger { background: #c0392b; color: white; }
-        .btn-primary { background: #3498db; color: white; }
-        .btn-success { background: #2d7a3a; color: white; }
-        .empty { text-align: center; color: #666; padding: 40px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #f8f9fa; }
-        .back-link { color: #007bff; text-decoration: none; }
-        .back-link:hover { text-decoration: underline; }
-        .flash-success { background: #d4edda; padding: 12px; border-radius: 4px; color: #155724; margin: 10px 0; }
-        .flash-error { background: #f8d7da; padding: 12px; border-radius: 4px; color: #721c24; margin: 10px 0; }
-        .plan-name { font-weight: bold; font-size: 1.1em; }
-        .plan-price { color: #2d7a3a; font-weight: bold; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .flash-success {
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            color: #065f46;
+            padding: 14px 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .flash-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 14px 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px 28px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+
+        .actions-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .actions-top h2 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #0f172a;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 11px 22px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(11,26,51,0.25);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(11,26,51,0.35); }
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 8px 20px rgba(16,185,129,0.25);
+        }
+        .btn-success:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(16,185,129,0.35); }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            box-shadow: 0 6px 16px rgba(239,68,68,0.2);
+        }
+        .btn-danger:hover { background: #dc2626; transform: translateY(-1px); }
+        .btn-sm { padding: 6px 14px; font-size: 0.75rem; border-radius: 10px; }
+
+        .sub-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .sub-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .sub-table td {
+            padding: 18px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .sub-table tr:last-child td { border-bottom: none; }
+        .sub-table tr:hover td { background: #fafbfc; }
+
+        .plan-name {
+            font-weight: 500;
+            font-size: 0.9375rem;
+            color: #0f172a;
+            margin-bottom: 2px;
+        }
+        .plan-desc {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-weight: 300;
+        }
+        .plan-price {
+            font-weight: 500;
+            color: #0f172a;
+            font-size: 0.9375rem;
+        }
+        .plan-period {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 2px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .badge-active { background: #d1fae5; color: #065f46; }
+        .badge-cancelled { background: #fee2e2; color: #991b1b; }
+        .badge-trial { background: #fef3c7; color: #92400e; }
+        .badge-expired { background: #f1f5f9; color: #64748b; }
+
+        .trial-note {
+            display: block;
+            font-size: 0.7rem;
+            color: #d97706;
+            font-weight: 400;
+            margin-top: 6px;
+        }
+
+        .row-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+        .empty-state .emoji {
+            font-size: 2.5rem;
+            display: block;
+            margin-bottom: 12px;
+        }
+        .empty-state h3 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+        .empty-state p {
+            font-size: 0.875rem;
+            margin-bottom: 20px;
+            color: #64748b;
+        }
+
+        @media (max-width: 720px) {
+            .sub-table { display: block; overflow-x: auto; }
+            .sub-table th, .sub-table td { white-space: nowrap; }
+        }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="header">
-        <h1>📋 My Subscriptions</h1>
-        <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">📋</span> My Subscriptions</h1>
     </div>
 
-    <!-- Flash Messages -->
-    <div th:if="${success}" class="flash-success" th:text="${success}"></div>
-    <div th:if="${error}" class="flash-error" th:text="${error}"></div>
-
-    <!-- Available Plans Button -->
-    <div style="margin: 15px 0;">
-        <a href="/subscriptions/plans" class="btn btn-success">+ Subscribe to a Plan</a>
+    <!-- Flash -->
+    <div th:if="${success}" class="flash-success">
+        <span style="font-size:1.125rem;">✅</span>
+        <span th:text="${success}">Success</span>
+    </div>
+    <div th:if="${error}" class="flash-error">
+        <span style="font-size:1.125rem;">❌</span>
+        <span th:text="${error}">Error</span>
     </div>
 
-    <!-- Subscriptions List -->
+    <!-- Actions -->
+    <div class="actions-top">
+        <h2>Your subscriptions</h2>
+        <a href="/subscriptions/plans" class="btn btn-success">✨ Browse Plans</a>
+    </div>
+
+    <!-- Table -->
     <div class="card">
-        <div th:if="${subscriptions != null and !subscriptions.isEmpty()}">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Plan</th>
-                        <th>Billing</th>
-                        <th>Price</th>
-                        <th>Status</th>
-                        <th>Next Billing</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr th:each="sub : ${subscriptions}">
-                        <td>
-                            <div class="plan-name" th:text="${sub.plan.name}">Basic</div>
-                            <div style="font-size: 0.85em; color: #666;" th:text="${sub.plan.description}">Description</div>
-                        </td>
-                        <td th:text="${sub.plan.billingPeriod}">MONTHLY</td>
-                        <td class="plan-price" th:text="${currencyHelper.getFormattedAmount(sub.plan.price, sub.plan.currency)}">£ 9.99</td>
-                        <td>
-                            <span class="badge" 
-                                  th:classappend="${sub.status.name() == 'ACTIVE' ? 'badge-active' : sub.status.name() == 'TRIALING' ? 'badge-trial' : 'badge-cancelled'}"
-                                  th:text="${sub.status}">Active</span>
-                            <span th:if="${sub.isOnTrial()}" style="font-size: 0.8em; color: #f39c12; display: block;">
-                                Trial ends: <span th:text="${#temporals.format(sub.trialEndDate, 'yyyy-MM-dd')}">2026-09-01</span>
-                            </span>
-                        </td>
-                        <td th:text="${#temporals.format(sub.nextBillingDate, 'yyyy-MM-dd')}">2026-10-01</td>
-                        <td>
+
+        <!-- Empty -->
+        <div th:unless="${subscriptions != null and !subscriptions.isEmpty()}" class="empty-state">
+            <span class="emoji">📭</span>
+            <h3>No subscriptions yet</h3>
+            <p>You don't have any active subscriptions. Browse our plans to get started.</p>
+            <a href="/subscriptions/plans" class="btn btn-success">Browse Plans →</a>
+        </div>
+
+        <!-- Has subscriptions -->
+        <table th:if="${subscriptions != null and !subscriptions.isEmpty()}" class="sub-table">
+            <thead>
+                <tr>
+                    <th>Plan</th>
+                    <th>Billing</th>
+                    <th>Price</th>
+                    <th>Status</th>
+                    <th>Next Billing</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="sub : ${subscriptions}">
+                    <td>
+                        <div class="plan-name" th:text="${sub.plan.name}">Basic</div>
+                        <div class="plan-desc" th:text="${sub.plan.description}">Description</div>
+                    </td>
+                    <td>
+                        <div th:text="${sub.plan.billingPeriod}" style="font-weight:400;">MONTHLY</div>
+                    </td>
+                    <td>
+                        <div class="plan-price" th:text="${currencyHelper.getFormattedAmount(sub.plan.price, sub.plan.currency)}">£ 9.99</div>
+                    </td>
+                    <td>
+                        <span class="badge"
+                              th:classappend="${sub.status.name() == 'ACTIVE' ? 'badge-active' : sub.status.name() == 'TRIALING' ? 'badge-trial' : sub.status.name() == 'EXPIRED' ? 'badge-expired' : 'badge-cancelled'}"
+                              th:text="${sub.status}">Active</span>
+                        <span th:if="${sub.isOnTrial()}" class="trial-note">
+                            Trial ends <span th:text="${#temporals.format(sub.trialEndDate, 'dd MMM yyyy')}">01 Sep 2026</span>
+                        </span>
+                    </td>
+                    <td th:text="${#temporals.format(sub.nextBillingDate, 'dd MMM yyyy')}">01 Oct 2026</td>
+                    <td>
+                        <div class="row-actions">
                             <a th:href="@{/subscriptions/{id}(id=${sub.id})}" class="btn btn-primary btn-sm">View</a>
                             <form method="post" th:action="'/subscriptions/' + ${sub.id} + '/cancel'" style="display:inline;">
                                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                                <button type="submit" class="btn btn-danger btn-sm" 
+                                <button type="submit" class="btn btn-danger btn-sm"
                                         th:if="${sub.status.name() == 'ACTIVE' or sub.status.name() == 'TRIALING'}"
                                         onclick="return confirm('Are you sure you want to cancel this subscription?')">
                                     Cancel
                                 </button>
                             </form>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        <div th:unless="${subscriptions != null and !subscriptions.isEmpty()}" class="empty">
-            <p>You don't have any active subscriptions.</p>
-            <a href="/subscriptions/plans" class="btn btn-success">Browse Plans →</a>
-        </div>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
+
 </div>
 </body>
 </html>

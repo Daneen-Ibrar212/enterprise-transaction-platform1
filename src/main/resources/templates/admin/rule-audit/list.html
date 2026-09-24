@@ -1,98 +1,323 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Rule Audit Trail</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rule Audit Trail · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #f2f2f2; }
-        .badge { padding: 2px 8px; border-radius: 12px; font-size: 12px; }
-        .badge-create { background: #d4edda; color: #155724; }
-        .badge-update { background: #cce5ff; color: #004085; }
-        .badge-delete { background: #f8d7da; color: #721c24; }
-        .badge-toggle { background: #fff3cd; color: #856404; }
-        .filter-bar { margin: 20px 0; }
-        .filter-bar select, .filter-bar button { padding: 5px; }
-        .btn { padding: 6px 15px; background: #2d7a3a; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
-        .btn:hover { background: #1e5c2a; }
-        .btn-clear { background: #6c757d; }
-        .btn-clear:hover { background: #5a6268; }
-        .json-preview { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8em; color: #666; }
-        .action-badge { font-weight: bold; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .filter-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .filter-card form {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+        .filter-card label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .filter-card select {
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            color: #0f172a;
+            background: white;
+            min-width: 180px;
+        }
+        .filter-card select:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 3px rgba(45, 107, 184, 0.12);
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            overflow: hidden;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .data-table td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover td { background: #fafbfc; }
+        .data-table td.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #0f172a;
+        }
+        .data-table td.email-cell {
+            font-weight: 400;
+            color: #0f172a;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .json-preview {
+            max-width: 240px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.7rem;
+            color: #64748b;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: help;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+        .badge-approval { background: #dbeafe; color: #1e40af; }
+        .badge-refund { background: #ede9fe; color: #5b21b6; }
+        .badge-suspicion { background: #fef3c7; color: #92400e; }
+        .badge-default { background: #f1f5f9; color: #64748b; }
+        .badge-create { background: #d1fae5; color: #065f46; }
+        .badge-update { background: #dbeafe; color: #1e40af; }
+        .badge-delete { background: #fee2e2; color: #991b1b; }
+        .badge-toggle { background: #fef3c7; color: #92400e; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 6px 16px rgba(11,26,51,0.2);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(11,26,51,0.3); }
+        .btn-outline {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-outline:hover { border-color: #2d6bb8; color: #2d6bb8; background: #f8faff; }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+        @media (max-width: 1100px) {
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
+        }
     </style>
 </head>
 <body>
-    <h1>📜 Rule Audit Trail</h1>
-    <a href="/dashboard">← Back to Dashboard</a>
+<div class="container">
+
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">📜</span> Rule Audit Trail</h1>
+    </div>
 
     <!-- Filter -->
-    <div class="filter-bar">
+    <div class="filter-card">
         <form method="get" th:action="@{/admin/rule-audit}">
-            <label>Filter by Rule Type:</label>
-            <select name="ruleType">
+            <label for="ruleType">Filter by Rule Type</label>
+            <select id="ruleType" name="ruleType">
                 <option value="">All Types</option>
                 <option th:each="type : ${ruleTypes}"
                         th:value="${type}"
                         th:text="${type}"
                         th:selected="${type == selectedRuleType}"></option>
             </select>
-            <button type="submit" class="btn">Apply Filter</button>
-            <a th:href="@{/admin/rule-audit}" class="btn btn-clear">Clear Filter</a>
+            <button type="submit" class="btn btn-primary">🔍 Apply</button>
+            <a th:href="@{/admin/rule-audit}" class="btn btn-outline">Clear</a>
         </form>
     </div>
 
-    <div th:if="${audits.empty}" style="padding:20px; background:#f9f9f9; text-align:center;">
-        No rule changes have been logged yet.
+    <!-- Table -->
+    <div class="card">
+        <table class="data-table" th:unless="${audits.empty}">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Rule Type</th>
+                    <th>Rule ID</th>
+                    <th>Action</th>
+                    <th>Changed By</th>
+                    <th>Old Values</th>
+                    <th>New Values</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="audit : ${audits}">
+                    <td class="mono" th:text="${audit.id}">1</td>
+                    <td>
+                        <span th:if="${audit.ruleType == 'APPROVAL'}" class="badge badge-approval">Approval</span>
+                        <span th:if="${audit.ruleType == 'REFUND'}" class="badge badge-refund">Refund</span>
+                        <span th:if="${audit.ruleType == 'SUSPICION'}" class="badge badge-suspicion">Suspicion</span>
+                        <span th:if="${audit.ruleType != 'APPROVAL' and audit.ruleType != 'REFUND' and audit.ruleType != 'SUSPICION'}"
+                              class="badge badge-default" th:text="${audit.ruleType}">—</span>
+                    </td>
+                    <td class="mono" th:text="${audit.ruleId}">123</td>
+                    <td>
+                        <span th:if="${audit.action == 'CREATE'}" class="badge badge-create">Create</span>
+                        <span th:if="${audit.action == 'UPDATE'}" class="badge badge-update">Update</span>
+                        <span th:if="${audit.action == 'DELETE'}" class="badge badge-delete">Delete</span>
+                        <span th:if="${audit.action == 'TOGGLE'}" class="badge badge-toggle">Toggle</span>
+                        <span th:if="${audit.action != 'CREATE' and audit.action != 'UPDATE' and audit.action != 'DELETE' and audit.action != 'TOGGLE'}"
+                              class="badge badge-default" th:text="${audit.action}">—</span>
+                    </td>
+                    <td class="email-cell" th:text="${audit.changedByEmail != null ? audit.changedByEmail : audit.changedBy}">admin@test.com</td>
+                    <td>
+                        <div class="json-preview" th:text="${audit.oldValues}" th:title="${audit.oldValues}">{"active":true}</div>
+                    </td>
+                    <td>
+                        <div class="json-preview" th:text="${audit.newValues}" th:title="${audit.newValues}">{"active":false}</div>
+                    </td>
+                    <td th:text="${#temporals.format(audit.createdAt, 'dd MMM yyyy · HH:mm')}">01 Jan 2026 · 12:00</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div th:if="${audits.empty}" class="empty">
+            <span class="emoji">📭</span>
+            <p>No rule changes have been logged yet.</p>
+        </div>
     </div>
 
-    <table th:unless="${audits.empty}">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Rule Type</th>
-                <th>Rule ID</th>
-                <th>Action</th>
-                <th>Changed By</th>
-                <th>Old Values</th>
-                <th>New Values</th>
-                <th>Timestamp</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="audit : ${audits}">
-                <td th:text="${audit.id}">1</td>
-                <td>
-                    <span class="badge"
-                          th:classappend="${audit.ruleType == 'APPROVAL' ? 'badge-create' : audit.ruleType == 'REFUND' ? 'badge-update' : 'badge-delete'}">
-                        <span th:text="${audit.ruleType}">APPROVAL</span>
-                    </span>
-                </td>
-                <td th:text="${audit.ruleId}">123</td>
-                <td>
-                    <span class="badge"
-                          th:classappend="${audit.action == 'CREATE' ? 'badge-create' : audit.action == 'UPDATE' ? 'badge-update' : audit.action == 'DELETE' ? 'badge-delete' : 'badge-toggle'}">
-                        <span class="action-badge" th:text="${audit.action}">CREATE</span>
-                    </span>
-                </td>
-                <td>
-                    <span th:text="${audit.changedByEmail != null ? audit.changedByEmail : audit.changedBy}">
-                        admin@test.com
-                    </span>
-                </td>
-                <td>
-                    <div class="json-preview" th:text="${audit.oldValues}" title="${audit.oldValues}">
-                        {"active":true}
-                    </div>
-                </td>
-                <td>
-                    <div class="json-preview" th:text="${audit.newValues}" title="${audit.newValues}">
-                        {"active":false}
-                    </div>
-                </td>
-                <td th:text="${audit.createdAt}">2026-07-13 12:00:00</td>
-            </tr>
-        </tbody>
-    </table>
+</div>
 </body>
 </html>

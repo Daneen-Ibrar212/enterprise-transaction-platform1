@@ -2,89 +2,326 @@
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
-    <title>Suspicious Invoices</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suspicious Invoices · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        /* ... same styles ... */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .warning-banner {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            line-height: 1.55;
+        }
+        .warning-banner strong { font-weight: 500; }
+        .warning-banner a { color: #991b1b; font-weight: 500; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            overflow: hidden;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .data-table td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table td.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+        }
+        .data-table td.amount-cell {
+            font-weight: 500;
+            color: #0f172a;
+        }
+
+        /* Risk row coloring */
+        .risk-red { background: #fef2f2; }
+        .risk-red:hover { background: #fee2e2 !important; }
+        .risk-yellow { background: #fffbeb; }
+        .risk-yellow:hover { background: #fef3c7 !important; }
+        .risk-green { background: white; }
+        .risk-green:hover { background: #fafbfc !important; }
+
+        /* Risk badge */
+        .risk-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .risk-badge-red { background: #fee2e2; color: #991b1b; }
+        .risk-badge-yellow { background: #fef3c7; color: #92400e; }
+        .risk-badge-green { background: #d1fae5; color: #065f46; }
+
+        /* Reason cell */
+        .reason-cell {
+            font-size: 0.8125rem;
+            color: #64748b;
+            max-width: 260px;
+            line-height: 1.5;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+        .btn-not-fraud {
+            background: #10b981;
+            color: white;
+            box-shadow: 0 4px 12px rgba(16,185,129,0.2);
+        }
+        .btn-not-fraud:hover { background: #059669; transform: translateY(-1px); }
+        .btn-fraud {
+            background: #ef4444;
+            color: white;
+            box-shadow: 0 4px 12px rgba(239,68,68,0.2);
+        }
+        .btn-fraud:hover { background: #dc2626; transform: translateY(-1px); }
+        .btn-chat {
+            background: #8b5cf6;
+            color: white;
+            box-shadow: 0 4px 12px rgba(139,92,246,0.2);
+        }
+        .btn-chat:hover { background: #7c3aed; transform: translateY(-1px); }
+        .btn-revoke {
+            background: #f1f5f9;
+            color: #dc2626;
+        }
+        .btn-revoke:hover { background: #fee2e2; }
+
+        .actions-cell {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+            min-width: 280px;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+        @media (max-width: 1100px) {
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
+        }
     </style>
 </head>
 <body>
-    <h1>🚨 Suspicious Invoices</h1>
-    <div th:if="${!suspicionEnabled}" style="background: #f8d7da; color: #721c24; padding: 15px; border: 1px solid #f5c6cb; border-radius: 4px; margin: 10px 0;">
-        ⚠️ Suspicion detection is currently <strong>disabled</strong>. Enable it from <a href="/admin/features">Feature Toggles</a> to see suspicious invoices.
+<div class="container">
+
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">🚨</span> Suspicious Invoices</h1>
     </div>
-    <a href="/dashboard">← Back to Dashboard</a>
 
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Amount</th>
-                <th>Customer</th>
-                <th>Risk</th>
-                <th>Reason</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="inv : ${invoices}"
-                th:classappend="${inv.riskLevel == 'RED' ? 'risk-red' : inv.riskLevel == 'YELLOW' ? 'risk-yellow' : 'risk-green'}">
-                <td th:text="${inv.id}">1</td>
-                <td th:text="${currencyHelper.getFormattedAmount(inv.amount, inv.currency)}">£ 100.00</td>
-                <td th:text="${inv.customerEmail}">customer@test.com</td>
-                <td th:text="${inv.riskLevel}">RED</td>
-                <td th:text="${inv.suspicionReason}">Fraud keyword</td>
-                <td class="actions">
-                    <!-- Not Fraudulent -->
-                    <form method="post" th:action="@{/admin/invoices/{id}/not-fraudulent(id=${inv.id})}" style="display:inline;">
-                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                        <button type="submit" class="btn btn-not-fraud">✅ Not Fraudulent</button>
-                    </form>
+    <!-- Warning banner -->
+    <div th:if="${!suspicionEnabled}" class="warning-banner">
+        <span style="font-size:1.125rem;">⚠️</span>
+        <div>
+            Suspicion detection is currently <strong>disabled</strong>.
+            Enable it from <a href="/admin/features">Feature Toggles</a> to see suspicious invoices.
+        </div>
+    </div>
 
-                    <!-- Fraudulent -->
-                    <form method="post" th:action="@{/admin/invoices/{id}/fraudulent(id=${inv.id})}" style="display:inline;">
-                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                        <button type="submit" class="btn btn-fraud">🚫 Fraudulent</button>
-                    </form>
+    <!-- Table -->
+    <div class="card">
+        <table class="data-table" th:unless="${invoices.empty}">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Amount</th>
+                    <th>Customer</th>
+                    <th>Risk</th>
+                    <th>Reason</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="inv : ${invoices}"
+                    th:classappend="${inv.riskLevel == 'RED' ? 'risk-red' : inv.riskLevel == 'YELLOW' ? 'risk-yellow' : 'risk-green'}">
+                    <td class="mono" th:text="${inv.id}">1</td>
+                    <td class="amount-cell" th:text="${currencyHelper.getFormattedAmount(inv.amount, inv.currency)}">£ 100.00</td>
+                    <td th:text="${inv.customerEmail}">customer@test.com</td>
+                    <td>
+                        <span th:if="${inv.riskLevel == 'RED'}" class="risk-badge risk-badge-red">🔴 Red</span>
+                        <span th:if="${inv.riskLevel == 'YELLOW'}" class="risk-badge risk-badge-yellow">🟡 Yellow</span>
+                        <span th:if="${inv.riskLevel == 'GREEN'}" class="risk-badge risk-badge-green">🟢 Green</span>
+                    </td>
+                    <td class="reason-cell" th:text="${inv.suspicionReason}">Fraud keyword</td>
+                    <td>
+                        <div class="actions-cell">
+                            <form method="post" th:action="@{/admin/invoices/{id}/not-fraudulent(id=${inv.id})}" style="display:inline;">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <button type="submit" class="btn btn-not-fraud">✅ Not Fraudulent</button>
+                            </form>
 
-                    <!-- Chat with Merchant -->
-                    <a th:href="@{/private-chat/{id}(id=${inv.id}, withUserId=${inv.merchantId})}" class="btn btn-chat">💬 Merchant</a>
+                            <form method="post" th:action="@{/admin/invoices/{id}/fraudulent(id=${inv.id})}" style="display:inline;">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <button type="submit" class="btn btn-fraud">🚫 Fraudulent</button>
+                            </form>
 
-                    <!-- Chat with Customer -->
-                    <a th:href="@{/private-chat/{id}(id=${inv.id}, withEmail=${inv.customerEmail})}" class="btn btn-chat">💬 Customer</a>
+                            <a th:href="@{/private-chat/{id}(id=${inv.id}, withUserId=${inv.merchantId})}" class="btn btn-chat">💬 Merchant</a>
 
-                    <!-- Revoke Merchant -->
-                    <button class="btn btn-revoke" th:data-userid="${inv.merchantId}" onclick="revokeMerchant(this)">Revoke Merchant</button>
-                </td>
-            </tr>
-            <tr th:if="${invoices.empty}">
-                <td colspan="6">No suspicious invoices.</td>
-            </tr>
-        </tbody>
-    </table>
+                            <a th:href="@{/private-chat/{id}(id=${inv.id}, withEmail=${inv.customerEmail})}" class="btn btn-chat">💬 Customer</a>
 
-    <script>
-        function revokeMerchant(button) {
-            const userId = button.getAttribute('data-userid');
-            if (!confirm('Are you sure you want to revoke access for this merchant?')) return;
-            // Get CSRF token from meta tag or hidden field
-            const csrfToken = document.querySelector('input[name="_csrf"]')?.value;
-            const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
-            fetch('/admin/users/revoke/' + userId, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    [csrfHeader]: csrfToken
-                }
+                            <button class="btn btn-revoke" th:data-userid="${inv.merchantId}" onclick="revokeMerchant(this)">🚫 Revoke</button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div th:if="${invoices.empty}" class="empty">
+            <p>No suspicious invoices.</p>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function revokeMerchant(button) {
+        const userId = button.getAttribute('data-userid');
+        if (!confirm('Are you sure you want to revoke access for this merchant?')) return;
+        const csrfToken = document.querySelector('input[name="_csrf"]')?.value;
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+        fetch('/admin/users/revoke/' + userId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                [csrfHeader]: csrfToken
+            }
+        })
+            .then(response => response.text())
+            .then(msg => {
+                alert(msg);
+                location.reload();
             })
-                .then(response => response.text())
-                .then(msg => {
-                    alert(msg);
-                    location.reload();
-                })
-                .catch(err => {
-                    alert('Error revoking user: ' + err.message);
-                });
-        }
-    </script>
+            .catch(err => {
+                alert('Error revoking user: ' + err.message);
+            });
+    }
+</script>
 </body>
 </html>

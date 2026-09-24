@@ -70,6 +70,7 @@ com/enterprise/api/AdminEmailController.class
 com/enterprise/subscription/SubscriptionPlanRepository.class
 com/enterprise/reconciliation/ReconciliationRecordRepository.class
 com/enterprise/notification/EmailTemplates.class
+com/enterprise/security/TwoFactorOverrideService.class
 com/enterprise/api/AdminViewController.class
 com/enterprise/simulator/SimulatorService$1.class
 com/enterprise/subscription/PaymentRetryRepository.class
@@ -150,6 +151,7 @@ com/enterprise/ledger/LedgerService.class
 com/enterprise/api/GlobalExceptionHandler.class
 com/enterprise/job/Job.class
 com/enterprise/tax/VatLayerService$VatPeriod.class
+com/enterprise/api/ExecutiveReportController.class
 com/enterprise/controller/xero/XeroController.class
 com/enterprise/transaction/TransactionRepository.class
 com/enterprise/audit/AuditEventDTO.class
@@ -163,6 +165,7 @@ com/enterprise/ratelimit/RateLimitViolation.class
 com/enterprise/security/BackupCodeRepository.class
 com/enterprise/config/WebMvcConfig.class
 com/enterprise/api/DebugFilter.class
+com/enterprise/scheduler/TwoFactorOverrideCleanupScheduler.class
 com/enterprise/api/AdminWebhookController.class
 com/enterprise/reporting/ReportConfig.class
 com/enterprise/api/AdminWebhookDeliveryController.class

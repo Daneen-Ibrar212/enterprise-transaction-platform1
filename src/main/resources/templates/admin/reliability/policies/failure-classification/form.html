@@ -2,80 +2,317 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Failure Classification Rule</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${rule.id == null} ? 'Create Failure Rule · PayFlow' : 'Edit Failure Rule · PayFlow'">Failure Rule · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; }
-        .container { max-width: 700px; margin: 0 auto; background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { color: #1f2937; margin-top: 0; }
-        .form-group { margin-bottom: 16px; }
-        label { display: block; font-weight: 600; margin-bottom: 4px; color: #374151; }
-        input[type="text"], input[type="number"], select { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; }
-        input[type="checkbox"] { margin-right: 8px; }
-        .btn { display: inline-block; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 14px; border: none; cursor: pointer; }
-        .btn-primary { background: #2563eb; color: white; }
-        .btn-primary:hover { background: #1d4ed8; }
-        .btn-secondary { background: #6b7280; color: white; }
-        .btn-secondary:hover { background: #4b5563; }
-        .btn-test { background: #8b5cf6; color: white; }
-        .btn-test:hover { background: #7c3aed; }
-        .actions { margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap; }
-        .checkbox-group { display: flex; align-items: center; gap: 8px; }
-        .checkbox-group label { margin: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 720px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
-        .toast { padding: 12px 20px; margin-bottom: 10px; border-radius: 8px; color: white; font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1); opacity: 1; transition: opacity 0.3s ease; max-width: 400px; }
-        .toast-success { background: #10b981; }
-        .toast-error { background: #ef4444; }
+        .toast {
+            padding: 14px 22px;
+            margin-bottom: 10px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            font-size: 0.875rem;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+            opacity: 1;
+            transition: opacity 0.3s ease;
+            max-width: 400px;
+        }
+        .toast-success { background: linear-gradient(135deg, #10b981, #059669); }
+        .toast-error { background: linear-gradient(135deg, #ef4444, #dc2626); }
         .toast.hide { opacity: 0; }
-        a { color: #2563eb; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        .help-icon { cursor: pointer; color: #2563eb; font-weight: bold; margin-left: 8px; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; }
-        .modal-content { background: white; max-width: 600px; margin: 80px auto; padding: 24px; border-radius: 8px; max-height: 80vh; overflow-y: auto; }
-        .modal-content h2 { margin-top: 0; }
-        .modal-content code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
-        .modal-content .example { background: #f9fafb; padding: 8px 12px; border-radius: 4px; margin: 8px 0; border-left: 3px solid #2563eb; }
-        .test-result { margin-top: 8px; padding: 8px 12px; border-radius: 4px; display: none; }
-        .test-result.success { background: #d1fae5; color: #065f46; display: block; }
-        .test-result.error { background: #fee2e2; color: #991b1b; display: block; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+        }
+
+        .form-group { margin-bottom: 18px; }
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .form-group label .required { color: #ef4444; margin-left: 2px; }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.9375rem;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-weight: 300;
+            color: #0f172a;
+            background: white;
+            transition: all 0.15s ease;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 4px rgba(45, 107, 184, 0.12);
+        }
+        .form-group input::placeholder { color: #94a3b8; font-weight: 300; }
+        .form-group input#expressionInput {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.875rem;
+            letter-spacing: 0.01em;
+        }
+
+        .help-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #dbeafe;
+            color: #1e40af;
+            font-weight: 500;
+            font-size: 0.7rem;
+            cursor: pointer;
+            margin-left: 6px;
+            transition: all 0.15s ease;
+        }
+        .help-icon:hover { background: #bfdbfe; transform: scale(1.1); }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 0;
+        }
+        .checkbox-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #2d6bb8;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .checkbox-row label {
+            font-size: 0.875rem;
+            color: #334155;
+            font-weight: 400;
+            cursor: pointer;
+            text-transform: none;
+            letter-spacing: 0;
+            margin-bottom: 0;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+            padding-top: 20px;
+            border-top: 1px solid #f1f5f9;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(11,26,51,0.25);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(11,26,51,0.35); }
+        .btn-outline {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-outline:hover { border-color: #94a3b8; background: #f8fafc; }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(11,26,51,0.5);
+            z-index: 999;
+            padding: 24px;
+            overflow-y: auto;
+        }
+        .modal.show { display: flex; align-items: center; justify-content: center; }
+        .modal-content {
+            background: white;
+            max-width: 640px;
+            width: 100%;
+            padding: 32px 36px;
+            border-radius: 20px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.3);
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .modal-content h2 {
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+        }
+        .modal-content h3 {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin: 20px 0 10px;
+        }
+        .modal-content p { font-size: 0.875rem; color: #475569; line-height: 1.6; margin-bottom: 10px; }
+        .modal-content ul { list-style: none; padding: 0; }
+        .modal-content li {
+            font-size: 0.875rem;
+            color: #475569;
+            padding: 4px 0;
+            line-height: 1.55;
+        }
+        .modal-content code {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            background: #eff6ff;
+            color: #1e40af;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.8125rem;
+        }
+        .modal-content .example {
+            background: #f8fafc;
+            border-left: 3px solid #3b82f6;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 8px 0;
+            font-size: 0.8125rem;
+            color: #475569;
+        }
+        .modal-actions { margin-top: 20px; display: flex; justify-content: flex-end; }
     </style>
 </head>
 <body>
 
-    <div id="toast-container" class="toast-container">
-        <div th:if="${success}" class="toast toast-success" th:text="${success}"></div>
-        <div th:if="${error}" class="toast toast-error" th:text="${error}"></div>
+<div class="toast-container">
+    <div th:if="${success}" class="toast toast-success" th:text="${success}"></div>
+    <div th:if="${error}" class="toast toast-error" th:text="${error}"></div>
+</div>
+
+<div class="container">
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/admin/reliability/policies/failure-classification" class="back-link">← Back to Rules</a>
+        </div>
+        <h1 th:if="${rule.id == null}"><span style="font-size:1.5rem;">🔍</span> Create Failure Rule</h1>
+        <h1 th:if="${rule.id != null}"><span style="font-size:1.5rem;">✏️</span> Edit Failure Rule</h1>
     </div>
 
-    <div class="container">
-        <h1 th:if="${rule.id == null}">Create Failure Classification Rule</h1>
-        <h1 th:if="${rule.id != null}">Edit Failure Classification Rule</h1>
-
+    <div class="card">
         <form th:action="${rule.id == null} ? '/admin/reliability/policies/failure-classification' : '/admin/reliability/policies/failure-classification/' + ${rule.id}" method="post" id="ruleForm">
             <input type="hidden" name="id" th:value="${rule.id}">
 
             <div class="form-group">
-                <label>Priority <span style="color:red;">*</span></label>
+                <label>Priority <span class="required">*</span></label>
                 <input type="number" name="priority" th:value="${rule.priority}" min="0" required>
             </div>
 
             <div class="form-group">
                 <label>
                     Condition Expression (SpEL)
-                    <span class="help-icon" onclick="document.getElementById('helpModal').style.display='block'">ⓘ</span>
-                    <span style="color:red;">*</span>
+                    <span class="help-icon" onclick="document.getElementById('helpModal').classList.add('show')">?</span>
+                    <span class="required">*</span>
                 </label>
-                <input type="text" name="conditionExpression" id="expressionInput" 
-                       th:value="${rule.conditionExpression}" 
-                       placeholder="#message.contains('timeout')" 
-                       required style="width:100%;">
-                <div style="margin-top:4px;">
-       
-                </div>
+                <input type="text" name="conditionExpression" id="expressionInput"
+                       th:value="${rule.conditionExpression}"
+                       placeholder="#message.contains('timeout')"
+                       required>
             </div>
 
             <div class="form-group">
-                <label>Category <span style="color:red;">*</span></label>
+                <label>Category <span class="required">*</span></label>
                 <select name="category" required>
                     <option value="">— Select —</option>
                     <option value="TRANSIENT" th:selected="${rule.category == 'TRANSIENT'}">Transient</option>
@@ -86,7 +323,7 @@
             </div>
 
             <div class="form-group">
-                <label>Severity <span style="color:red;">*</span></label>
+                <label>Severity <span class="required">*</span></label>
                 <select name="severity" required>
                     <option value="">— Select —</option>
                     <option value="LOW" th:selected="${rule.severity == 'LOW'}">Low</option>
@@ -97,7 +334,7 @@
             </div>
 
             <div class="form-group">
-                <label>Action <span style="color:red;">*</span></label>
+                <label>Action <span class="required">*</span></label>
                 <select name="action" required>
                     <option value="">— Select —</option>
                     <option value="RETRY" th:selected="${rule.action == 'RETRY'}">Retry</option>
@@ -107,89 +344,73 @@
                 </select>
             </div>
 
-            <div class="form-group checkbox-group">
-                <input type="checkbox" name="active" th:checked="${rule.active}">
-                <label>Active</label>
+            <div class="checkbox-row">
+                <input type="checkbox" id="active" name="active" th:checked="${rule.active}">
+                <label for="active">Rule is active</label>
             </div>
 
             <div class="actions">
-                <button type="submit" class="btn btn-primary">Save</button>
-                <a href="/admin/reliability/policies/failure-classification" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">💾 Save</button>
+                <a href="/admin/reliability/policies/failure-classification" class="btn btn-outline">Cancel</a>
             </div>
         </form>
     </div>
+</div>
 
-    <!-- ===== HELP MODAL ===== -->
-    <div id="helpModal" class="modal" onclick="if(event.target===this) document.getElementById('helpModal').style.display='none'">
-        <div class="modal-content">
-            <h2>SpEL Expression Help</h2>
-            <p>Write a condition that returns <code>true</code> or <code>false</code>.</p>
+<!-- Help Modal -->
+<div id="helpModal" class="modal" onclick="if(event.target===this) this.classList.remove('show')">
+    <div class="modal-content">
+        <h2>SpEL Expression Help</h2>
+        <p>Write a condition that returns <code>true</code> or <code>false</code>.</p>
 
-            <h3>Available Variables</h3>
-            <ul>
-                <li><code>#message</code> – the error message (String)</li>
-                <li><code>#amount</code> – transaction amount (BigDecimal)</li>
-                <li><code>#customerEmail</code> – customer email (String)</li>
-                <li><code>#merchantId</code> – merchant ID (Long)</li>
-                <li><code>#description</code> – invoice description (String)</li>
-            </ul>
+        <h3>Available Variables</h3>
+        <ul>
+            <li><code>#message</code> — error message (String)</li>
+            <li><code>#amount</code> — transaction amount (BigDecimal)</li>
+            <li><code>#customerEmail</code> — customer email (String)</li>
+            <li><code>#merchantId</code> — merchant ID (Long)</li>
+            <li><code>#description</code> — invoice description (String)</li>
+        </ul>
 
-            <h3>Examples</h3>
-            <div class="example">
-                <code>#message.contains("timeout")</code> → matches if error message contains "timeout"
-            </div>
-            <div class="example">
-                <code>#amount > 1000</code> → matches if amount > 1000
-            </div>
-            <div class="example">
-                <code>#description.toLowerCase().contains("urgent")</code> → case-insensitive match
-            </div>
+        <h3>Examples</h3>
+        <div class="example"><code>#message.contains("timeout")</code> — matches if error message contains "timeout"</div>
+        <div class="example"><code>#amount &gt; 1000</code> — matches if amount &gt; 1000</div>
+        <div class="example"><code>#description.toLowerCase().contains("urgent")</code> — case-insensitive</div>
 
-            <h3>Operators</h3>
-            <p><code>&&</code> (AND), <code>||</code> (OR), <code>!</code> (NOT), <code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code></p>
+        <h3>Operators</h3>
+        <p><code>&amp;&amp;</code> (AND), <code>||</code> (OR), <code>!</code> (NOT), <code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code></p>
 
-            <button class="btn btn-secondary" onclick="document.getElementById('helpModal').style.display='none'">Close</button>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="document.getElementById('helpModal').classList.remove('show')">Close</button>
         </div>
     </div>
+</div>
 
-    <script>
-        function testExpression() {
-            const expr = document.getElementById('expressionInput').value;
-            const resultEl = document.getElementById('testResult');
-            if (!expr.trim()) {
-                resultEl.className = 'test-result error';
-                resultEl.textContent = 'Please enter an expression first.';
-                resultEl.style.display = 'block';
-                return;
-            }
-            // Determine policy type from the URL (failure-classification)
-            // We'll use 'RETRY' as the context type, but it doesn't matter much
-            fetch('/admin/reliability/test-expression?expression=' + encodeURIComponent(expr) + '&policyType=RETRY', {
-                method: 'POST'
-            })
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.toast').forEach(function(toast, index) {
+            setTimeout(function() {
+                toast.classList.add('hide');
+                setTimeout(function() { toast.remove(); }, 300);
+            }, 4000 + (index * 500));
+        });
+    });
+
+    function testExpression() {
+        const expr = document.getElementById('expressionInput').value;
+        const resultEl = document.getElementById('testResult');
+        if (!expr.trim()) return;
+        fetch('/admin/reliability/test-expression?expression=' + encodeURIComponent(expr) + '&policyType=RETRY', { method: 'POST' })
             .then(response => response.json())
             .then(data => {
                 resultEl.className = 'test-result ' + (data.valid ? 'success' : 'error');
                 resultEl.textContent = data.message;
-                resultEl.style.display = 'block';
             })
             .catch(err => {
                 resultEl.className = 'test-result error';
-                resultEl.textContent = 'Error testing expression: ' + err.message;
-                resultEl.style.display = 'block';
+                resultEl.textContent = 'Error: ' + err.message;
             });
-        }
-
-        // Auto-hide toasts
-        document.addEventListener('DOMContentLoaded', function() {
-            const toasts = document.querySelectorAll('.toast');
-            toasts.forEach(function(toast, index) {
-                setTimeout(function() {
-                    toast.classList.add('hide');
-                    setTimeout(function() { toast.remove(); }, 300);
-                }, 4000 + (index * 500));
-            });
-        });
-    </script>
+    }
+</script>
 </body>
 </html>

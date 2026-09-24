@@ -2,78 +2,313 @@
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
-    <title>Invoice Details</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Details · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        /* Optional: simple styling for buttons */
-        .btn {
-            display: inline-block;
-            padding: 8px 16px;
-            margin: 4px;
-            background: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
         }
-        .btn-primary { background: #007bff; }
-        .btn:hover { opacity: 0.8; }
-        table { border-collapse: collapse; margin: 16px 0; }
-        th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
-        th { background: #f2f2f2; }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 800px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+
+        .detail-row {
+            display: flex;
+            padding: 14px 0;
+            border-bottom: 1px solid #f1f5f9;
+            align-items: center;
+            gap: 16px;
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label {
+            width: 160px;
+            flex-shrink: 0;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .detail-value {
+            flex: 1;
+            font-size: 0.9375rem;
+            font-weight: 400;
+            color: #0f172a;
+        }
+        .detail-value.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.875rem;
+        }
+        .detail-value.amount {
+            font-size: 1.25rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 14px;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .badge-approved { background: #d1fae5; color: #065f46; }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-paid { background: #dbeafe; color: #1e40af; }
+        .badge-rejected { background: #fee2e2; color: #991b1b; }
+        .badge-draft { background: #f1f5f9; color: #64748b; }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding-top: 20px;
+            margin-top: 8px;
+            border-top: 1px solid #f1f5f9;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(11,26,51,0.25);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(11,26,51,0.35); }
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 8px 20px rgba(16,185,129,0.25);
+        }
+        .btn-success:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(16,185,129,0.35); }
+        .btn-outline {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-outline:hover { border-color: #2d6bb8; color: #2d6bb8; background: #f8faff; }
+
+        .status-note {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 16px 20px;
+            border-radius: 14px;
+            font-size: 0.875rem;
+            line-height: 1.55;
+            margin-bottom: 20px;
+            font-weight: 400;
+        }
+        .status-note.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+        .status-note.success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .status-note.warning { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+        .status-note.danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+        .status-note .emoji { flex-shrink: 0; font-size: 1.125rem; }
+
+        .payment-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            border-radius: 8px;
+            color: #4f46e5;
+            text-decoration: none;
+            font-size: 0.75rem;
+            font-weight: 500;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            transition: all 0.15s ease;
+        }
+        .payment-link:hover { background: #dbeafe; color: #3730a3; }
+
+        @media (max-width: 640px) {
+            .detail-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+            .detail-label { width: auto; }
+            .card { padding: 20px 22px; }
+        }
     </style>
 </head>
 <body>
-    <h1>Invoice #<span th:text="${invoice.id}">1</span></h1>
-    <a href="/dashboard">← Back to Dashboard</a>
+<div class="container">
 
-    <table>
-        <tr><th>Amount</th>
-            <td th:text="${currencyHelper.getFormattedAmount(invoice.amount, invoice.currency)}">£ 100.00</td>
-        </tr>
-        <tr><th>Description</th><td th:text="${invoice.description}">Test</td></tr>
-        <tr><th>Customer</th><td th:text="${invoice.customerEmail}">customer@test.com</td></tr>
-        <tr><th>Merchant</th><td th:text="${invoice.merchantId}">2</td></tr>
-        <tr><th>Status</th><td th:text="${invoice.status}">APPROVED</td></tr>
-        <tr><th>Created</th><td th:text="${invoice.createdAt}">2026-01-01</td></tr>
-        <tr th:if="${invoice.updatedAt}"><th>Updated</th><td th:text="${invoice.updatedAt}">2026-01-02</td></tr>
-        <tr><th>Currency</th><td th:text="${invoice.currency}">GBP</td></tr>
-    </table>
-
-    <!-- ✅ PDF Download (visible to all authenticated users) -->
-    <div sec:authorize="isAuthenticated()" style="margin: 16px 0;">
-        <a th:href="@{/invoices/{id}/pdf(id=${invoice.id})}" class="btn btn-primary" target="_blank">
-            📄 Download PDF
-        </a>
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">🧾</span> Invoice #<span th:text="${invoice.id}">1</span></h1>
     </div>
 
-    <!-- ✅ Customer only: if approved and not paid, show Pay Now button -->
-    <div th:if="${invoice.status == 'APPROVED'}" sec:authorize="hasRole('CUSTOMER')">
-        <a th:href="@{/pay/{id}(id=${invoice.id})}" class="btn">Pay Now</a>
+    <div class="card">
+        <div class="detail-row">
+            <span class="detail-label">Amount</span>
+            <span class="detail-value amount" th:text="${currencyHelper.getFormattedAmount(invoice.amount, invoice.currency)}">£ 100.00</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Description</span>
+            <span class="detail-value" th:text="${invoice.description}">Test</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Customer</span>
+            <span class="detail-value mono" th:text="${invoice.customerEmail}">customer@test.com</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Merchant ID</span>
+            <span class="detail-value mono" th:text="${invoice.merchantId}">2</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Status</span>
+            <span class="detail-value">
+                <span th:if="${invoice.status == 'APPROVED'}" class="badge badge-approved">Approved</span>
+                <span th:if="${invoice.status == 'PENDING_APPROVAL'}" class="badge badge-pending">Pending Approval</span>
+                <span th:if="${invoice.status == 'PAID'}" class="badge badge-paid">Paid</span>
+                <span th:if="${invoice.status == 'REJECTED'}" class="badge badge-rejected">Rejected</span>
+                <span th:if="${invoice.status != 'APPROVED' and invoice.status != 'PENDING_APPROVAL' and invoice.status != 'PAID' and invoice.status != 'REJECTED'}"
+                      class="badge badge-draft" th:text="${invoice.status}">Draft</span>
+            </span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Currency</span>
+            <span class="detail-value" th:text="${invoice.currency}">GBP</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Created</span>
+            <span class="detail-value" th:text="${#temporals.format(invoice.createdAt, 'dd MMM yyyy · HH:mm')}">01 Jan 2026 · 12:00</span>
+        </div>
+        <div class="detail-row" th:if="${invoice.updatedAt}">
+            <span class="detail-label">Updated</span>
+            <span class="detail-value" th:text="${#temporals.format(invoice.updatedAt, 'dd MMM yyyy · HH:mm')}">02 Jan 2026 · 12:00</span>
+        </div>
     </div>
 
-    <!-- Merchant: show Payment Link to share with customer -->
-    <div th:if="${invoice.status == 'APPROVED'}" sec:authorize="hasRole('MERCHANT')">
-        <p>📋 Share this payment link with your customer:</p>
-        <a th:href="@{/pay/{id}(id=${invoice.id})}" target="_blank">🔗 Payment Link</a>
-        <!-- PDF button already exists above, but we keep the merchant's extra one if desired -->
-        <a th:href="@{/invoices/{id}/pdf(id=${invoice.id})}" class="btn btn-primary" target="_blank">Download PDF</a>
+    <!-- Status notes -->
+    <div th:if="${invoice.status == 'PENDING_APPROVAL'}" class="status-note warning">
+        <span class="emoji">⏳</span>
+        <div>This invoice is pending admin approval.</div>
     </div>
 
-    <!-- If pending approval, show message (visible to all) -->
-    <div th:if="${invoice.status == 'PENDING_APPROVAL'}">
-        <p>⏳ This invoice is pending admin approval.</p>
+    <div th:if="${invoice.status == 'PAID'}" class="status-note success">
+        <span class="emoji">✅</span>
+        <div>This invoice has been paid.</div>
     </div>
 
-    <!-- If rejected, show Appeal button for merchant -->
-    <div th:if="${invoice.status == 'REJECTED'}" sec:authorize="hasRole('MERCHANT')">
-        <a th:href="@{/invoices/{id}/messages(id=${invoice.id})}" class="btn">📩 Appeal</a>
-        <p>Your invoice was rejected. Click "Appeal" to discuss with the admin.</p>
+    <div th:if="${invoice.status == 'REJECTED' and #authorization.expression('hasRole(''MERCHANT'')')}" class="status-note danger">
+        <span class="emoji">❌</span>
+        <div>Your invoice was rejected. Click <strong>Appeal</strong> below to discuss with the admin.</div>
     </div>
 
-    <!-- If already paid, show status (visible to all) -->
-    <div th:if="${invoice.status == 'PAID'}">
-        <p>✅ This invoice has been paid.</p>
+    <!-- Actions -->
+    <div class="card">
+        <div class="actions">
+            <a sec:authorize="isAuthenticated()"
+               th:href="@{/invoices/{id}/pdf(id=${invoice.id})}"
+               target="_blank"
+               class="btn btn-primary">📄 Download PDF</a>
+
+            <a th:if="${invoice.status == 'APPROVED'}"
+               sec:authorize="hasRole('CUSTOMER')"
+               th:href="@{/pay/{id}(id=${invoice.id})}"
+               class="btn btn-success">💳 Pay Now</a>
+
+            <a th:if="${invoice.status == 'REJECTED'}"
+               sec:authorize="hasRole('MERCHANT')"
+               th:href="@{/invoices/{id}/messages(id=${invoice.id})}"
+               class="btn btn-primary">📩 Appeal</a>
+
+            <a href="/dashboard" class="btn btn-outline">← Back to Dashboard</a>
+        </div>
+
+        <!-- Merchant: share payment link -->
+        <div th:if="${invoice.status == 'APPROVED'}" sec:authorize="hasRole('MERCHANT')" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #f1f5f9;">
+            <div style="font-size: 0.7rem; font-weight: 500; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">📋 Share this payment link with your customer</div>
+            <a th:href="@{/pay/{id}(id=${invoice.id})}" target="_blank" class="payment-link">🔗 /pay/<span th:text="${invoice.id}">1</span></a>
+        </div>
     </div>
 
-    <a href="/dashboard">Back to Dashboard</a>
+</div>
 </body>
 </html>

@@ -1,88 +1,385 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Webhooks</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webhook Deliveries · PayFlow</title>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@1.9.10/dist/htmx.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 0.85em; }
-        .btn-create { background: #2d7a3a; color: white; }
-        .btn-edit { background: #3498db; color: white; }
-        .btn-delete { background: #c0392b; color: white; }
-        .btn-toggle { background: #f39c12; color: white; }
-        .btn-deliveries { background: #8e44ad; color: white; }
-        .btn-simulator { background: #1abc9c; color: white; }
-        table { border-collapse: collapse; width: 100%; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #f2f2f2; }
-        .badge { padding: 2px 8px; border-radius: 12px; color: white; }
-        .badge-active { background: #2d7a3a; }
-        .badge-inactive { background: #c0392b; }
-        .feature-toggle { margin: 10px 0; }
-        .feature-toggle label { margin-right: 20px; }
-        .actions-row { display: flex; gap: 5px; flex-wrap: wrap; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .filter-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+        .filter-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            align-items: end;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .filter-group label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .filter-group input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-weight: 300;
+            color: #0f172a;
+            background: white;
+            transition: all 0.15s ease;
+        }
+        .filter-group input:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 3px rgba(45, 107, 184, 0.12);
+        }
+        .filter-actions { display: flex; gap: 8px; align-items: flex-end; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            overflow: hidden;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .data-table td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover td { background: #fafbfc; }
+        .data-table td.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #0f172a;
+        }
+        .data-table td.url-cell {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.75rem;
+            color: #4f46e5;
+            max-width: 260px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-failure { background: #fee2e2; color: #991b1b; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 6px 16px rgba(11,26,51,0.2);
+            padding: 10px 20px;
+            font-size: 0.8125rem;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(11,26,51,0.3); }
+        .btn-outline {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-outline:hover { border-color: #2d6bb8; color: #2d6bb8; background: #f8faff; }
+        .btn-retry {
+            background: #f59e0b;
+            color: white;
+            box-shadow: 0 4px 12px rgba(245,158,11,0.2);
+        }
+        .btn-retry:hover { background: #d97706; transform: translateY(-1px); }
+
+        .retry-status {
+            display: inline-block;
+            margin-left: 8px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #059669;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+        /* Pagination */
+        .pagination-wrap {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+            padding: 0 4px;
+        }
+        .pagination-info {
+            font-size: 0.8125rem;
+            color: #64748b;
+            font-weight: 300;
+        }
+        .pagination {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .pagination a,
+        .pagination span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 38px;
+            height: 38px;
+            padding: 0 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            color: #475569;
+            background: white;
+            transition: all 0.15s ease;
+        }
+        .pagination a:hover {
+            border-color: #2d6bb8;
+            color: #2d6bb8;
+            background: #f8faff;
+        }
+        .pagination .disabled {
+            color: #cbd5e1;
+            background: #f8fafc;
+            border-color: #f1f5f9;
+        }
+
+        @media (max-width: 1000px) {
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
+        }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>🌐 Webhook Configurations</h1>
-    <a href="/dashboard">← Back to Dashboard</a>
 
-    <!-- Feature flag -->
-    <div class="feature-toggle">
-        <form method="post" th:action="@{/admin/features/toggle}">
-            <input type="hidden" name="id" value="1" />
-            <label>
-                <input type="checkbox" th:checked="${webhooksEnabled}" disabled />
-                Webhooks enabled (feature flag)
-            </label>
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Admin</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">📤</span> Webhook Deliveries</h1>
+    </div>
+
+    <!-- Filter -->
+    <div class="filter-card">
+        <form method="get" class="filter-form">
+            <div class="filter-group">
+                <label for="configId">Config ID</label>
+                <input type="number" id="configId" name="configId" th:value="${configId}" placeholder="Filter by config" />
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary">🔍 Filter</button>
+                <a th:href="@{/admin/webhook-deliveries}" class="btn btn-outline">Reset</a>
+            </div>
         </form>
     </div>
 
-    <div style="margin: 15px 0; display: flex; gap: 10px; flex-wrap: wrap;">
-        <a href="/admin/webhooks/create" class="btn btn-create">+ Create Webhook</a>
-        <a href="/admin/webhooks/simulator" class="btn btn-simulator">🧪 Webhook Simulator</a>
-        <a href="/admin/webhook-deliveries" class="btn btn-deliveries">📤 All Deliveries</a>
+    <!-- Table -->
+    <div class="card">
+        <table class="data-table" th:unless="${deliveries.empty}">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Config</th>
+                    <th>Event Type</th>
+                    <th>URL</th>
+                    <th>Status</th>
+                    <th>Attempt</th>
+                    <th>Created</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="delivery : ${deliveries.content}">
+                    <td class="mono" th:text="${delivery.id}">1</td>
+                    <td class="mono" th:text="${delivery.webhookConfigId}">10</td>
+                    <td class="mono" th:text="${delivery.eventType}">TRANSACTION_SETTLED</td>
+                    <td class="url-cell" th:text="${delivery.url}" th:title="${delivery.url}">https://example.com</td>
+                    <td>
+                        <span th:if="${delivery.success}" class="badge badge-success">✅ Success</span>
+                        <span th:unless="${delivery.success}" class="badge badge-failure">❌ Failed</span>
+                    </td>
+                    <td class="mono" th:text="${delivery.attemptNumber}">1</td>
+                    <td th:text="${#temporals.format(delivery.createdAt, 'dd MMM yyyy · HH:mm')}">01 Jan 2026 · 12:00</td>
+                    <td>
+                        <button class="btn btn-retry"
+                                th:data-hx-post="@{/admin/webhook-deliveries/{id}/retry(id=${delivery.id})}"
+                                th:data-hx-target="'#retry-status-' + ${delivery.id}"
+                                data-hx-swap="innerHTML">
+                            🔄 Retry
+                        </button>
+                        <span th:id="'retry-status-' + ${delivery.id}" class="retry-status"></span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div th:if="${deliveries.empty}" class="empty">
+            <span class="emoji">📭</span>
+            <p>No webhook deliveries found.</p>
+        </div>
     </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>URL</th>
-                <th>Event Type</th>
-                <th>Status</th>
-                <th>Created</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="config : ${webhooks}" th:if="${config != null}">
-                <td th:text="${config.id}">1</td>
-                <td th:text="${config.name}">My Webhook</td>
-                <td th:text="${config.url}">https://example.com</td>
-                <td th:text="${config.eventType}">TRANSACTION_SETTLED</td>
-                <td>
-                    <span class="badge" th:classappend="${config.active ? 'badge-active' : 'badge-inactive'}"
-                          th:text="${config.active ? '✅ Active' : '❌ Inactive'}">Active</span>
-                </td>
-                <td th:text="${config.createdAt}">2026-01-01</td>
-                <td>
-                    <div class="actions-row">
-                        <a th:href="@{/admin/webhooks/{id}/edit(id=${config.id})}" class="btn btn-edit">Edit</a>
-                        <a th:href="@{/admin/webhooks/{id}/toggle(id=${config.id})}" class="btn btn-toggle">Toggle</a>
-                        <a th:href="@{/admin/webhooks/{id}/delete(id=${config.id})}" class="btn btn-delete" onclick="return confirm('Delete this webhook?')">Delete</a>
-                        <a th:href="@{/admin/webhook-deliveries(configId=${config.id})}" class="btn btn-deliveries">Deliveries</a>
-                    </div>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+    <!-- Pagination -->
+    <div class="pagination-wrap" th:unless="${deliveries.empty}">
+        <span class="pagination-info">
+            Page <strong style="font-weight:500;" th:text="${deliveries.number + 1}">1</strong>
+            of <strong style="font-weight:500;" th:text="${deliveries.totalPages}">1</strong>
+        </span>
 
-    <div th:if="${webhooks.empty}" style="text-align:center; color:#888; padding:20px;">
-        No webhooks configured.
+        <div class="pagination">
+            <a th:if="${deliveries.hasPrevious()}"
+               th:href="@{/admin/webhook-deliveries(page=${deliveries.number - 1}, configId=${configId})}">
+                ← Prev
+            </a>
+            <span th:unless="${deliveries.hasPrevious()}" class="disabled">← Prev</span>
+
+            <a th:if="${deliveries.hasNext()}"
+               th:href="@{/admin/webhook-deliveries(page=${deliveries.number + 1}, configId=${configId})}">
+                Next →
+            </a>
+            <span th:unless="${deliveries.hasNext()}" class="disabled">Next →</span>
+        </div>
     </div>
+
 </div>
 </body>
 </html>

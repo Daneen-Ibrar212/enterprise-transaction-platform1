@@ -2,59 +2,221 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Retry Policy Form</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${policy.id == null} ? 'Create Retry Policy · PayFlow' : 'Edit Retry Policy · PayFlow'">Retry Policy · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; }
-        .container { max-width: 700px; margin: 0 auto; background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { color: #1f2937; margin-top: 0; }
-        .form-group { margin-bottom: 16px; }
-        label { display: block; font-weight: 600; margin-bottom: 4px; color: #374151; }
-        input[type="text"], input[type="number"], select { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; }
-        input[type="checkbox"] { margin-right: 8px; }
-        .btn { display: inline-block; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 14px; border: none; cursor: pointer; }
-        .btn-primary { background: #2563eb; color: white; }
-        .btn-primary:hover { background: #1d4ed8; }
-        .btn-secondary { background: #6b7280; color: white; }
-        .btn-secondary:hover { background: #4b5563; }
-        .actions { margin-top: 20px; display: flex; gap: 12px; }
-        .checkbox-group { display: flex; align-items: center; gap: 8px; }
-        .checkbox-group label { margin: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 720px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
-        .toast { padding: 12px 20px; margin-bottom: 10px; border-radius: 8px; color: white; font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1); opacity: 1; transition: opacity 0.3s ease; max-width: 400px; }
-        .toast-success { background: #10b981; }
-        .toast-error { background: #ef4444; }
+        .toast {
+            padding: 14px 22px;
+            margin-bottom: 10px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            font-size: 0.875rem;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+            opacity: 1;
+            transition: opacity 0.3s ease;
+            max-width: 400px;
+        }
+        .toast-success { background: linear-gradient(135deg, #10b981, #059669); }
+        .toast-error { background: linear-gradient(135deg, #ef4444, #dc2626); }
         .toast.hide { opacity: 0; }
-        a { color: #2563eb; text-decoration: none; }
-        a:hover { text-decoration: underline; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+        }
+
+        .form-group { margin-bottom: 18px; }
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .form-group label .required { color: #ef4444; margin-left: 2px; }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.9375rem;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-weight: 300;
+            color: #0f172a;
+            background: white;
+            transition: all 0.15s ease;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 4px rgba(45, 107, 184, 0.12);
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 0;
+        }
+        .checkbox-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #2d6bb8;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .checkbox-row label {
+            font-size: 0.875rem;
+            color: #334155;
+            font-weight: 400;
+            cursor: pointer;
+            text-transform: none;
+            letter-spacing: 0;
+            margin-bottom: 0;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+            padding-top: 20px;
+            border-top: 1px solid #f1f5f9;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(11,26,51,0.25);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(11,26,51,0.35); }
+        .btn-outline {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-outline:hover { border-color: #94a3b8; background: #f8fafc; }
     </style>
 </head>
 <body>
 
-    <!-- Toast Container -->
-    <div id="toast-container" class="toast-container">
-        <div th:if="${success}" class="toast toast-success" th:text="${success}"></div>
-        <div th:if="${error}" class="toast toast-error" th:text="${error}"></div>
+<div class="toast-container">
+    <div th:if="${success}" class="toast toast-success" th:text="${success}"></div>
+    <div th:if="${error}" class="toast toast-error" th:text="${error}"></div>
+</div>
+
+<div class="container">
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/admin/reliability/policies/retry" class="back-link">← Back to Policies</a>
+        </div>
+        <h1 th:if="${policy.id == null}"><span style="font-size:1.5rem;">🔄</span> Create Retry Policy</h1>
+        <h1 th:if="${policy.id != null}"><span style="font-size:1.5rem;">✏️</span> Edit Retry Policy</h1>
     </div>
 
-    <div class="container">
-        <h1 th:if="${policy.id == null}">Create Retry Policy</h1>
-        <h1 th:if="${policy.id != null}">Edit Retry Policy</h1>
-
+    <div class="card">
         <form th:action="${policy.id == null} ? '/admin/reliability/policies/retry' : '/admin/reliability/policies/retry/' + ${policy.id}" method="post">
-            <!-- Only the ID is needed – version field removed -->
             <input type="hidden" name="id" th:value="${policy.id}">
 
             <div class="form-group">
-                <label>Operation Type <span style="color:red;">*</span></label>
+                <label>Operation Type <span class="required">*</span></label>
                 <input type="text" name="operationType" th:value="${policy.operationType}" required>
             </div>
             <div class="form-group">
-                <label>Max Attempts <span style="color:red;">*</span></label>
+                <label>Max Attempts <span class="required">*</span></label>
                 <input type="number" name="maxAttempts" th:value="${policy.maxAttempts}" min="1" required>
             </div>
             <div class="form-group">
-                <label>Backoff Strategy <span style="color:red;">*</span></label>
+                <label>Backoff Strategy <span class="required">*</span></label>
                 <select name="backoffStrategy" required>
                     <option value="FIXED" th:selected="${policy.backoffStrategy == 'FIXED'}">Fixed</option>
                     <option value="LINEAR" th:selected="${policy.backoffStrategy == 'LINEAR'}">Linear</option>
@@ -62,38 +224,40 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>Base Delay (ms) <span style="color:red;">*</span></label>
+                <label>Base Delay (ms) <span class="required">*</span></label>
                 <input type="number" name="baseDelayMs" th:value="${policy.baseDelayMs}" min="1" required>
             </div>
             <div class="form-group">
-                <label>Max Delay (ms) <span style="color:red;">*</span></label>
+                <label>Max Delay (ms) <span class="required">*</span></label>
                 <input type="number" name="maxDelayMs" th:value="${policy.maxDelayMs}" min="1" required>
             </div>
-            <div class="form-group checkbox-group">
-                <input type="checkbox" name="jitterEnabled" th:checked="${policy.jitterEnabled}">
-                <label>Enable Jitter</label>
+
+            <div class="checkbox-row">
+                <input type="checkbox" id="jitterEnabled" name="jitterEnabled" th:checked="${policy.jitterEnabled}">
+                <label for="jitterEnabled">Enable Jitter</label>
             </div>
-            <div class="form-group checkbox-group">
-                <input type="checkbox" name="active" th:checked="${policy.active}">
-                <label>Active</label>
+            <div class="checkbox-row">
+                <input type="checkbox" id="active" name="active" th:checked="${policy.active}">
+                <label for="active">Policy is active</label>
             </div>
+
             <div class="actions">
-                <button type="submit" class="btn btn-primary">Save</button>
-                <a href="/admin/reliability/policies/retry" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">💾 Save</button>
+                <a href="/admin/reliability/policies/retry" class="btn btn-outline">Cancel</a>
             </div>
         </form>
     </div>
+</div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const toasts = document.querySelectorAll('.toast');
-            toasts.forEach(function(toast, index) {
-                setTimeout(function() {
-                    toast.classList.add('hide');
-                    setTimeout(function() { toast.remove(); }, 300);
-                }, 4000 + (index * 500));
-            });
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.toast').forEach(function(toast, index) {
+            setTimeout(function() {
+                toast.classList.add('hide');
+                setTimeout(function() { toast.remove(); }, 300);
+            }, 4000 + (index * 500));
         });
-    </script>
+    });
+</script>
 </body>
 </html>

@@ -1,44 +1,287 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>2FA Verification</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two-Factor Verification · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; max-width: 500px; margin: 0 auto; }
-        .error { color: red; padding: 10px; border: 1px solid red; background: #ffeeee; margin: 10px 0; }
-        label { display: block; margin: 10px 0 5px; }
-        input { padding: 5px; width: 200px; }
-        button { padding: 5px 15px; background: #2d7a3a; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .divider { border-top: 1px solid #ddd; margin: 20px 0; }
-        .help-text { font-size: 0.8em; color: #888; margin-top: 5px; }
-        .backup-code-input { margin-top: 10px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        /* Decorative blobs */
+        body::before {
+            content: '';
+            position: absolute;
+            top: -120px;
+            right: -120px;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        body::after {
+            content: '';
+            position: absolute;
+            bottom: -150px;
+            left: -100px;
+            width: 350px;
+            height: 350px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .verify-box {
+            position: relative;
+            z-index: 1;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 44px 40px;
+            border-radius: 20px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 440px;
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+        .logo-circle {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 20px auto;
+            background: linear-gradient(135deg, #0b1a33 0%, #2d6bb8 100%);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            box-shadow: 0 12px 28px rgba(11,26,51,0.3);
+        }
+        h1 {
+            text-align: center;
+            font-size: 1.375rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #64748b;
+            font-size: 0.875rem;
+            font-weight: 300;
+            line-height: 1.5;
+            margin-bottom: 28px;
+        }
+        .flash-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.9375rem;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-weight: 300;
+            color: #0f172a;
+            background: white;
+            transition: all 0.15s ease;
+            letter-spacing: -0.005em;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 4px rgba(45, 107, 184, 0.12);
+        }
+        .form-group input::placeholder {
+            color: #94a3b8;
+            font-weight: 300;
+        }
+        /* Code input - big monospace style */
+        .code-input {
+            text-align: center;
+            font-family: 'SF Mono', Monaco, Consolas, monospace !important;
+            font-size: 1.375rem !important;
+            font-weight: 400 !important;
+            letter-spacing: 0.5em !important;
+            padding: 16px !important;
+            padding-right: 0 !important;
+        }
+        .help-text {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-weight: 300;
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 24px 0;
+            color: #94a3b8;
+            font-size: 0.7rem;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
+        }
+        .btn {
+            width: 100%;
+            padding: 13px 20px;
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.9375rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            box-shadow: 0 8px 20px rgba(11,26,51,0.25);
+            transition: all 0.2s ease;
+            margin-top: 8px;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 28px rgba(11,26,51,0.35);
+        }
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: 0 4px 12px rgba(11,26,51,0.25);
+        }
+        .footer-link {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 0.8125rem;
+        }
+        .footer-link a {
+            color: #64748b;
+            text-decoration: none;
+            font-weight: 400;
+            transition: color 0.15s ease;
+        }
+        .footer-link a:hover {
+            color: #2d6bb8;
+        }
+        .info-note {
+            background: #f0f9ff;
+            border: 1px solid #bfdbfe;
+            color: #1e40af;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 300;
+            line-height: 1.55;
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .info-note .emoji {
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
     </style>
 </head>
 <body>
-    <h1>🔐 Two‑Factor Verification</h1>
-    <p>Enter the 6‑digit code from your authenticator app, or use a backup code.</p>
 
-    <div th:if="${error}" class="error" th:text="${error}"></div>
+<div class="verify-box">
+    <!-- Logo -->
+    <div class="logo-circle">🔐</div>
 
+    <!-- Heading -->
+    <h1>Two-Factor Verification</h1>
+    <p class="subtitle">
+        Enter the 6-digit code from your authenticator app,<br/>or use one of your saved backup codes.
+    </p>
+
+    <!-- Error -->
+    <div th:if="${error}" class="flash-error">
+        <span style="font-size:1.125rem;">⚠️</span>
+        <span th:text="${error}">Invalid code. Please try again.</span>
+    </div>
+
+    <!-- Form -->
     <form method="post" th:action="@{/2fa/verify}">
-        <label>Authenticator Code:</label>
-        <input type="text" name="code" maxlength="6" placeholder="6-digit code" />
-        <div class="help-text">Enter the code from Google Authenticator, Authy, etc.</div>
-        <br/>
 
-        <div class="divider">OR</div>
+        <div class="form-group">
+            <label for="code">Authenticator Code</label>
+            <input type="text" id="code" name="code" maxlength="6"
+                   placeholder="000000" inputmode="numeric" autocomplete="one-time-code"
+                   class="code-input" autofocus />
+            <div class="help-text">From Google Authenticator, Authy, 1Password, etc.</div>
+        </div>
 
-        <div class="backup-code-input">
-            <label>Backup Code:</label>
-            <input type="text" name="backupCode" placeholder="e.g., XXXX-XXXX" />
+        <div class="divider">or</div>
+
+        <div class="form-group">
+            <label for="backupCode">Backup Code</label>
+            <input type="text" id="backupCode" name="backupCode"
+                   placeholder="XXXX-XXXX" autocomplete="off" />
             <div class="help-text">Enter one of your saved backup codes.</div>
         </div>
-        <br/>
 
-        <button type="submit">Verify</button>
+        <button type="submit" class="btn">Verify →</button>
     </form>
 
-    <div style="margin-top: 20px;">
-        <a href="/login">Cancel</a>
+    <!-- Help note -->
+    <div class="info-note">
+        <span class="emoji">💡</span>
+        <span>Lost your device and backup codes? Contact your administrator to restore access.</span>
     </div>
+
+    <!-- Cancel -->
+    <div class="footer-link">
+        <a href="/login">← Back to sign in</a>
+    </div>
+</div>
+
 </body>
 </html>

@@ -1,260 +1,721 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Reports & Analytics</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports & Analytics · PayFlow</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
         .container { max-width: 1400px; margin: 0 auto; }
-        .back-link { color: #007bff; text-decoration: none; }
-        .back-link:hover { text-decoration: underline; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .flash {
+            padding: 14px 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .flash-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
 
         /* Tabs */
-        .tabs { display: flex; gap: 5px; margin: 20px 0; border-bottom: 2px solid #ddd; flex-wrap: wrap; }
-        .tabs a { padding: 12px 24px; text-decoration: none; color: #555; border-radius: 4px 4px 0 0; font-weight: 500; transition: all 0.2s; }
-        .tabs a:hover { background: #e9ecef; }
-        .tabs a.active { background: #2d7a3a; color: white; }
-        .tabs a i { margin-right: 8px; }
+        .tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            background: white;
+            padding: 6px;
+            border-radius: 14px;
+            border: 1px solid rgba(226,232,240,0.6);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .tabs a {
+            padding: 10px 18px;
+            text-decoration: none;
+            color: #475569;
+            font-size: 0.875rem;
+            font-weight: 400;
+            border-radius: 10px;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        .tabs a:hover { background: #f1f5f9; color: #0f172a; }
+        .tabs a.active {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(11,26,51,0.2);
+        }
 
-        /* Tab Content */
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        /* Cards & Layout */
-        .row { display: flex; flex-wrap: wrap; gap: 20px; }
-        .col { flex: 1; min-width: 300px; }
-        .card { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 20px; margin: 10px 0; }
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+        .card h3 {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #0f172a;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Rows */
+        .row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
         .chart-container { position: relative; height: 200px; width: 100%; }
-        .metric-card { text-align: center; padding: 15px; background: #fff; border-radius: 8px; border: 1px solid #ddd; flex: 1; min-width: 150px; }
-        .metric-card .number { font-size: 2em; font-weight: bold; color: #2d7a3a; }
-        .metric-card .growth-positive { color: #2d7a3a; font-size: 0.9em; }
-        .metric-card .growth-negative { color: #c0392b; font-size: 0.9em; }
 
-        .filter-bar { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; margin: 20px 0; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .filter-bar input, .filter-bar select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-        .filter-bar button { padding: 8px 20px; background: #2d7a3a; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .filter-bar button:hover { background: #1e5c2a; }
+        /* Metric cards */
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .metric-card {
+            background: white;
+            padding: 20px 22px;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            transition: all 0.2s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px -8px rgba(0,20,50,0.12);
+            border-color: #cbd5e1;
+        }
+        .metric-label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .metric-number {
+            font-size: 1.75rem;
+            font-weight: 500;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+        .growth {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-top: 6px;
+        }
+        .growth-positive { color: #059669; }
+        .growth-negative { color: #dc2626; }
+        .metric-sub {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            font-weight: 300;
+            margin-top: 4px;
+        }
 
-        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; background: #3498db; color: white; font-size: 14px; }
-        .btn:hover { opacity: 0.8; }
-        .btn-success { background: #2d7a3a; }
-        .btn-danger { background: #c0392b; }
-        .btn-purple { background: #8e44ad; }
-        .btn-secondary { background: #6c757d; }
+        /* Filter card */
+        .filter-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+        .filter-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            align-items: end;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .filter-group label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .filter-group input,
+        .filter-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-weight: 300;
+            color: #0f172a;
+            background: white;
+            transition: all 0.15s ease;
+        }
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 3px rgba(45, 107, 184, 0.12);
+        }
+        .filter-actions { display: flex; gap: 8px; align-items: flex-end; }
 
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background: #f8f9fa; font-weight: 600; }
+        /* Saved reports */
+        .saved-card {
+            background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+            border: 1px solid #bfdbfe;
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 20px;
+        }
+        .saved-card h3 {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #1e40af;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .saved-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .saved-row select,
+        .saved-row input[type="text"] {
+            padding: 10px 14px;
+            border: 1px solid #bfdbfe;
+            border-radius: 10px;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-size: 0.8125rem;
+            font-weight: 300;
+            background: white;
+            color: #0f172a;
+        }
+        .saved-row select:focus,
+        .saved-row input[type="text"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+        }
+        .save-msg {
+            font-size: 0.8125rem;
+            font-weight: 400;
+            margin-left: 8px;
+        }
 
-        .saved-reports { background: #f0f8ff; padding: 15px; border-radius: 8px; border: 1px solid #cce5ff; margin: 15px 0; }
-        .saved-reports select, .saved-reports input { padding: 6px; border-radius: 4px; border: 1px solid #ccc; }
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 6px 16px rgba(11,26,51,0.2);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(11,26,51,0.3); }
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 6px 16px rgba(16,185,129,0.2);
+        }
+        .btn-success:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(16,185,129,0.3); }
+        .btn-danger {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .btn-danger:hover { background: #fecaca; }
+        .btn-outline {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-outline:hover { border-color: #2d6bb8; color: #2d6bb8; background: #f8faff; }
+        .btn-csv { background: #1e293b; color: white; box-shadow: 0 6px 16px rgba(30,41,59,0.2); }
+        .btn-pdf { background: #e11d48; color: white; box-shadow: 0 6px 16px rgba(225,29,72,0.2); }
+        .btn-excel { background: #4f46e5; color: white; box-shadow: 0 6px 16px rgba(79,70,229,0.2); }
+        .btn-purple { background: #8b5cf6; color: white; box-shadow: 0 6px 16px rgba(139,92,246,0.2); }
+        .btn-purple:hover { background: #7c3aed; transform: translateY(-1px); }
+
+        /* Data table */
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .data-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover td { background: #fafbfc; }
+        .data-table td.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #0f172a;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .badge-weekly { background: #dbeafe; color: #1e40af; }
+        .badge-daily { background: #d1fae5; color: #065f46; }
+        .badge-monthly { background: #fef3c7; color: #92400e; }
+
+        /* Empty */
+        .empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+        /* Message box */
+        .message-box {
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            color: #92400e;
+            padding: 16px 20px;
+            border-radius: 14px;
+            font-size: 0.875rem;
+            line-height: 1.55;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-weight: 400;
+        }
+        .message-box .emoji { flex-shrink: 0; font-size: 1.125rem; }
 
         /* Modal */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(11,26,51,0.5);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+        }
         .modal-overlay.show { display: flex; }
-        .modal { background: white; padding: 30px; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-        .modal .field-group { margin: 15px 0; }
-        .modal .field-group label { display: inline-block; margin-right: 15px; }
-        .modal .btn { margin-right: 10px; }
-
-        .flash-success { background: #d4edda; padding: 12px; border-radius: 4px; color: #155724; margin: 10px 0; }
-        .flash-error { background: #f8d7da; padding: 12px; border-radius: 4px; color: #721c24; margin: 10px 0; }
+        .modal {
+            background: white;
+            padding: 32px 36px;
+            border-radius: 20px;
+            max-width: 620px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.3);
+        }
+        .modal h3 {
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .modal .field-group { margin-bottom: 18px; }
+        .modal .field-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+        .modal .field-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-size: 0.9375rem;
+            font-weight: 300;
+            background: white;
+        }
+        .modal .field-group select:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 4px rgba(45, 107, 184, 0.12);
+        }
+        .modal .field-group .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 8px;
+        }
+        .modal .field-group .checkbox-grid label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            text-transform: none;
+            letter-spacing: 0;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            color: #334155;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            margin-bottom: 0;
+        }
+        .modal .field-group .checkbox-grid label:hover {
+            background: white;
+            border-color: #cbd5e1;
+        }
+        .modal .field-group .checkbox-grid input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #2d6bb8;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #f1f5f9;
+        }
 
         @media (max-width: 768px) {
-            .tabs a { padding: 8px 14px; font-size: 13px; }
-            .metric-card { min-width: 120px; }
-            .col { min-width: 100%; }
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
         }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>📊 Reports & Analytics</h1>
-    <a href="/dashboard" class="back-link">← Back to Dashboard</a>
 
-    <!-- Flash Messages -->
-    <div th:if="${success}" class="flash-success" th:text="${success}"></div>
-    <div th:if="${error}" class="flash-error" th:text="${error}"></div>
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">📊</span> Reports & Analytics</h1>
+    </div>
 
-    <!-- ===== TABS ===== -->
+    <!-- Flash -->
+    <div th:if="${success}" class="flash flash-success">
+        <span style="font-size:1.125rem;">✅</span>
+        <span th:text="${success}">Success</span>
+    </div>
+    <div th:if="${error}" class="flash flash-error">
+        <span style="font-size:1.125rem;">❌</span>
+        <span th:text="${error}">Error</span>
+    </div>
+
+    <!-- Tabs -->
     <div class="tabs">
         <a href="#transaction" class="active" data-tab="transaction">📋 Transaction Reports</a>
         <a href="#executive" data-tab="executive">📈 Executive Analytics</a>
         <a href="#history" data-tab="history">📁 Report History</a>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- TAB 1: TRANSACTION REPORTS                                   -->
-    <!-- ============================================================ -->
+    <!-- ===== TAB 1: TRANSACTION REPORTS ===== -->
     <div id="tab-transaction" class="tab-content active">
 
-        <!-- Saved Reports -->
-        <div class="saved-reports">
+        <div class="saved-card">
             <h3>📌 Saved Reports</h3>
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <select id="savedReportSelect" style="min-width: 200px;">
+            <div class="saved-row">
+                <select id="savedReportSelect" style="min-width:220px;">
                     <option value="">-- Load saved report --</option>
                 </select>
-                <button id="loadReportBtn" class="btn btn-secondary">Load</button>
+                <button id="loadReportBtn" class="btn btn-outline">Load</button>
                 <button id="deleteReportBtn" class="btn btn-danger">Delete</button>
-                <span style="margin: 0 10px;">|</span>
+                <span style="color:#cbd5e1; margin: 0 4px;">|</span>
                 <input type="text" id="reportName" placeholder="Enter report name" />
-                <button id="saveReportBtn" class="btn btn-success">Save Current Filters</button>
-                <span id="saveMessage"></span>
+                <button id="saveReportBtn" class="btn btn-success">💾 Save Filters</button>
+                <span id="saveMessage" class="save-msg"></span>
             </div>
         </div>
 
-        <!-- Date Filter -->
-        <div class="filter-bar">
+        <div class="filter-card">
             <form method="get" th:action="@{/admin/reports}" id="reportForm">
-                <label>From:
-                    <input type="date" name="startDate" th:value="${startDate}" id="startDate" />
-                </label>
-                <label>To:
-                    <input type="date" name="endDate" th:value="${endDate}" id="endDate" />
-                </label>
-                <button type="submit">Apply</button>
-                <a th:href="@{/admin/reports}" style="margin-left:10px; color:#007bff;">Reset</a>
+                <div class="filter-form">
+                    <div class="filter-group">
+                        <label for="startDate">From</label>
+                        <input type="date" name="startDate" th:value="${startDate}" id="startDate" />
+                    </div>
+                    <div class="filter-group">
+                        <label for="endDate">To</label>
+                        <input type="date" name="endDate" th:value="${endDate}" id="endDate" />
+                    </div>
+                    <div class="filter-actions">
+                        <button type="submit" class="btn btn-primary">🔍 Apply</button>
+                        <a th:href="@{/admin/reports}" class="btn btn-outline">Reset</a>
+                    </div>
+                </div>
             </form>
         </div>
 
-        <!-- Metric Cards -->
-        <div class="row" style="margin-bottom:20px;">
+        <!-- Metric cards (null-safe) -->
+        <div class="metric-grid">
             <div class="metric-card">
-                <div>Total Transactions</div>
-                <div class="number" th:text="${summary.totalTransactions}">0</div>
+                <div class="metric-label">📋 Total Transactions</div>
+                <div class="metric-number" th:text="${summary != null and summary.totalTransactions != null ? summary.totalTransactions : 0}">0</div>
             </div>
             <div class="metric-card">
-                <div>Total Volume</div>
-                <div class="number" th:text="${#numbers.formatDecimal(summary.totalVolume, 0, 'COMMA', 2, 'DEFAULT')}">£0.00</div>
+                <div class="metric-label">💰 Total Volume</div>
+                <div class="metric-number" th:text="${summary != null and summary.totalVolume != null ? #numbers.formatDecimal(summary.totalVolume, 0, 'COMMA', 2, 'DEFAULT') : '0.00'}">0.00</div>
             </div>
             <div class="metric-card">
-                <div>Average Amount</div>
-                <div class="number" th:text="${#numbers.formatDecimal(summary.average, 0, 'COMMA', 2, 'DEFAULT')}">£0.00</div>
+                <div class="metric-label">📊 Average Amount</div>
+                <div class="metric-number" th:text="${summary != null and summary.average != null ? #numbers.formatDecimal(summary.average, 0, 'COMMA', 2, 'DEFAULT') : '0.00'}">0.00</div>
             </div>
             <div class="metric-card">
-                <div>Success Rate</div>
-                <div class="number" th:text="${#numbers.formatDecimal(summary.successRate, 0, 'COMMA', 1, 'DEFAULT')} + '%'">0%</div>
+                <div class="metric-label">✅ Success Rate</div>
+                <div class="metric-number" th:text="${summary != null and summary.successRate != null ? #numbers.formatDecimal(summary.successRate, 0, 'COMMA', 1, 'DEFAULT') + '%' : '0%'}">0%</div>
             </div>
         </div>
 
-        <!-- Charts Row 1 -->
         <div class="row">
-            <div class="col">
-                <div class="card">
-                    <h3>Transaction Volume</h3>
-                    <div class="chart-container"><canvas id="volumeChart"></canvas></div>
-                </div>
+            <div class="card">
+                <h3>📈 Transaction Volume</h3>
+                <div class="chart-container"><canvas id="volumeChart"></canvas></div>
             </div>
-            <div class="col">
-                <div class="card">
-                    <h3>Average Transaction Amount</h3>
-                    <div class="chart-container"><canvas id="avgChart"></canvas></div>
-                </div>
+            <div class="card">
+                <h3>💵 Average Transaction Amount</h3>
+                <div class="chart-container"><canvas id="avgChart"></canvas></div>
             </div>
         </div>
 
-        <!-- Charts Row 2 -->
         <div class="row">
-            <div class="col">
-                <div class="card">
-                    <h3>Status Distribution</h3>
-                    <div class="chart-container"><canvas id="statusChart"></canvas></div>
-                </div>
+            <div class="card">
+                <h3>🥧 Status Distribution</h3>
+                <div class="chart-container"><canvas id="statusChart"></canvas></div>
             </div>
-            <div class="col">
-                <div class="card">
-                    <h3>Top Merchants by Volume</h3>
-                    <div class="chart-container"><canvas id="merchantChart"></canvas></div>
-                </div>
+            <div class="card">
+                <h3>🏆 Top Merchants by Volume</h3>
+                <div class="chart-container"><canvas id="merchantChart"></canvas></div>
             </div>
         </div>
 
-        <!-- Charts Row 3 -->
         <div class="row">
-            <div class="col">
-                <div class="card">
-                    <h3>Daily Success Rate (%)</h3>
-                    <div class="chart-container"><canvas id="successRateChart"></canvas></div>
-                </div>
+            <div class="card">
+                <h3>📈 Daily Success Rate (%)</h3>
+                <div class="chart-container"><canvas id="successRateChart"></canvas></div>
             </div>
-            <div class="col">
-                <div class="card">
-                    <h3>Top Merchants (Table)</h3>
-                    <table>
-                        <thead><tr><th>Merchant ID</th><th>Total Amount</th></tr></thead>
-                        <tbody>
-                            <tr th:each="m : ${topMerchants}">
-                                <td th:text="${m.merchantId}">1</td>
-                                <td th:text="${#numbers.formatDecimal(m.totalAmount, 0, 'COMMA', 2, 'DEFAULT')}">£0.00</td>
-                            </tr>
-                        </tbody>
-                    </table>
+            <div class="card">
+                <h3>🏆 Top Merchants (Table)</h3>
+                <table class="data-table" th:unless="${topMerchants == null or topMerchants.isEmpty()}">
+                    <thead>
+                        <tr><th>Merchant ID</th><th>Total Amount</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="m : ${topMerchants}">
+                            <td class="mono" th:text="${m.merchantId}">1</td>
+                            <td class="mono" th:text="${m.totalAmount != null ? #numbers.formatDecimal(m.totalAmount, 0, 'COMMA', 2, 'DEFAULT') : '0.00'}">0.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div th:if="${topMerchants == null or topMerchants.isEmpty()}" class="empty">
+                    <span class="emoji">🏆</span>
+                    <p>No merchant data available.</p>
                 </div>
             </div>
         </div>
 
-        <!-- Export Buttons -->
-        <div style="margin-top: 30px; display: flex; flex-wrap: wrap; gap: 10px;">
-            <a th:href="@{/admin/reports/data/transactions/csv(startDate=${startDate}, endDate=${endDate})}" class="btn">📥 Download CSV</a>
-            <a th:href="@{/admin/reports/export/pdf(startDate=${startDate}, endDate=${endDate})}" class="btn" style="background: #c0392b;">📄 Download PDF</a>
-            <a th:href="@{/admin/reports/export/excel(startDate=${startDate}, endDate=${endDate})}" class="btn" style="background: #2980b9;">📊 Download Excel</a>
+        <div style="margin-top: 24px; display: flex; flex-wrap: wrap; gap: 10px;">
+            <a th:href="@{/admin/reports/data/transactions/csv(startDate=${startDate}, endDate=${endDate})}" class="btn btn-csv">📥 Download CSV</a>
+            <a th:href="@{/admin/reports/export/pdf(startDate=${startDate}, endDate=${endDate})}" class="btn btn-pdf">📄 Download PDF</a>
+            <a th:href="@{/admin/reports/export/excel(startDate=${startDate}, endDate=${endDate})}" class="btn btn-excel">📊 Download Excel</a>
             <button id="openExportModal" class="btn btn-purple">📤 Export Advanced</button>
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- TAB 2: EXECUTIVE ANALYTICS                                  -->
-    <!-- ============================================================ -->
+    <!-- ===== TAB 2: EXECUTIVE ANALYTICS (null-safe) ===== -->
     <div id="tab-executive" class="tab-content">
 
-        <h2>📈 Executive Dashboard</h2>
-        <p style="color: #666; margin-bottom: 20px;">Key business metrics and growth indicators</p>
-
-        <!-- Executive Metric Cards -->
-        <div class="row" style="margin-bottom:20px;">
-            <div class="metric-card">
-                <div>💰 Monthly Revenue</div>
-                <div class="number" th:text="${#numbers.formatDecimal(data.currentMonthRevenue, 0, 'COMMA', 2, 'DEFAULT')}">£0.00</div>
-                <span th:if="${data.revenueGrowth != null}">
-                    <span th:classappend="${data.revenueGrowth >= 0 ? 'growth-positive' : 'growth-negative'}"
-                          th:text="${data.revenueGrowth >= 0 ? '▲' : '▼'} + ' ' + ${#numbers.formatDecimal(data.revenueGrowth, 0, 'COMMA', 1, 'DEFAULT')} + '%'">
-                    </span>
-                </span>
-            </div>
-            <div class="metric-card">
-                <div>📊 Transactions (Month)</div>
-                <div class="number" th:text="${data.currentMonthTransactions}">0</div>
-                <span th:if="${data.transactionGrowth != null}">
-                    <span th:classappend="${data.transactionGrowth >= 0 ? 'growth-positive' : 'growth-negative'}"
-                          th:text="${data.transactionGrowth >= 0 ? '▲' : '▼'} + ' ' + ${#numbers.formatDecimal(data.transactionGrowth, 0, 'COMMA', 1, 'DEFAULT')} + '%'">
-                    </span>
-                </span>
-            </div>
-            <div class="metric-card">
-                <div>👥 Active Customers</div>
-                <div class="number" th:text="${data.activeCustomers}">0</div>
-                <span style="font-size:0.85em; color:#666;">+<span th:text="${data.newCustomersThisMonth}">0</span> new this month</span>
-            </div>
-            <div class="metric-card">
-                <div>🔄 Active Subscriptions</div>
-                <div class="number" th:text="${data.activeSubscriptions}">0</div>
-                <span style="font-size:0.85em; color:#666;">+<span th:text="${data.newSubscriptionsThisMonth}">0</span> new this month</span>
+        <!-- Guard: data missing -->
+        <div th:if="${data == null}" class="message-box">
+            <span class="emoji">⚠️</span>
+            <div>
+                <strong>Executive analytics data is not available.</strong><br/>
+                The report service did not return executive data. Try refreshing or contact support.
             </div>
         </div>
 
-        <!-- Revenue Breakdown -->
-        <div class="row">
-            <div class="col">
+        <div th:unless="${data == null}">
+            <div style="margin-bottom: 20px;">
+                <h2 style="font-size:1.25rem; font-weight:500; color:#0f172a; letter-spacing:-0.02em; margin-bottom:4px;">📈 Executive Dashboard</h2>
+                <p style="color:#64748b; font-size:0.875rem; font-weight:300;">Key business metrics and growth indicators</p>
+            </div>
+
+            <div class="metric-grid">
+                <div class="metric-card">
+                    <div class="metric-label">💰 Monthly Revenue</div>
+                    <div class="metric-number" th:text="${data.currentMonthRevenue != null ? #numbers.formatDecimal(data.currentMonthRevenue, 0, 'COMMA', 2, 'DEFAULT') : '0.00'}">0.00</div>
+                    <span th:if="${data.revenueGrowth != null}" class="growth"
+                          th:classappend="${data.revenueGrowth >= 0 ? 'growth-positive' : 'growth-negative'}">
+                        <span th:text="${data.revenueGrowth >= 0 ? '▲' : '▼'}">▲</span>
+                        <span th:text="${#numbers.formatDecimal(data.revenueGrowth, 0, 'COMMA', 1, 'DEFAULT')} + '%'">0%</span>
+                    </span>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">📊 Transactions (Month)</div>
+                    <div class="metric-number" th:text="${data.currentMonthTransactions != null ? data.currentMonthTransactions : 0}">0</div>
+                    <span th:if="${data.transactionGrowth != null}" class="growth"
+                          th:classappend="${data.transactionGrowth >= 0 ? 'growth-positive' : 'growth-negative'}">
+                        <span th:text="${data.transactionGrowth >= 0 ? '▲' : '▼'}">▲</span>
+                        <span th:text="${#numbers.formatDecimal(data.transactionGrowth, 0, 'COMMA', 1, 'DEFAULT')} + '%'">0%</span>
+                    </span>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">👥 Active Customers</div>
+                    <div class="metric-number" th:text="${data.activeCustomers != null ? data.activeCustomers : 0}">0</div>
+                    <div class="metric-sub">+<span th:text="${data.newCustomersThisMonth != null ? data.newCustomersThisMonth : 0}">0</span> new this month</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">🔄 Active Subscriptions</div>
+                    <div class="metric-number" th:text="${data.activeSubscriptions != null ? data.activeSubscriptions : 0}">0</div>
+                    <div class="metric-sub">+<span th:text="${data.newSubscriptionsThisMonth != null ? data.newSubscriptionsThisMonth : 0}">0</span> new this month</div>
+                </div>
+            </div>
+
+            <div class="row">
                 <div class="card">
                     <h3>💰 Revenue Breakdown</h3>
                     <div class="chart-container" style="height:250px;">
                         <canvas id="revenueBreakdownChart"></canvas>
                     </div>
                 </div>
-            </div>
-            <div class="col">
                 <div class="card">
                     <h3>📊 Monthly Revenue Trend</h3>
                     <div class="chart-container" style="height:250px;">
@@ -262,23 +723,24 @@
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Customer Analytics -->
-        <div class="row">
-            <div class="col">
+            <div class="row">
                 <div class="card">
                     <h3>👥 Customer Analytics</h3>
-                    <table>
-                        <tr><td><strong>Total Customers</strong></td><td th:text="${customerAnalytics.totalCustomers}">0</td></tr>
-                        <tr><td><strong>New Customers (This Month)</strong></td><td th:text="${customerAnalytics.newCustomersThisMonth}">0</td></tr>
-                        <tr><td><strong>Active Customers</strong></td><td th:text="${customerAnalytics.activeCustomers}">0</td></tr>
-                        <tr><td><strong>Churn Rate</strong></td><td th:text="${#numbers.formatDecimal(customerAnalytics.churnRate, 0, 'COMMA', 1, 'DEFAULT')} + '%'">0%</td></tr>
-                        <tr><td><strong>Customer Lifetime Value</strong></td><td th:text="${#numbers.formatDecimal(customerAnalytics.customerLTV, 0, 'COMMA', 2, 'DEFAULT')}">£0.00</td></tr>
+                    <table class="data-table" th:unless="${customerAnalytics == null}">
+                        <tbody>
+                            <tr><td>Total Customers</td><td class="mono" th:text="${customerAnalytics.totalCustomers != null ? customerAnalytics.totalCustomers : 0}">0</td></tr>
+                            <tr><td>New Customers (This Month)</td><td class="mono" th:text="${customerAnalytics.newCustomersThisMonth != null ? customerAnalytics.newCustomersThisMonth : 0}">0</td></tr>
+                            <tr><td>Active Customers</td><td class="mono" th:text="${customerAnalytics.activeCustomers != null ? customerAnalytics.activeCustomers : 0}">0</td></tr>
+                            <tr><td>Churn Rate</td><td class="mono" th:text="${customerAnalytics.churnRate != null ? #numbers.formatDecimal(customerAnalytics.churnRate, 0, 'COMMA', 1, 'DEFAULT') + '%' : '0%'}">0%</td></tr>
+                            <tr><td>Customer Lifetime Value</td><td class="mono" th:text="${customerAnalytics.customerLTV != null ? #numbers.formatDecimal(customerAnalytics.customerLTV, 0, 'COMMA', 2, 'DEFAULT') : '0.00'}">0.00</td></tr>
+                        </tbody>
                     </table>
+                    <div th:if="${customerAnalytics == null}" class="empty">
+                        <span class="emoji">👥</span>
+                        <p>Customer analytics unavailable.</p>
+                    </div>
                 </div>
-            </div>
-            <div class="col">
                 <div class="card">
                     <h3>📈 Revenue vs Subscriptions</h3>
                     <div class="chart-container" style="height:250px;">
@@ -289,29 +751,29 @@
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- TAB 3: REPORT HISTORY                                       -->
-    <!-- ============================================================ -->
+    <!-- ===== TAB 3: REPORT HISTORY ===== -->
     <div id="tab-history" class="tab-content">
-        <h2>📁 Report History</h2>
-        <p style="color: #666; margin-bottom: 20px;">View and download previously generated reports</p>
+        <div style="margin-bottom: 20px;">
+            <h2 style="font-size:1.25rem; font-weight:500; color:#0f172a; letter-spacing:-0.02em; margin-bottom:4px;">📁 Report History</h2>
+            <p style="color:#64748b; font-size:0.875rem; font-weight:300;">View and download previously generated reports</p>
+        </div>
 
         <div class="card">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                <div>
-                    <label style="margin-right:10px;">Filter by type:</label>
-                    <select id="reportTypeFilter" style="padding:6px; border-radius:4px; border:1px solid #ccc;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <label style="font-size:0.7rem; font-weight:500; color:#475569; text-transform:uppercase; letter-spacing:0.05em;">Filter by type</label>
+                    <select id="reportTypeFilter" style="padding:8px 12px; border-radius:10px; border:1px solid #e2e8f0; font-family:inherit; font-size:0.8125rem; font-weight:300;">
                         <option value="">All</option>
                         <option value="WEEKLY">Weekly</option>
                         <option value="DAILY">Daily</option>
                         <option value="MONTHLY">Monthly</option>
                     </select>
-                    <button id="filterReportsBtn" class="btn btn-secondary" style="margin-left:10px;">Apply</button>
+                    <button id="filterReportsBtn" class="btn btn-primary">Apply</button>
                 </div>
                 <a href="/admin/reports/history" class="btn btn-success">📄 View All Reports</a>
             </div>
 
-            <table style="margin-top:15px;">
+            <table class="data-table" th:unless="${reports == null or reports.isEmpty()}">
                 <thead>
                     <tr>
                         <th>Filename</th>
@@ -321,41 +783,47 @@
                         <th>Action</th>
                     </tr>
                 </thead>
-                <tbody id="reportHistoryBody">
+                <tbody>
                     <tr th:each="report : ${reports}">
-                        <td th:text="${report.filename}">report.pdf</td>
-                        <td><span class="badge" style="background:#2d7a3a;color:white;padding:2px 10px;border-radius:12px;" th:text="${report.reportType}">WEEKLY</span></td>
-                        <td th:text="${#temporals.format(report.startDate, 'yyyy-MM-dd')} + ' → ' + ${#temporals.format(report.endDate, 'yyyy-MM-dd')}">2026-01-01 → 2026-01-07</td>
-                        <td th:text="${#temporals.format(report.generatedAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 12:00</td>
+                        <td class="mono" th:text="${report.filename}">report.pdf</td>
                         <td>
-                            <a th:href="'/admin/reports/download/' + ${report.id}" class="btn btn-secondary" style="padding:4px 12px;font-size:12px;">📥 Download</a>
+                            <span th:if="${report.reportType == 'WEEKLY'}" class="badge badge-weekly">Weekly</span>
+                            <span th:if="${report.reportType == 'DAILY'}" class="badge badge-daily">Daily</span>
+                            <span th:if="${report.reportType == 'MONTHLY'}" class="badge badge-monthly">Monthly</span>
                         </td>
-                    </tr>
-                    <tr th:if="${reports == null or reports.isEmpty()}">
-                        <td colspan="5" style="text-align:center;color:#666;padding:40px;">No reports found. Generate a report from the Transaction Reports tab.</td>
+                        <td th:text="${#temporals.format(report.startDate, 'dd MMM yyyy')} + ' → ' + ${#temporals.format(report.endDate, 'dd MMM yyyy')}">01 Jan 2026 → 07 Jan 2026</td>
+                        <td th:text="${#temporals.format(report.generatedAt, 'dd MMM yyyy · HH:mm')}">01 Jan 2026 · 09:00</td>
+                        <td>
+                            <a th:href="'/admin/reports/download/' + ${report.id}" class="btn btn-outline">📥 Download</a>
+                        </td>
                     </tr>
                 </tbody>
             </table>
+
+            <div th:if="${reports == null or reports.isEmpty()}" class="empty">
+                <span class="emoji">📭</span>
+                <p>No reports found. Generate one from the Transaction Reports tab.</p>
+            </div>
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- ADVANCED EXPORT MODAL                                       -->
-    <!-- ============================================================ -->
+    <!-- Advanced Export Modal -->
     <div id="exportModal" class="modal-overlay">
         <div class="modal">
             <h3>📤 Export Transactions</h3>
+
             <div class="field-group">
-                <label>Format:</label>
+                <label>Format</label>
                 <select id="exportFormat">
                     <option value="csv">CSV</option>
                     <option value="json">JSON</option>
                     <option value="xml">XML</option>
                 </select>
             </div>
+
             <div class="field-group">
-                <label>Select fields to include:</label>
-                <div id="fieldCheckboxes" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px;">
+                <label>Fields to include</label>
+                <div class="checkbox-grid">
                     <label><input type="checkbox" class="field-option" value="id" checked> ID</label>
                     <label><input type="checkbox" class="field-option" value="invoiceId" checked> Invoice</label>
                     <label><input type="checkbox" class="field-option" value="customerId" checked> Customer</label>
@@ -367,328 +835,277 @@
                     <label><input type="checkbox" class="field-option" value="updatedAt"> Updated</label>
                 </div>
             </div>
-            <div style="margin-top: 20px;">
-                <button id="exportBtn" class="btn btn-success">Export</button>
-                <button id="closeExportModal" class="btn btn-secondary">Cancel</button>
+
+            <div class="modal-actions">
+                <button id="exportBtn" class="btn btn-success">📤 Export</button>
+                <button id="closeExportModal" class="btn btn-outline">Cancel</button>
             </div>
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- JAVASCRIPT                                                   -->
-    <!-- ============================================================ -->
-    <script th:inline="javascript">
-        /*<![CDATA[*/
-        document.addEventListener('DOMContentLoaded', function() {
-            // ===== TABS =====
-            const tabs = document.querySelectorAll('.tabs a');
-            const contents = {
-                transaction: document.getElementById('tab-transaction'),
-                executive: document.getElementById('tab-executive'),
-                history: document.getElementById('tab-history')
-            };
+</div>
 
-            tabs.forEach(tab => {
-                tab.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    tabs.forEach(t => t.classList.remove('active'));
-                    this.classList.add('active');
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    document.addEventListener('DOMContentLoaded', function() {
+        // ===== TABS =====
+        const tabs = document.querySelectorAll('.tabs a');
+        const contents = {
+            transaction: document.getElementById('tab-transaction'),
+            executive: document.getElementById('tab-executive'),
+            history: document.getElementById('tab-history')
+        };
 
-                    Object.keys(contents).forEach(key => {
-                        contents[key].classList.remove('active');
-                    });
-
-                    const target = this.dataset.tab;
-                    if (contents[target]) {
-                        contents[target].classList.add('active');
-                    }
-
-                    // Update URL hash
-                    history.pushState(null, '', '#' + target);
-
-                    // Resize charts when switching to executive tab
-                    if (target === 'executive') {
-                        setTimeout(() => {
-                            if (window.revenueBreakdownChart) window.revenueBreakdownChart.resize();
-                            if (window.revenueTrendChart) window.revenueTrendChart.resize();
-                            if (window.revenueVsSubChart) window.revenueVsSubChart.resize();
-                        }, 300);
-                    }
-                });
-            });
-
-            // Check URL hash on load
-            const hash = window.location.hash.replace('#', '');
-            if (hash && contents[hash]) {
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function(e) {
+                e.preventDefault();
                 tabs.forEach(t => t.classList.remove('active'));
-                document.querySelector(`.tabs a[data-tab="${hash}"]`)?.classList.add('active');
+                this.classList.add('active');
                 Object.keys(contents).forEach(key => contents[key].classList.remove('active'));
-                contents[hash].classList.add('active');
-            }
-
-            // ===== CHART DATA =====
-            const labels = /*[[${labels}]]*/ [];
-            const volumeData = /*[[${volumeData}]]*/ [];
-            const avgData = /*[[${avgData}]]*/ [];
-            const statusLabels = /*[[${statusLabels}]]*/ [];
-            const statusValues = /*[[${statusValues}]]*/ [];
-            const merchantLabels = /*[[${merchantLabels}]]*/ [];
-            const merchantValues = /*[[${merchantValues}]]*/ [];
-            const successRateData = /*[[${successRateData}]]*/ [];
-
-            // Volume Chart
-            const ctx1 = document.getElementById('volumeChart')?.getContext('2d');
-            if (ctx1) new Chart(ctx1, {
-                type: 'bar',
-                data: { labels, datasets: [{ label: 'Transaction Count', data: volumeData, backgroundColor: 'rgba(54, 162, 235, 0.5)', borderColor: 'rgba(54, 162, 235, 1)', borderWidth: 1 }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-            });
-
-            // Average Chart
-            const ctx2 = document.getElementById('avgChart')?.getContext('2d');
-            if (ctx2) new Chart(ctx2, {
-                type: 'line',
-                data: { labels, datasets: [{ label: 'Average Amount (£)', data: avgData, backgroundColor: 'rgba(255, 99, 132, 0.2)', borderColor: 'rgba(255, 99, 132, 1)', borderWidth: 2, fill: true }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-            });
-
-            // Status Chart
-            const ctx3 = document.getElementById('statusChart')?.getContext('2d');
-            if (ctx3) new Chart(ctx3, {
-                type: 'pie',
-                data: { labels: statusLabels, datasets: [{ data: statusValues, backgroundColor: ['#2d7a3a', '#c0392b', '#f39c12', '#2980b9', '#8e44ad'] }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
-            });
-
-            // Merchant Chart
-            const ctx4 = document.getElementById('merchantChart')?.getContext('2d');
-            if (ctx4) new Chart(ctx4, {
-                type: 'bar',
-                data: { labels: merchantLabels, datasets: [{ label: 'Total Volume (£)', data: merchantValues, backgroundColor: 'rgba(255, 159, 64, 0.5)', borderColor: 'rgba(255, 159, 64, 1)', borderWidth: 1 }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-            });
-
-            // Success Rate Chart
-            const ctx5 = document.getElementById('successRateChart')?.getContext('2d');
-            if (ctx5) new Chart(ctx5, {
-                type: 'line',
-                data: { labels, datasets: [{ label: 'Success Rate (%)', data: successRateData, backgroundColor: 'rgba(75, 192, 192, 0.2)', borderColor: 'rgba(75, 192, 192, 1)', borderWidth: 2, fill: true, tension: 0.1 }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
-            });
-
-            // ===== EXECUTIVE CHARTS =====
-            const revenueData = /*[[${revenueData}]]*/ [];
-            const revenueBreakdown = /*[[${revenueBreakdown}]]*/ {};
-
-            // Revenue Breakdown Chart (Doughnut)
-            const ctx6 = document.getElementById('revenueBreakdownChart')?.getContext('2d');
-            if (ctx6 && revenueBreakdown) {
-                window.revenueBreakdownChart = new Chart(ctx6, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['One-Time Revenue', 'Subscription Revenue'],
-                        datasets: [{
-                            data: [
-                                revenueBreakdown.oneTimeRevenue || 0,
-                                revenueBreakdown.subscriptionRevenue || 0
-                            ],
-                            backgroundColor: ['#3498db', '#2d7a3a']
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { position: 'bottom' }
-                        }
-                    }
-                });
-            }
-
-            // Revenue Trend Chart
-            const ctx7 = document.getElementById('revenueTrendChart')?.getContext('2d');
-            if (ctx7 && revenueData && revenueData.length > 0) {
-                const revLabels = revenueData.map(d => d.period);
-                const revValues = revenueData.map(d => d.revenue);
-                window.revenueTrendChart = new Chart(ctx7, {
-                    type: 'line',
-                    data: {
-                        labels: revLabels,
-                        datasets: [{
-                            label: 'Revenue (£)',
-                            data: revValues,
-                            backgroundColor: 'rgba(46, 204, 113, 0.2)',
-                            borderColor: '#2d7a3a',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: { y: { beginAtZero: true } }
-                    }
-                });
-            }
-
-            // Revenue vs Subscriptions Chart
-            const ctx8 = document.getElementById('revenueVsSubChart')?.getContext('2d');
-            if (ctx8) {
-                window.revenueVsSubChart = new Chart(ctx8, {
-                    type: 'bar',
-                    data: {
-                        labels: ['One-Time', 'Subscriptions'],
-                        datasets: [{
-                            label: 'Revenue (£)',
-                            data: [
-                                revenueBreakdown.oneTimeRevenue || 0,
-                                revenueBreakdown.subscriptionRevenue || 0
-                            ],
-                            backgroundColor: ['#3498db', '#2d7a3a']
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: { y: { beginAtZero: true } }
-                    }
-                });
-            }
-
-            // ===== SAVED REPORTS =====
-            const select = document.getElementById('savedReportSelect');
-            const loadBtn = document.getElementById('loadReportBtn');
-            const deleteBtn = document.getElementById('deleteReportBtn');
-            const saveBtn = document.getElementById('saveReportBtn');
-            const reportNameInput = document.getElementById('reportName');
-            const messageSpan = document.getElementById('saveMessage');
-            const reportForm = document.getElementById('reportForm');
-
-            function loadReportList() {
-                fetch('/admin/api/reports/type/transaction')
-                    .then(r => r.json())
-                    .then(data => {
-                        select.innerHTML = '<option value="">-- Load saved report --</option>';
-                        data.forEach(report => {
-                            const option = document.createElement('option');
-                            option.value = report.id;
-                            option.textContent = report.name;
-                            select.appendChild(option);
-                        });
-                    })
-                    .catch(err => console.error('Failed to load reports', err));
-            }
-
-            function getCurrentFilters() {
-                const formData = new FormData(reportForm);
-                const filters = {};
-                for (let [key, value] of formData.entries()) {
-                    if (value && value.trim() !== '') filters[key] = value;
+                const target = this.dataset.tab;
+                if (contents[target]) contents[target].classList.add('active');
+                history.pushState(null, '', '#' + target);
+                if (target === 'executive') {
+                    setTimeout(() => {
+                        if (window.revenueBreakdownChart) window.revenueBreakdownChart.resize();
+                        if (window.revenueTrendChart) window.revenueTrendChart.resize();
+                        if (window.revenueVsSubChart) window.revenueVsSubChart.resize();
+                    }, 300);
                 }
-                return filters;
-            }
-
-            function applyFilters(filters) {
-                Object.keys(filters).forEach(key => {
-                    const input = document.querySelector(`[name="${key}"]`);
-                    if (input) input.value = filters[key];
-                });
-                reportForm.submit();
-            }
-
-            loadReportList();
-
-            loadBtn?.addEventListener('click', function() {
-                const id = select.value;
-                if (!id) return;
-                fetch(`/admin/api/reports/${id}`)
-                    .then(r => r.json())
-                    .then(filters => applyFilters(filters))
-                    .catch(err => alert('Failed to load report: ' + err.message));
-            });
-
-            deleteBtn?.addEventListener('click', function() {
-                const id = select.value;
-                if (!id) return;
-                if (!confirm('Delete this saved report?')) return;
-                fetch(`/admin/api/reports/${id}`, { method: 'DELETE' })
-                    .then(() => { loadReportList(); alert('Report deleted.'); })
-                    .catch(err => alert('Failed to delete: ' + err.message));
-            });
-
-            saveBtn?.addEventListener('click', function() {
-                const name = reportNameInput.value.trim();
-                if (!name) { messageSpan.textContent = 'Please enter a name.'; return; }
-                const filters = getCurrentFilters();
-                fetch('/admin/api/reports/save?name=' + encodeURIComponent(name) + '&reportType=transaction', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(filters)
-                })
-                .then(r => { if (!r.ok) throw new Error('Save failed'); return r.json(); })
-                .then(() => {
-                    messageSpan.textContent = '✅ Report saved successfully!';
-                    messageSpan.style.color = 'green';
-                    reportNameInput.value = '';
-                    loadReportList();
-                })
-                .catch(err => {
-                    messageSpan.textContent = '❌ Error: ' + err.message;
-                    messageSpan.style.color = 'red';
-                });
-            });
-
-            // ===== REPORT HISTORY FILTER =====
-            const filterBtn = document.getElementById('filterReportsBtn');
-            const typeFilter = document.getElementById('reportTypeFilter');
-
-            filterBtn?.addEventListener('click', function() {
-                const type = typeFilter.value;
-                const url = type ? '/admin/reports/history?type=' + encodeURIComponent(type) : '/admin/reports/history';
-                window.location.href = url;
-            });
-
-            // ===== ADVANCED EXPORT MODAL =====
-            const modal = document.getElementById('exportModal');
-            const openBtn = document.getElementById('openExportModal');
-            const closeBtn = document.getElementById('closeExportModal');
-            const exportBtn = document.getElementById('exportBtn');
-
-            openBtn?.addEventListener('click', function() { modal?.classList.add('show'); });
-            closeBtn?.addEventListener('click', function() { modal?.classList.remove('show'); });
-            modal?.addEventListener('click', function(e) { if (e.target === modal) modal.classList.remove('show'); });
-
-            exportBtn?.addEventListener('click', function() {
-                const format = document.getElementById('exportFormat').value;
-                const fields = Array.from(document.querySelectorAll('.field-option:checked')).map(cb => cb.value);
-                const startDate = document.getElementById('startDate').value;
-                const endDate = document.getElementById('endDate').value;
-
-                if (!startDate || !endDate) { alert('Please select a date range first.'); return; }
-
-                fetch('/admin/reports/export/advanced', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ format, fields, startDate, endDate })
-                })
-                .then(r => { if (!r.ok) throw new Error('Export failed'); return r.blob(); })
-                .then(blob => {
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `transactions.${format}`;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    window.URL.revokeObjectURL(url);
-                    modal.classList.remove('show');
-                })
-                .catch(err => alert('Export failed: ' + err.message));
             });
         });
-        /*]]>*/
-    </script>
-</div>
+
+        const hash = window.location.hash.replace('#', '');
+        if (hash && contents[hash]) {
+            tabs.forEach(t => t.classList.remove('active'));
+            document.querySelector(`.tabs a[data-tab="${hash}"]`)?.classList.add('active');
+            Object.keys(contents).forEach(key => contents[key].classList.remove('active'));
+            contents[hash].classList.add('active');
+        }
+
+        // ===== CHART DATA =====
+        const labels = /*[[${labels}]]*/ [];
+        const volumeData = /*[[${volumeData}]]*/ [];
+        const avgData = /*[[${avgData}]]*/ [];
+        const statusLabels = /*[[${statusLabels}]]*/ [];
+        const statusValues = /*[[${statusValues}]]*/ [];
+        const merchantLabels = /*[[${merchantLabels}]]*/ [];
+        const merchantValues = /*[[${merchantValues}]]*/ [];
+        const successRateData = /*[[${successRateData}]]*/ [];
+
+        Chart.defaults.font.family = "'Lexend Deca', sans-serif";
+        Chart.defaults.font.weight = '300';
+        Chart.defaults.color = '#64748b';
+
+        const ctx1 = document.getElementById('volumeChart')?.getContext('2d');
+        if (ctx1) new Chart(ctx1, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Transactions', data: volumeData, backgroundColor: 'rgba(59,130,246,0.7)', borderRadius: 6, maxBarThickness: 32 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+        });
+
+        const ctx2 = document.getElementById('avgChart')?.getContext('2d');
+        if (ctx2) new Chart(ctx2, {
+            type: 'line',
+            data: { labels, datasets: [{ label: 'Average', data: avgData, backgroundColor: 'rgba(139,92,246,0.15)', borderColor: '#8b5cf6', borderWidth: 2, fill: true, tension: 0.3 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+        });
+
+        const ctx3 = document.getElementById('statusChart')?.getContext('2d');
+        if (ctx3) new Chart(ctx3, {
+            type: 'pie',
+            data: { labels: statusLabels, datasets: [{ data: statusValues, backgroundColor: ['#10b981','#ef4444','#f59e0b','#3b82f6','#8b5cf6'], borderColor: 'white', borderWidth: 2 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } } }
+        });
+
+        const ctx4 = document.getElementById('merchantChart')?.getContext('2d');
+        if (ctx4) new Chart(ctx4, {
+            type: 'bar',
+            data: { labels: merchantLabels, datasets: [{ label: 'Volume', data: merchantValues, backgroundColor: 'rgba(245,158,11,0.7)', borderRadius: 6, maxBarThickness: 32 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+        });
+
+        const ctx5 = document.getElementById('successRateChart')?.getContext('2d');
+        if (ctx5) new Chart(ctx5, {
+            type: 'line',
+            data: { labels, datasets: [{ label: 'Success %', data: successRateData, backgroundColor: 'rgba(16,185,129,0.15)', borderColor: '#10b981', borderWidth: 2, fill: true, tension: 0.1 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+        });
+
+        // ===== EXECUTIVE CHARTS =====
+        const revenueData = /*[[${revenueData}]]*/ [];
+        const revenueBreakdown = /*[[${revenueBreakdown}]]*/ {};
+
+        const ctx6 = document.getElementById('revenueBreakdownChart')?.getContext('2d');
+        if (ctx6 && revenueBreakdown) {
+            window.revenueBreakdownChart = new Chart(ctx6, {
+                type: 'doughnut',
+                data: {
+                    labels: ['One-Time', 'Subscriptions'],
+                    datasets: [{
+                        data: [revenueBreakdown.oneTimeRevenue || 0, revenueBreakdown.subscriptionRevenue || 0],
+                        backgroundColor: ['#3b82f6', '#10b981'],
+                        borderColor: 'white',
+                        borderWidth: 3
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } } }
+            });
+        }
+
+        const ctx7 = document.getElementById('revenueTrendChart')?.getContext('2d');
+        if (ctx7 && revenueData && revenueData.length > 0) {
+            window.revenueTrendChart = new Chart(ctx7, {
+                type: 'line',
+                data: {
+                    labels: revenueData.map(d => d.period),
+                    datasets: [{ label: 'Revenue', data: revenueData.map(d => d.revenue), backgroundColor: 'rgba(16,185,129,0.15)', borderColor: '#10b981', borderWidth: 2, fill: true, tension: 0.3 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+            });
+        }
+
+        const ctx8 = document.getElementById('revenueVsSubChart')?.getContext('2d');
+        if (ctx8) {
+            window.revenueVsSubChart = new Chart(ctx8, {
+                type: 'bar',
+                data: {
+                    labels: ['One-Time', 'Subscriptions'],
+                    datasets: [{ label: 'Revenue', data: [revenueBreakdown.oneTimeRevenue || 0, revenueBreakdown.subscriptionRevenue || 0], backgroundColor: ['#3b82f6', '#10b981'], borderRadius: 8, maxBarThickness: 60 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+            });
+        }
+
+        // ===== SAVED REPORTS =====
+        const select = document.getElementById('savedReportSelect');
+        const loadBtn = document.getElementById('loadReportBtn');
+        const deleteBtn = document.getElementById('deleteReportBtn');
+        const saveBtn = document.getElementById('saveReportBtn');
+        const reportNameInput = document.getElementById('reportName');
+        const messageSpan = document.getElementById('saveMessage');
+        const reportForm = document.getElementById('reportForm');
+
+        function loadReportList() {
+            fetch('/admin/api/reports/type/transaction')
+                .then(r => r.json())
+                .then(data => {
+                    select.innerHTML = '<option value="">-- Load saved report --</option>';
+                    data.forEach(report => {
+                        const option = document.createElement('option');
+                        option.value = report.id;
+                        option.textContent = report.name;
+                        select.appendChild(option);
+                    });
+                })
+                .catch(err => console.error('Failed to load reports', err));
+        }
+
+        function getCurrentFilters() {
+            const formData = new FormData(reportForm);
+            const filters = {};
+            for (let [key, value] of formData.entries()) {
+                if (value && value.trim() !== '') filters[key] = value;
+            }
+            return filters;
+        }
+
+        function applyFilters(filters) {
+            Object.keys(filters).forEach(key => {
+                const input = document.querySelector(`[name="${key}"]`);
+                if (input) input.value = filters[key];
+            });
+            reportForm.submit();
+        }
+
+        loadReportList();
+
+        loadBtn?.addEventListener('click', function() {
+            const id = select.value;
+            if (!id) return;
+            fetch(`/admin/api/reports/${id}`)
+                .then(r => r.json())
+                .then(filters => applyFilters(filters))
+                .catch(err => alert('Failed to load report: ' + err.message));
+        });
+
+        deleteBtn?.addEventListener('click', function() {
+            const id = select.value;
+            if (!id) return;
+            if (!confirm('Delete this saved report?')) return;
+            fetch(`/admin/api/reports/${id}`, { method: 'DELETE' })
+                .then(() => { loadReportList(); alert('Report deleted.'); })
+                .catch(err => alert('Failed to delete: ' + err.message));
+        });
+
+        saveBtn?.addEventListener('click', function() {
+            const name = reportNameInput.value.trim();
+            if (!name) { messageSpan.textContent = 'Please enter a name.'; return; }
+            const filters = getCurrentFilters();
+            fetch('/admin/api/reports/save?name=' + encodeURIComponent(name) + '&reportType=transaction', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(filters)
+            })
+            .then(r => { if (!r.ok) throw new Error('Save failed'); return r.json(); })
+            .then(() => {
+                messageSpan.textContent = '✅ Report saved!';
+                messageSpan.style.color = '#059669';
+                reportNameInput.value = '';
+                loadReportList();
+            })
+            .catch(err => {
+                messageSpan.textContent = '❌ ' + err.message;
+                messageSpan.style.color = '#dc2626';
+            });
+        });
+
+        // ===== HISTORY FILTER =====
+        document.getElementById('filterReportsBtn')?.addEventListener('click', function() {
+            const type = document.getElementById('reportTypeFilter').value;
+            const url = type ? '/admin/reports/history?type=' + encodeURIComponent(type) : '/admin/reports/history';
+            window.location.href = url;
+        });
+
+        // ===== EXPORT MODAL =====
+        const modal = document.getElementById('exportModal');
+        const openBtn = document.getElementById('openExportModal');
+        const closeBtn = document.getElementById('closeExportModal');
+        const exportBtn = document.getElementById('exportBtn');
+
+        openBtn?.addEventListener('click', function() { modal?.classList.add('show'); });
+        closeBtn?.addEventListener('click', function() { modal?.classList.remove('show'); });
+        modal?.addEventListener('click', function(e) { if (e.target === modal) modal.classList.remove('show'); });
+
+        exportBtn?.addEventListener('click', function() {
+            const format = document.getElementById('exportFormat').value;
+            const fields = Array.from(document.querySelectorAll('.field-option:checked')).map(cb => cb.value);
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            if (!startDate || !endDate) { alert('Please select a date range first.'); return; }
+
+            fetch('/admin/reports/export/advanced', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ format, fields, startDate, endDate })
+            })
+            .then(r => { if (!r.ok) throw new Error('Export failed'); return r.blob(); })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `transactions.${format}`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                modal.classList.remove('show');
+            })
+            .catch(err => alert('Export failed: ' + err.message));
+        });
+    });
+    /*]]>*/
+</script>
 </body>
 </html>

@@ -2,73 +2,296 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Exchange Rate Form</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${rate.id == null} ? 'Create Exchange Rate · PayFlow' : 'Edit Exchange Rate · PayFlow'">Exchange Rate · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { color: #1f2937; margin-top: 0; }
-        .form-group { margin-bottom: 16px; }
-        label { display: block; font-weight: 600; margin-bottom: 4px; color: #374151; }
-        select, input[type="number"] { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; }
-        .btn { display: inline-block; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 14px; border: none; cursor: pointer; }
-        .btn-primary { background: #2563eb; color: white; }
-        .btn-primary:hover { background: #1d4ed8; }
-        .btn-secondary { background: #6b7280; color: white; }
-        .btn-secondary:hover { background: #4b5563; }
-        .actions { margin-top: 20px; display: flex; gap: 12px; }
-        a { color: #2563eb; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        .note { font-size: 14px; color: #6b7280; background: #f3f4f6; padding: 12px; border-radius: 4px; margin: 16px 0; }
-        .error { color: #dc2626; }
-        .error-msg { background: #fee2e2; color: #991b1b; padding: 12px; border-radius: 4px; margin-bottom: 16px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 640px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .flash-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 14px 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .form-group label .required { color: #ef4444; margin-left: 2px; }
+        .form-group select,
+        .form-group input[type="number"],
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.9375rem;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-weight: 300;
+            color: #0f172a;
+            background: white;
+            transition: all 0.15s ease;
+        }
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 4px rgba(45, 107, 184, 0.12);
+        }
+        .form-group select:disabled {
+            background: #f8fafc;
+            color: #64748b;
+            cursor: not-allowed;
+        }
+        .form-group input::placeholder { color: #94a3b8; font-weight: 300; }
+
+        .help-note {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 6px;
+            font-weight: 300;
+            line-height: 1.55;
+        }
+        .help-note.info {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1e40af;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.8125rem;
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .help-note.info .emoji { flex-shrink: 0; font-size: 1rem; }
+        .help-note.info code {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.75rem;
+            background: white;
+            padding: 1px 6px;
+            border-radius: 4px;
+            color: #1e40af;
+        }
+
+        .currency-pair {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 12px;
+            align-items: end;
+        }
+        .currency-pair .arrow {
+            padding-bottom: 14px;
+            font-size: 1.25rem;
+            color: #94a3b8;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+            padding-top: 20px;
+            border-top: 1px solid #f1f5f9;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(11,26,51,0.25);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(11,26,51,0.35); }
+        .btn-outline {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-outline:hover { border-color: #94a3b8; background: #f8fafc; }
+
+        @media (max-width: 640px) {
+            .currency-pair { grid-template-columns: 1fr; }
+            .currency-pair .arrow { padding: 0; text-align: center; }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div th:if="${error}" class="error-msg" th:text="${error}"></div>
+<div class="container">
 
-        <h1 th:if="${rate.id == null}">Create Exchange Rate</h1>
-        <h1 th:if="${rate.id != null}">Edit Exchange Rate</h1>
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/admin/exchange-rates" class="back-link">← Back to Rates</a>
+        </div>
+        <h1 th:if="${rate.id == null}"><span style="font-size:1.5rem;">💱</span> Create Exchange Rate</h1>
+        <h1 th:if="${rate.id != null}"><span style="font-size:1.5rem;">✏️</span> Edit Exchange Rate</h1>
+    </div>
 
+    <!-- Error -->
+    <div th:if="${error}" class="flash-error">
+        <span style="font-size:1.125rem;">⚠️</span>
+        <span th:text="${error}">Error</span>
+    </div>
+
+    <!-- Form -->
+    <div class="card">
         <form th:action="${rate.id == null} ? '/admin/exchange-rates' : '/admin/exchange-rates/' + ${rate.id}" method="post">
             <input type="hidden" name="id" th:value="${rate.id}">
 
-            <div class="form-group">
-                <label>From Currency <span style="color:red;">*</span></label>
-                <select name="fromCurrency" required th:disabled="${rate.id != null}">
-                    <option value="">— Select —</option>
-                    <option th:each="c : ${currencies}" th:value="${c}" th:text="${c}" th:selected="${c == rate.fromCurrency}"></option>
-                </select>
-                <div class="note" th:if="${rate.id != null}">Currency pair cannot be changed after creation.</div>
+            <!-- Currency pair -->
+            <div class="currency-pair">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="fromCurrency">From Currency <span class="required">*</span></label>
+                    <select id="fromCurrency" name="fromCurrency" required th:disabled="${rate.id != null}">
+                        <option value="">— Select —</option>
+                        <option th:each="c : ${currencies}" th:value="${c}" th:text="${c}" th:selected="${c == rate.fromCurrency}"></option>
+                    </select>
+                </div>
+
+                <div class="arrow">→</div>
+
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="toCurrency">To Currency <span class="required">*</span></label>
+                    <select id="toCurrency" name="toCurrency" required th:disabled="${rate.id != null}">
+                        <option value="">— Select —</option>
+                        <option th:each="c : ${currencies}" th:value="${c}" th:text="${c}" th:selected="${c == rate.toCurrency}"></option>
+                    </select>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>To Currency <span style="color:red;">*</span></label>
-                <select name="toCurrency" required th:disabled="${rate.id != null}">
-                    <option value="">— Select —</option>
-                    <option th:each="c : ${currencies}" th:value="${c}" th:text="${c}" th:selected="${c == rate.toCurrency}"></option>
-                </select>
-                <div class="note" th:if="${rate.id != null}">Currency pair cannot be changed after creation.</div>
+            <div th:if="${rate.id != null}" class="help-note" style="margin-top:10px;">
+                🔒 Currency pair cannot be changed after creation.
             </div>
 
-            <div class="form-group">
-                <label>Rate <span style="color:red;">*</span></label>
-                <input type="number" name="rate" th:value="${rate.rate}" step="0.000001" min="0.000001" required>
-                <div class="note">How many <span th:text="${rate.toCurrency}">USD</span> equals 1 <span th:text="${rate.fromCurrency}">GBP</span>.</div>
+            <!-- Rate -->
+            <div class="form-group" style="margin-top:24px;">
+                <label for="rate">Rate <span class="required">*</span></label>
+                <input type="number" id="rate" name="rate" th:value="${rate.rate}" step="0.000001" min="0.000001" required>
+                <div class="help-note">
+                    How many <strong th:text="${rate.toCurrency}">USD</strong> equals 1 <strong th:text="${rate.fromCurrency}">GBP</strong>.
+                </div>
             </div>
 
-            <div class="note">
-                <strong>ℹ️ Auto‑Inverse:</strong> 
-                The inverse rate (e.g., <span th:text="${rate.toCurrency}">USD</span> → <span th:text="${rate.fromCurrency}">GBP</span>) 
-                will be <strong>automatically created/updated</strong> when you save.
+            <!-- Auto-inverse notice -->
+            <div class="help-note info">
+                <span class="emoji">ℹ️</span>
+                <div>
+                    <strong>Auto-Inverse</strong><br/>
+                    The inverse rate
+                    (<code th:text="${rate.toCurrency}">USD</code> → <code th:text="${rate.fromCurrency}">GBP</code>)
+                    will be <strong>automatically created or updated</strong> when you save.
+                </div>
             </div>
 
+            <!-- Actions -->
             <div class="actions">
-                <button type="submit" class="btn btn-primary">Save</button>
-                <a href="/admin/exchange-rates" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">💾 Save</button>
+                <a href="/admin/exchange-rates" class="btn btn-outline">Cancel</a>
             </div>
         </form>
     </div>
+
+</div>
 </body>
 </html>

@@ -1,44 +1,271 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Audit Diff</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Diff · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .diff-added { background: #d4edda; }
-        .diff-removed { background: #f8d7da; }
-        .diff-changed { background: #fff3cd; }
-        table { border-collapse: collapse; width: 100%; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #f2f2f2; }
-        .message { padding: 15px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px; margin: 10px 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1000px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .meta-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px 26px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        .meta-item { display: flex; flex-direction: column; gap: 4px; }
+        .meta-label {
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .meta-value {
+            font-size: 0.9375rem;
+            font-weight: 500;
+            color: #0f172a;
+        }
+        .meta-value.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+        }
+
+        .message-box {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1e40af;
+            padding: 16px 20px;
+            border-radius: 14px;
+            font-size: 0.875rem;
+            line-height: 1.55;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-weight: 400;
+        }
+        .message-box .emoji { flex-shrink: 0; font-size: 1.125rem; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            overflow: hidden;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 14px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .data-table td {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table td.field-cell {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #0f172a;
+        }
+        .data-table td.value-cell {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            word-break: break-all;
+        }
+
+        .row-added { background: #ecfdf5; }
+        .row-added:hover td { background: #d1fae5 !important; }
+        .row-removed { background: #fef2f2; }
+        .row-removed:hover td { background: #fee2e2 !important; }
+        .row-changed { background: #fffbeb; }
+        .row-changed:hover td { background: #fef3c7 !important; }
+
+        .type-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .type-added { background: #d1fae5; color: #065f46; }
+        .type-removed { background: #fee2e2; color: #991b1b; }
+        .type-changed { background: #fef3c7; color: #92400e; }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+        @media (max-width: 768px) {
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
+        }
     </style>
 </head>
 <body>
-    <h1>Audit Diff</h1>
-    <a href="/admin/audit">← Back to Audit List</a>
+<div class="container">
 
-    <div th:if="${message}" class="message" th:text="${message}">No diff available</div>
-
-    <div th:unless="${message}">
-        <p><strong>Event:</strong> <span th:text="${event.eventType}">TYPE</span></p>
-        <p><strong>Entity:</strong> <span th:text="${event.entityType}">Entity</span> #<span th:text="${event.entityId}">ID</span></p>
-        <p><strong>Timestamp:</strong> <span th:text="${event.createdAt}">time</span></p>
-
-        <table>
-            <thead>
-                <tr><th>Field</th><th>Old Value</th><th>New Value</th></tr>
-            </thead>
-            <tbody>
-                <tr th:each="diff : ${diffs}" th:classappend="${diff.type == 'added' ? 'diff-added' : diff.type == 'removed' ? 'diff-removed' : 'diff-changed'}">
-                    <td th:text="${diff.field}">field</td>
-                    <td th:text="${diff.oldValue}">old</td>
-                    <td th:text="${diff.newValue}">new</td>
-                </tr>
-                <tr th:if="${diffs.empty}">
-                    <td colspan="3">No changes detected.</td>
-                </tr>
-            </tbody>
-        </table>
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/admin/audit" class="back-link">← Back to Audit List</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">🔍</span> Audit Diff</h1>
     </div>
+
+    <!-- Message (no diff available) -->
+    <div th:if="${message}" class="message-box">
+        <span class="emoji">ℹ️</span>
+        <span th:text="${message}">No diff available</span>
+    </div>
+
+    <!-- Diff view -->
+    <div th:unless="${message}">
+
+        <div class="meta-card">
+            <div class="meta-item">
+                <span class="meta-label">Event Type</span>
+                <span class="meta-value" th:text="${event.eventType}">PAYMENT_SETTLED</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Entity</span>
+                <span class="meta-value">
+                    <span th:text="${event.entityType}">Invoice</span>
+                    <span style="color:#94a3b8;">#</span>
+                    <span class="mono" th:text="${event.entityId}">100</span>
+                </span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Timestamp</span>
+                <span class="meta-value mono" th:text="${#temporals.format(event.createdAt, 'dd MMM yyyy · HH:mm')}">01 Jan 2026 · 12:00</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <table class="data-table" th:unless="${diffs.empty}">
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th>Type</th>
+                        <th>Old Value</th>
+                        <th>New Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="diff : ${diffs}"
+                        th:classappend="${diff.type == 'added' ? 'row-added' : diff.type == 'removed' ? 'row-removed' : 'row-changed'}">
+                        <td class="field-cell" th:text="${diff.field}">field</td>
+                        <td>
+                            <span th:if="${diff.type == 'added'}" class="type-badge type-added">Added</span>
+                            <span th:if="${diff.type == 'removed'}" class="type-badge type-removed">Removed</span>
+                            <span th:if="${diff.type != 'added' and diff.type != 'removed'}" class="type-badge type-changed">Changed</span>
+                        </td>
+                        <td class="value-cell" th:text="${diff.oldValue}">old</td>
+                        <td class="value-cell" th:text="${diff.newValue}">new</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div th:if="${diffs.empty}" class="empty">
+                <span class="emoji">✨</span>
+                <p>No changes detected.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
 </body>
 </html>

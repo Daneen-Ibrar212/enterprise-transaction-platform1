@@ -1,45 +1,231 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Backup Codes</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backup Codes · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
-        .backup-codes { background: #f5f5f5; padding: 15px; border-radius: 4px; margin: 15px 0; font-family: monospace; }
-        .backup-codes code { display: block; padding: 4px 0; }
-        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
-        .btn-primary { background: #3498db; color: white; }
-        .btn-danger { background: #c0392b; color: white; }
-        .btn-success { background: #2d7a3a; color: white; }
-        .btn:hover { opacity: 0.8; }
-        .warning { background: #fff3cd; padding: 10px; border: 1px solid #ffc107; margin: 10px 0; }
-        .success { color: green; padding: 10px; border: 1px solid green; background: #eeffee; margin: 10px 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 640px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        .nav-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px 28px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+        }
+
+        .alert-success {
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            color: #065f46;
+            padding: 16px 20px;
+            border-radius: 14px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .alert-warning {
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            color: #92400e;
+            padding: 16px 20px;
+            border-radius: 14px;
+            font-size: 0.875rem;
+            line-height: 1.55;
+            margin-bottom: 16px;
+        }
+
+        /* Info list */
+        .info-list {
+            list-style: none;
+            padding: 0;
+        }
+        .info-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 0.875rem;
+            color: #475569;
+            line-height: 1.55;
+            padding: 8px 0;
+        }
+        .info-list li::before {
+            content: '';
+            flex-shrink: 0;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #94a3b8;
+            margin-top: 8px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 11px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(11,26,51,0.25);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(11,26,51,0.35); }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            box-shadow: 0 8px 20px rgba(239,68,68,0.25);
+        }
+        .btn-danger:hover { background: #dc2626; transform: translateY(-1px); }
+        .btn-outline {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-outline:hover { border-color: #4f46e5; color: #4f46e5; background: #f8faff; }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
-    <h1>🔑 Backup Codes</h1>
-    <a href="/dashboard">← Back to Dashboard</a>
-    <a href="/2fa/setup">← Back to 2FA Setup</a>
+<div class="container">
 
-    <div th:if="${!hasCodes}" class="warning">
-        <p>You have no unused backup codes. Generate new ones below.</p>
-    </div>
-
-    <div th:if="${hasCodes}">
-        <div class="success">
-            <p>✅ You have <strong><span th:text="${remainingCount}">10</span></strong> unused backup codes.</p>
+    <!-- Header -->
+    <div class="page-header">
+        <div class="nav-links">
+            <a href="/dashboard" class="back-link">← Dashboard</a>
+            <a href="/2fa/setup" class="back-link">← 2FA Setup</a>
         </div>
-        <p><strong>Note:</strong> Backup codes can only be viewed once. Make sure to save them securely.</p>
-        <p>Each code can only be used once.</p>
+        <h1>🔑 Backup Codes</h1>
     </div>
 
-    <form method="post" th:action="@{/2fa/backup-codes/regenerate}">
-        <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to regenerate backup codes? Old codes will be invalidated.');">
-            Regenerate Backup Codes
-        </button>
-    </form>
-
-    <div style="margin-top: 20px;">
-        <a href="/2fa/setup" class="btn btn-primary">Back to 2FA Setup</a>
+    <!-- No codes state -->
+    <div th:if="${!hasCodes}" class="card">
+        <div class="alert-warning">
+            <strong>⚠️ No backup codes available</strong>
+            <p style="margin-top:6px;margin-bottom:0;">You have no unused backup codes. If you lose access to your authenticator app, you'll need to contact your administrator to recover your account. Generate new codes below to stay safe.</p>
+        </div>
     </div>
+
+    <!-- Has codes state -->
+    <div th:if="${hasCodes}" class="card">
+        <div class="alert-success">
+            <span style="font-size:1.25rem;">✅</span>
+            <span>You have <strong style="font-weight:500;" th:text="${remainingCount}">10</strong> unused backup codes remaining.</span>
+        </div>
+
+        <ul class="info-list">
+            <li>Backup codes can only be viewed once — save them somewhere secure.</li>
+            <li>Each code can only be used a single time.</li>
+            <li>If you regenerate codes, all old codes become invalid immediately.</li>
+        </ul>
+    </div>
+
+    <!-- Regenerate -->
+    <div class="card">
+        <h3 style="font-weight:500;font-size:1rem;color:#0f172a;margin-bottom:12px;">Regenerate Codes</h3>
+        <p style="font-size:0.875rem;color:#475569;line-height:1.55;margin-bottom:16px;">
+            Generating new backup codes will immediately invalidate all existing codes. Make sure you have access to your authenticator app before regenerating.
+        </p>
+
+        <form method="post" th:action="@{/2fa/backup-codes/regenerate}">
+            <button type="submit" class="btn btn-danger"
+                    onclick="return confirm('Are you sure you want to regenerate backup codes? All existing codes will be invalidated immediately.');">
+                🔄 Regenerate Backup Codes
+            </button>
+        </form>
+    </div>
+
+    <!-- Back -->
+    <div class="card">
+        <div class="actions">
+            <a href="/2fa/setup" class="btn btn-outline">← Back to 2FA Setup</a>
+            <a href="/dashboard" class="btn btn-outline">Back to Dashboard</a>
+        </div>
+    </div>
+
+</div>
 </body>
 </html>

@@ -1,101 +1,443 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>User Activity Logs</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Activity Logs · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #f2f2f2; }
-        .filter-bar { margin: 15px 0; padding: 15px; background: #f5f5f5; border-radius: 4px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }
-        .filter-bar select, .filter-bar input, .filter-bar button { padding: 6px 10px; }
-        .btn { padding: 6px 15px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
-        .btn-primary { background: #3498db; color: white; }
-        .btn-primary:hover { background: #2980b9; }
-        .btn-secondary { background: #6c757d; color: white; }
-        .btn-secondary:hover { background: #5a6268; }
-        .badge { padding: 2px 8px; border-radius: 12px; font-size: 12px; }
-        .badge-login { background: #d4edda; color: #155724; }
-        .badge-logout { background: #f8d7da; color: #721c24; }
-        .badge-account { background: #cce5ff; color: #004085; }
-        .badge-role { background: #fff3cd; color: #856404; }
-        .flash-success { background: #d4edda; color: #155724; padding: 10px; border: 1px solid #c3e6cb; margin: 10px 0; }
-        .pagination { margin-top: 15px; display: flex; gap: 5px; }
-        .pagination a, .pagination span { padding: 6px 12px; border: 1px solid #ddd; text-decoration: none; }
-        .pagination .active { background: #2d7a3a; color: white; border-color: #2d7a3a; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        /* ===== Header ===== */
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        /* ===== Flash ===== */
+        .flash-success {
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            color: #065f46;
+            padding: 14px 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* ===== Filter Card ===== */
+        .filter-card {
+            background: white;
+            border-radius: 16px;
+            padding: 22px 26px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+        .filter-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 14px;
+            align-items: end;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .filter-group label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .filter-group select,
+        .filter-group input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-weight: 300;
+            color: #0f172a;
+            background: white;
+            transition: all 0.15s ease;
+        }
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 3px rgba(45, 107, 184, 0.12);
+        }
+        .filter-actions {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+        .filter-actions .btn { flex: 0 0 auto; }
+
+        /* ===== Buttons ===== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 6px 16px rgba(11,26,51,0.2);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(11,26,51,0.3); }
+        .btn-outline {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-outline:hover { border-color: #94a3b8; background: #f8fafc; color: #0f172a; }
+
+        /* ===== Data Card ===== */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 14px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .data-table td {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover td { background: #fafbfc; }
+        .data-table td.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+        }
+        .data-table td.user-cell {
+            font-weight: 400;
+            color: #0f172a;
+        }
+        .data-table td.details-cell {
+            max-width: 260px;
+            color: #64748b;
+            font-size: 0.8125rem;
+        }
+
+        /* ===== Badges ===== */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .badge-login { background: #d1fae5; color: #065f46; }
+        .badge-logout { background: #fee2e2; color: #991b1b; }
+        .badge-account { background: #dbeafe; color: #1e40af; }
+        .badge-role { background: #fef3c7; color: #92400e; }
+        .badge-default { background: #f1f5f9; color: #475569; }
+
+        /* ===== Empty ===== */
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .empty .emoji {
+            font-size: 2.5rem;
+            display: block;
+            margin-bottom: 12px;
+        }
+
+        /* ===== Pagination ===== */
+        .pagination-wrap {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+            padding: 0 4px;
+        }
+        .pagination-info {
+            font-size: 0.8125rem;
+            color: #64748b;
+            font-weight: 300;
+        }
+        .pagination {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .pagination a,
+        .pagination span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 38px;
+            height: 38px;
+            padding: 0 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            color: #475569;
+            background: white;
+            transition: all 0.15s ease;
+        }
+        .pagination a:hover {
+            border-color: #2d6bb8;
+            color: #2d6bb8;
+            background: #f8faff;
+        }
+        .pagination .active {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            border-color: transparent;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(11,26,51,0.2);
+        }
+        .pagination .disabled {
+            color: #cbd5e1;
+            background: #f8fafc;
+            border-color: #f1f5f9;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
+            .data-table td.details-cell { max-width: none; }
+        }
     </style>
 </head>
 <body>
-    <h1>📋 User Activity Logs</h1>
-    <a href="/dashboard">← Back to Dashboard</a>
+<div class="container">
 
-    <!-- Filter Bar -->
-    <div class="filter-bar">
+    <!-- ===== Header ===== -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">📋</span> User Activity Logs</h1>
+    </div>
+
+    <!-- Flash -->
+    <div th:if="${success}" class="flash-success">
+        <span style="font-size:1.125rem;">✅</span>
+        <span th:text="${success}">Success</span>
+    </div>
+
+    <!-- ===== Filter Bar ===== -->
+    <div class="filter-card">
         <form method="get" th:action="@{/admin/activity}" id="filterForm">
-            <label>User:
-                <select name="userId">
-                    <option value="">All Users</option>
-                    <option th:each="u : ${users}" th:value="${u.id}" th:text="${u.email}" th:selected="${u.id == selectedUserId}"></option>
-                </select>
-            </label>
-            <label>Action:
-                <select name="action">
-                    <option value="">All Actions</option>
-                    <option th:each="a : ${actions}" th:value="${a}" th:text="${a}" th:selected="${a == selectedAction}"></option>
-                </select>
-            </label>
-            <label>From:
-                <input type="date" name="startDate" th:value="${startDate}"/>
-            </label>
-            <label>To:
-                <input type="date" name="endDate" th:value="${endDate}"/>
-            </label>
-            <button type="submit" class="btn btn-primary">Filter</button>
-            <a th:href="@{/admin/activity}" class="btn btn-secondary">Clear</a>
+            <div class="filter-form">
+                <div class="filter-group">
+                    <label for="userId">User</label>
+                    <select id="userId" name="userId">
+                        <option value="">All Users</option>
+                        <option th:each="u : ${users}" th:value="${u.id}" th:text="${u.email}" th:selected="${u.id == selectedUserId}"></option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="action">Action</label>
+                    <select id="action" name="action">
+                        <option value="">All Actions</option>
+                        <option th:each="a : ${actions}" th:value="${a}" th:text="${a}" th:selected="${a == selectedAction}"></option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="startDate">From</label>
+                    <input type="date" id="startDate" name="startDate" th:value="${startDate}"/>
+                </div>
+
+                <div class="filter-group">
+                    <label for="endDate">To</label>
+                    <input type="date" id="endDate" name="endDate" th:value="${endDate}"/>
+                </div>
+
+                <div class="filter-actions">
+                    <button type="submit" class="btn btn-primary">🔍 Filter</button>
+                    <a th:href="@{/admin/activity}" class="btn btn-outline">Clear</a>
+                </div>
+            </div>
         </form>
     </div>
 
-    <div th:if="${logs.empty}" style="padding:20px; text-align:center; color:#888;">
-        No activity logs found.
+    <!-- ===== Logs Table ===== -->
+    <div class="card">
+
+        <div th:if="${logs.empty}" class="empty">
+            <span class="emoji">📭</span>
+            <p>No activity logs found.</p>
+        </div>
+
+        <table th:unless="${logs.empty}" class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Details</th>
+                    <th>IP Address</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="log : ${logs.content}">
+                    <td class="mono" th:text="${log.id}">1</td>
+                    <td class="user-cell" th:text="${log.userEmail != null ? log.userEmail : log.userId}">user@test.com</td>
+                    <td>
+                        <span th:with="badgeClass=${
+                                  log.action == 'LOGIN_SUCCESS' or log.action == 'LOGIN_FAILURE' ? 'badge-login' :
+                                  log.action == 'LOGOUT' ? 'badge-logout' :
+                                  log.action == 'ACCOUNT_CREATED' or log.action == 'ACCOUNT_REVOKED' or log.action == 'ACCOUNT_RESTORED' ? 'badge-account' :
+                                  'badge-role'
+                              }"
+                              th:classappend="${badgeClass}"
+                              class="badge"
+                              th:text="${log.action}">LOGIN_SUCCESS</span>
+                    </td>
+                    <td class="details-cell" th:text="${log.details}">Details</td>
+                    <td class="mono" th:text="${log.ipAddress}">192.168.1.1</td>
+                    <td th:text="${#temporals.format(log.createdAt, 'dd MMM yyyy · HH:mm')}">01 Jan 2026 · 12:00</td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 
-    <table th:unless="${logs.empty}">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>User</th>
-                <th>Action</th>
-                <th>Details</th>
-                <th>IP Address</th>
-                <th>Timestamp</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="log : ${logs.content}">
-                <td th:text="${log.id}">1</td>
-                <td th:text="${log.userEmail != null ? log.userEmail : log.userId}">user@test.com</td>
-                <td>
-                    <span class="badge"
-                          th:classappend="${log.action == 'LOGIN_SUCCESS' || log.action == 'LOGIN_FAILURE' ? 'badge-login' : log.action == 'LOGOUT' ? 'badge-logout' : log.action == 'ACCOUNT_CREATED' || log.action == 'ACCOUNT_REVOKED' || log.action == 'ACCOUNT_RESTORED' ? 'badge-account' : 'badge-role'}">
-                        <span th:text="${log.action}">LOGIN_SUCCESS</span>
-                    </span>
-                </td>
-                <td th:text="${log.details}">Details</td>
-                <td th:text="${log.ipAddress}">192.168.1.1</td>
-                <td th:text="${log.createdAt}">2026-01-01 12:00</td>
-            </tr>
-        </tbody>
-    </table>
+    <!-- ===== Pagination ===== -->
+    <div class="pagination-wrap" th:unless="${logs.empty}">
+        <span class="pagination-info">
+            Page <strong style="font-weight:500;" th:text="${currentPage + 1}">1</strong>
+            of <strong style="font-weight:500;" th:text="${totalPages}">1</strong>
+        </span>
 
-    <!-- Pagination -->
-    <div class="pagination" th:unless="${logs.empty}">
-        <span th:if="${currentPage > 0}">
-            <a th:href="@{/admin/activity(page=${currentPage - 1}, userId=${selectedUserId}, action=${selectedAction}, startDate=${startDate}, endDate=${endDate})}">← Previous</a>
-        </span>
-        <span class="active" th:text="${currentPage + 1}">1</span>
-        <span th:if="${currentPage + 1 < totalPages}">
-            <a th:href="@{/admin/activity(page=${currentPage + 1}, userId=${selectedUserId}, action=${selectedAction}, startDate=${startDate}, endDate=${endDate})}">Next →</a>
-        </span>
+        <div class="pagination">
+            <!-- Previous -->
+            <a th:if="${currentPage > 0}"
+               th:href="@{/admin/activity(page=${currentPage - 1}, userId=${selectedUserId}, action=${selectedAction}, startDate=${startDate}, endDate=${endDate})}">
+                ← Prev
+            </a>
+            <span th:unless="${currentPage > 0}" class="disabled">← Prev</span>
+
+            <!-- Current page -->
+            <span class="active" th:text="${currentPage + 1}">1</span>
+
+            <!-- Next -->
+            <a th:if="${currentPage + 1 < totalPages}"
+               th:href="@{/admin/activity(page=${currentPage + 1}, userId=${selectedUserId}, action=${selectedAction}, startDate=${startDate}, endDate=${endDate})}">
+                Next →
+            </a>
+            <span th:unless="${currentPage + 1 < totalPages}" class="disabled">Next →</span>
+        </div>
     </div>
+
+</div>
 </body>
 </html>

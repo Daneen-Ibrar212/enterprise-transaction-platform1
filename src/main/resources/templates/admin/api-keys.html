@@ -1,63 +1,314 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>API Keys</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Keys · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        h1 { margin-bottom: 10px; }
-        .tabs { margin: 20px 0; }
-        .tab-btn { padding: 8px 16px; border: 1px solid #ccc; background: #f9f9f9; cursor: pointer; border-radius: 4px 4px 0 0; margin-right: 4px; }
-        .tab-btn.active { background: #2d7a3a; color: white; border-color: #2d7a3a; }
-        .tab-btn:hover { background: #e0e0e0; }
-        .tab-btn.active:hover { background: #1e5c2a; }
-        .form-group { margin: 15px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-        .form-group input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; flex: 1; min-width: 200px; }
-        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; }
-        .btn-success { background: #2d7a3a; color: white; }
-        .btn-success:hover { background: #1e5c2a; }
-        .btn-danger { background: #c0392b; color: white; }
-        .btn-danger:hover { background: #a93226; }
-        .btn-secondary { background: #3498db; color: white; }
-        .btn-secondary:hover { background: #2980b9; }
-        .btn-close { background: #6c757d; color: white; }
-        .btn-close:hover { background: #5a6268; }
-        table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #f2f2f2; }
-        .badge { padding: 2px 8px; border-radius: 12px; font-size: 12px; color: white; }
-        .badge-active { background: #2d7a3a; }
-        .badge-revoked { background: #c0392b; }
-        .search-section { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-        .search-section input[type="text"] { flex: 1; min-width: 200px; }
-        #keyTableBody tr:hover { background: #f5f5f5; }
-        .empty-message { text-align: center; color: #888; padding: 30px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; }
 
-        /* ===== MODAL ===== */
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .generate-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+        .generate-form {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .generate-form input[type="text"] {
+            flex: 1;
+            min-width: 240px;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-size: 0.9375rem;
+            font-weight: 300;
+            color: #0f172a;
+        }
+        .generate-form input[type="text"]:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 4px rgba(45, 107, 184, 0.12);
+        }
+        .generate-form input::placeholder { color: #94a3b8; }
+
+        .tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            background: white;
+            padding: 6px;
+            border-radius: 14px;
+            border: 1px solid rgba(226,232,240,0.6);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .tab-btn {
+            padding: 10px 18px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 10px;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-size: 0.875rem;
+            font-weight: 400;
+            color: #475569;
+            transition: all 0.15s ease;
+        }
+        .tab-btn:hover { background: #f1f5f9; color: #0f172a; }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(11,26,51,0.2);
+        }
+
+        .search-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+        .search-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .search-form input[type="text"] {
+            flex: 1;
+            min-width: 240px;
+            padding: 11px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #0f172a;
+        }
+        .search-form input[type="text"]:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 3px rgba(45, 107, 184, 0.12);
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            overflow: hidden;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .data-table td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover td { background: #fafbfc; }
+        .data-table td.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #0f172a;
+        }
+        .data-table td code {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.75rem;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 3px 8px;
+            border-radius: 6px;
+            color: #0f172a;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+        .badge-active { background: #d1fae5; color: #065f46; }
+        .badge-revoked { background: #fee2e2; color: #991b1b; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 6px 16px rgba(16,185,129,0.2);
+        }
+        .btn-success:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(16,185,129,0.3); }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 6px 16px rgba(11,26,51,0.2);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(11,26,51,0.3); }
+        .btn-outline {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-outline:hover { border-color: #2d6bb8; color: #2d6bb8; background: #f8faff; }
+        .btn-danger {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+            padding: 8px 14px;
+            font-size: 0.75rem;
+        }
+        .btn-danger:hover { background: #fee2e2; border-color: #ef4444; }
+
+        .empty-message {
+            text-align: center;
+            color: #94a3b8;
+            padding: 60px 20px;
+            font-size: 0.875rem;
+        }
+        .empty-message .emoji {
+            font-size: 2.5rem;
+            display: block;
+            margin-bottom: 12px;
+        }
+
+        /* Modal */
         .modal-overlay {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(11,26,51,0.5);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
             justify-content: center;
             align-items: center;
+            padding: 24px;
         }
         .modal-overlay.show { display: flex; }
         .modal {
             background: white;
-            border-radius: 12px;
-            padding: 30px;
+            border-radius: 20px;
+            padding: 32px 36px;
             max-width: 600px;
-            width: 90%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.3);
             animation: modalIn 0.3s ease;
         }
         @keyframes modalIn {
-            from { transform: scale(0.9); opacity: 0; }
+            from { transform: scale(0.95); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
         .modal-header {
@@ -66,121 +317,190 @@
             align-items: center;
             margin-bottom: 20px;
         }
-        .modal-header h2 { margin: 0; color: #2d7a3a; }
-        .modal-close { background: none; border: none; font-size: 28px; cursor: pointer; color: #999; }
-        .modal-close:hover { color: #333; }
-        .modal-body { margin-bottom: 20px; }
-        .modal-body .warning {
-            background: #fff3cd;
-            padding: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #ffc107;
-            margin-bottom: 15px;
+        .modal-header h2 {
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: #0f172a;
+            letter-spacing: -0.02em;
         }
-        .modal-body .warning strong { color: #856404; }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #94a3b8;
+            line-height: 1;
+            transition: color 0.15s ease;
+        }
+        .modal-close:hover { color: #0f172a; }
+
+        .modal-warning {
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            font-size: 0.8125rem;
+            color: #92400e;
+            line-height: 1.55;
+        }
+        .modal-warning strong { font-weight: 500; display: block; margin-bottom: 6px; }
+        .modal-warning p { margin: 4px 0; }
+
         .key-display {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            font-size: 18px;
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 14px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 1rem;
             word-break: break-all;
-            border: 2px dashed #2d7a3a;
+            border: 2px dashed #2d6bb8;
             text-align: center;
             user-select: all;
+            color: #0f172a;
+            font-weight: 500;
+            margin-bottom: 12px;
         }
+
+        .key-name-note {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-bottom: 20px;
+        }
+        .key-name-note span { font-weight: 500; color: #334155; }
+
         .modal-footer {
             display: flex;
             justify-content: flex-end;
             gap: 10px;
+            padding-top: 20px;
+            border-top: 1px solid #f1f5f9;
+            flex-wrap: wrap;
         }
         .copy-btn {
-            background: #2d7a3a;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #10b981, #059669);
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
+            border-radius: 12px;
             cursor: pointer;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-size: 0.875rem;
+            font-weight: 400;
+            box-shadow: 0 8px 20px rgba(16,185,129,0.25);
+            transition: all 0.2s ease;
         }
-        .copy-btn:hover { background: #1e5c2a; }
-        .copy-btn.copied { background: #28a745; }
+        .copy-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(16,185,129,0.35); }
+        .copy-btn.copied { background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 8px 20px rgba(59,130,246,0.25); }
+
         .done-btn {
-            background: #6c757d;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
             cursor: pointer;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-size: 0.875rem;
+            font-weight: 400;
+            transition: all 0.2s ease;
         }
-        .done-btn:hover { background: #5a6268; }
+        .done-btn:hover { border-color: #94a3b8; background: #f8fafc; }
+
+        @media (max-width: 1000px) {
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
+        }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>🔑 API Keys</h1>
-    <a href="/dashboard">← Back to Dashboard</a>
 
-    <!-- Generate form -->
-    <div class="form-group">
-        <form id="generateForm" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">🔑</span> API Keys</h1>
+    </div>
+
+    <!-- Generate -->
+    <div class="generate-card">
+        <form id="generateForm" class="generate-form">
             <input type="text" id="keyName" placeholder="Key name (e.g., My App)" required/>
-            <button type="submit" class="btn btn-success">Generate New Key</button>
+            <button type="submit" class="btn btn-success">✨ Generate New Key</button>
         </form>
     </div>
 
-    <!-- Tabs and Search -->
+    <!-- Tabs -->
     <div class="tabs">
-        <button class="tab-btn active" data-filter="active">Active</button>
-        <button class="tab-btn" data-filter="revoked">Revoked</button>
-        <button class="tab-btn" data-filter="all">All</button>
+        <button class="tab-btn active" data-filter="active">✅ Active</button>
+        <button class="tab-btn" data-filter="revoked">❌ Revoked</button>
+        <button class="tab-btn" data-filter="all">📋 All</button>
     </div>
-    <div class="search-section">
-        <input type="text" id="searchInput" placeholder="Search by key, name, or user email..."/>
-        <button id="searchBtn" class="btn btn-secondary">🔍 Search</button>
-        <button id="clearSearchBtn" class="btn btn-secondary">Clear</button>
+
+    <!-- Search -->
+    <div class="search-card">
+        <div class="search-form">
+            <input type="text" id="searchInput" placeholder="Search by key, name, or user email..."/>
+            <button id="searchBtn" class="btn btn-primary">🔍 Search</button>
+            <button id="clearSearchBtn" class="btn btn-outline">Clear</button>
+        </div>
     </div>
 
     <!-- Table -->
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Key</th>
-                <th>Name</th>
-                <th>User</th>
-                <th>Status</th>
-                <th>Expires At</th>        <!-- NEW -->
-                <th>Last Used</th>
-                <th>Created</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="keyTableBody">
-            <tr><td colspan="9" class="empty-message">Loading...</td></tr>
-        </tbody>
-    </table>
-    <div id="emptyMessage" class="empty-message" style="display:none;">No keys found matching your criteria.</div>
+    <div class="card">
+        <table class="data-table" id="keyTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Key</th>
+                    <th>Name</th>
+                    <th>User</th>
+                    <th>Status</th>
+                    <th>Expires At</th>
+                    <th>Last Used</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="keyTableBody">
+                <tr><td colspan="9" class="empty-message">Loading...</td></tr>
+            </tbody>
+        </table>
+        <div id="emptyMessage" class="empty-message" style="display:none;">
+            <span class="emoji">🔑</span>
+            <p>No keys found matching your criteria.</p>
+        </div>
+    </div>
 
-    <!-- ===== MODAL ===== -->
-    <div id="keyModal" class="modal-overlay">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>🔑 New API Key Generated</h2>
-                <button class="modal-close" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="warning">
-                    <strong>⚠️ Important!</strong>
-                    <p>Copy this key now. It will <strong>never be shown again</strong>.</p>
-                    <p>If you lose it, you'll need to revoke and generate a new one.</p>
-                </div>
-                <div class="key-display" id="newKeyDisplay">ep_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</div>
-                <p style="margin-top:10px; font-size:0.9em; color:#888;">Key name: <span id="keyNameDisplay">My App</span></p>
-            </div>
-            <div class="modal-footer">
-                <button class="copy-btn" id="copyKeyBtn" onclick="copyKey()">📋 Copy Key</button>
-                <button class="done-btn" onclick="closeModal()">I've Copied It</button>
-            </div>
+</div>
+
+<!-- Modal -->
+<div id="keyModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>🔑 New API Key Generated</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+
+        <div class="modal-warning">
+            <strong>⚠️ Important!</strong>
+            <p>Copy this key now. It will <strong>never be shown again</strong>.</p>
+            <p>If you lose it, you'll need to revoke and generate a new one.</p>
+        </div>
+
+        <div class="key-display" id="newKeyDisplay">ep_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</div>
+        <div class="key-name-note">Key name: <span id="keyNameDisplay">My App</span></div>
+
+        <div class="modal-footer">
+            <button class="copy-btn" id="copyKeyBtn" onclick="copyKey()">📋 Copy Key</button>
+            <button class="done-btn" onclick="closeModal()">I've Copied It</button>
         </div>
     </div>
 </div>
@@ -194,9 +514,6 @@
         const tbody = document.getElementById('keyTableBody');
         const emptyMsg = document.getElementById('emptyMessage');
         const searchInput = document.getElementById('searchInput');
-        const searchBtn = document.getElementById('searchBtn');
-        const clearSearchBtn = document.getElementById('clearSearchBtn');
-        const generateForm = document.getElementById('generateForm');
         const modal = document.getElementById('keyModal');
         const keyDisplay = document.getElementById('newKeyDisplay');
         const keyNameDisplay = document.getElementById('keyNameDisplay');
@@ -206,9 +523,7 @@
             const params = [];
             if (currentFilter === 'active') params.push('active=true');
             else if (currentFilter === 'revoked') params.push('active=false');
-            if (currentSearch.trim()) {
-                params.push('search=' + encodeURIComponent(currentSearch.trim()));
-            }
+            if (currentSearch.trim()) params.push('search=' + encodeURIComponent(currentSearch.trim()));
             url += params.join('&');
 
             fetch(url)
@@ -216,7 +531,7 @@
                 .then(data => renderTable(data))
                 .catch(err => {
                     console.error('Error fetching keys:', err);
-                    tbody.innerHTML = '<tr><td colspan="9">Error loading keys.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" class="empty-message">Error loading keys.</td></tr>';
                     emptyMsg.style.display = 'none';
                 });
         }
@@ -234,17 +549,15 @@
                 const statusText = key.active ? '✅ Active' : '❌ Revoked';
                 const expires = key.expiresAt ? new Date(key.expiresAt).toLocaleString() : 'Never';
                 row.innerHTML = `
-                    <td>${key.id}</td>
+                    <td class="mono">${key.id}</td>
                     <td><code>${key.maskedKey}</code></td>
                     <td>${key.name}</td>
                     <td>${key.userEmail}</td>
                     <td><span class="badge ${statusClass}">${statusText}</span></td>
                     <td>${expires}</td>
-                    <td>${key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString() : '-'}</td>
+                    <td>${key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString() : '—'}</td>
                     <td>${new Date(key.createdAt).toLocaleString()}</td>
-                    <td>
-                        ${key.active ? `<button class="btn btn-danger revoke-btn" data-id="${key.id}">Revoke</button>` : '-'}
-                    </td>
+                    <td>${key.active ? `<button class="btn btn-danger revoke-btn" data-id="${key.id}">🗑️ Revoke</button>` : '—'}</td>
                 `;
                 tbody.appendChild(row);
             });
@@ -255,13 +568,8 @@
                     if (confirm('Are you sure you want to revoke this API key?')) {
                         fetch(`/admin/api-keys/${id}/revoke`, { method: 'POST' })
                             .then(response => response.text())
-                            .then(msg => {
-                                alert(msg);
-                                fetchKeys();
-                            })
-                            .catch(err => {
-                                alert('Error revoking key: ' + err.message);
-                            });
+                            .then(msg => { alert(msg); fetchKeys(); })
+                            .catch(err => alert('Error revoking key: ' + err.message));
                     }
                 });
             });
@@ -272,41 +580,39 @@
             keyNameDisplay.textContent = name || 'Unnamed';
             modal.classList.add('show');
             pendingKey = fullKey;
-            document.getElementById('copyKeyBtn').textContent = '📋 Copy Key';
-            document.getElementById('copyKeyBtn').className = 'copy-btn';
+            const btn = document.getElementById('copyKeyBtn');
+            btn.textContent = '📋 Copy Key';
+            btn.className = 'copy-btn';
         }
 
-        window.closeModal = function() {
-            modal.classList.remove('show');
-        };
+        window.closeModal = function() { modal.classList.remove('show'); };
 
         window.copyKey = function() {
-            if (pendingKey) {
-                navigator.clipboard.writeText(pendingKey).then(() => {
-                    const btn = document.getElementById('copyKeyBtn');
-                    btn.textContent = '✅ Copied!';
-                    btn.className = 'copy-btn copied';
-                }).catch(() => {
-                    // Fallback
-                    const textarea = document.createElement('textarea');
-                    textarea.value = pendingKey;
-                    document.body.appendChild(textarea);
-                    textarea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textarea);
-                    const btn = document.getElementById('copyKeyBtn');
-                    btn.textContent = '✅ Copied!';
-                    btn.className = 'copy-btn copied';
-                });
+            if (!pendingKey) return;
+            const btn = document.getElementById('copyKeyBtn');
+            const done = () => {
+                btn.textContent = '✅ Copied!';
+                btn.className = 'copy-btn copied';
+            };
+            if (navigator.clipboard?.writeText) {
+                navigator.clipboard.writeText(pendingKey).then(done).catch(() => fallbackCopy(pendingKey, done));
+            } else {
+                fallbackCopy(pendingKey, done);
             }
         };
 
-        // Close modal on overlay click
-        modal.addEventListener('click', function(e) {
-            if (e.target === this) closeModal();
-        });
+        function fallbackCopy(text, callback) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            callback();
+        }
 
-        // Tabs
+        modal.addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -316,32 +622,19 @@
             });
         });
 
-        // Search
-        function doSearch() {
-            currentSearch = searchInput.value;
-            fetchKeys();
-        }
-        searchBtn.addEventListener('click', doSearch);
+        function doSearch() { currentSearch = searchInput.value; fetchKeys(); }
+        document.getElementById('searchBtn').addEventListener('click', doSearch);
         searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                doSearch();
-            }
+            if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
         });
-        clearSearchBtn.addEventListener('click', function() {
-            searchInput.value = '';
-            currentSearch = '';
-            fetchKeys();
+        document.getElementById('clearSearchBtn').addEventListener('click', function() {
+            searchInput.value = ''; currentSearch = ''; fetchKeys();
         });
 
-        // Generate
-        generateForm.addEventListener('submit', function(e) {
+        document.getElementById('generateForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const name = document.getElementById('keyName').value.trim();
-            if (!name) {
-                alert('Please enter a name for the key.');
-                return;
-            }
+            if (!name) { alert('Please enter a name for the key.'); return; }
             fetch('/admin/api-keys/generate?name=' + encodeURIComponent(name), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
@@ -352,12 +645,9 @@
                 document.getElementById('keyName').value = '';
                 fetchKeys();
             })
-            .catch(err => {
-                alert('Error generating key: ' + err.message);
-            });
+            .catch(err => alert('Error generating key: ' + err.message));
         });
 
-        // Initial load
         fetchKeys();
     })();
 </script>

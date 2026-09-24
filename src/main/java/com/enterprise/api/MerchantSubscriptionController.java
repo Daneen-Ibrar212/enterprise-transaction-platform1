@@ -81,7 +81,7 @@ public class MerchantSubscriptionController {
     }
 
     // ============================================================
-    // PLAN MANAGEMENT - ✅ THIS WAS MISSING
+    // PLAN MANAGEMENT
     // ============================================================
     @GetMapping("/plans")
     public String managePlans(Model model, Authentication authentication) {
@@ -108,6 +108,42 @@ public class MerchantSubscriptionController {
             redirectAttributes.addFlashAttribute("error", "Failed to create plan: " + e.getMessage());
         }
         return "redirect:/merchant/subscriptions/plans";
+    }
+
+    // ============================================================
+    // EDIT PLAN FORM (GET) - NEW
+    // ============================================================
+    @GetMapping("/plans/{id}/edit")
+    public String editPlanForm(@PathVariable Long id,
+                               Authentication authentication,
+                               Model model,
+                               RedirectAttributes redirectAttributes) {
+        try {
+            AppUser merchant = userRepository.findByEmail(authentication.getName())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            // Fetch all plans for this tenant and find the matching one
+            List<SubscriptionPlan> plans = subscriptionService.getPlansForTenant(merchant.getTenantId());
+
+            SubscriptionPlan plan = plans.stream()
+                    .filter(p -> p.getId().equals(id))
+                    .findFirst()
+                    .orElse(null);
+
+            if (plan == null) {
+                log.warn("Plan {} not found or doesn't belong to tenant {}", id, merchant.getTenantId());
+                redirectAttributes.addFlashAttribute("error", "Plan not found");
+                return "redirect:/merchant/subscriptions/plans";
+            }
+
+            model.addAttribute("plan", plan);
+            return "merchant/subscriptions/plan-edit";
+
+        } catch (Exception e) {
+            log.error("Error loading plan {}", id, e);
+            redirectAttributes.addFlashAttribute("error", "Failed to load plan: " + e.getMessage());
+            return "redirect:/merchant/subscriptions/plans";
+        }
     }
 
     @PostMapping("/plans/{id}/update")
@@ -137,7 +173,7 @@ public class MerchantSubscriptionController {
     }
 
     // ============================================================
-    // CUSTOMER SUBSCRIPTIONS VIEW - ✅ THIS WAS MISSING
+    // CUSTOMER SUBSCRIPTIONS VIEW
     // ============================================================
     @GetMapping("/customers")
     public String customerSubscriptions(Model model, Authentication authentication) {
@@ -148,15 +184,15 @@ public class MerchantSubscriptionController {
                 merchant.getId(), PageRequest.of(0, 50, Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         model.addAttribute("subscriptions", subscriptions);
-        
+
         List<SubscriptionPlan> plans = subscriptionService.getPlansForTenant(merchant.getTenantId());
         model.addAttribute("plans", plans);
-        
+
         return "merchant/subscriptions/customers";
     }
 
     // ============================================================
-    // SUBSCRIPTION REQUESTS - ✅ THIS WAS ALSO NEEDED
+    // SUBSCRIPTION REQUESTS
     // ============================================================
     @GetMapping("/requests")
     public String pendingRequests(Model model, Authentication authentication) {
@@ -229,28 +265,28 @@ public class MerchantSubscriptionController {
 
             // Check if customer exists
             Optional<AppUser> existingCustomer = userRepository.findByEmailIgnoreCase(trimmedEmail);
-            
+
             AppUser customer;
             if (existingCustomer.isPresent()) {
                 customer = existingCustomer.get();
                 log.info("👤 Customer already exists: {} (ID: {})", trimmedEmail, customer.getId());
             } else {
                 log.info("📝 Creating new customer: {}", trimmedEmail);
-                
-                String password = customerPassword != null && !customerPassword.isEmpty() 
-                        ? customerPassword 
+
+                String password = customerPassword != null && !customerPassword.isEmpty()
+                        ? customerPassword
                         : UUID.randomUUID().toString();
-                
+
                 AppUser newUser = new AppUser();
                 newUser.setEmail(trimmedEmail);
                 newUser.setPasswordHash(passwordEncoder.encode(password));
                 newUser.setActive(true);
                 newUser.setTenantId(merchant.getTenantId());
-                
+
                 Role customerRole = roleRepository.findByName("CUSTOMER")
                         .orElseThrow(() -> new RuntimeException("CUSTOMER role not found"));
                 newUser.setRoles(Set.of(customerRole));
-                
+
                 customer = userRepository.save(newUser);
                 log.info("✅ Created new customer: {} (ID: {})", trimmedEmail, customer.getId());
             }
@@ -264,7 +300,7 @@ public class MerchantSubscriptionController {
             );
 
             log.info("✅ Subscription request created for customer {}", trimmedEmail);
-            redirectAttributes.addFlashAttribute("success", 
+            redirectAttributes.addFlashAttribute("success",
                     "✅ Subscription request created for " + trimmedEmail + ". Awaiting admin approval.");
 
         } catch (Exception e) {

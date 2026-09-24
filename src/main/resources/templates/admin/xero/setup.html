@@ -1,87 +1,417 @@
-<!-- src/main/resources/templates/admin/xero/setup.html -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Xero Setup</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xero Setup · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 800px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header p {
+            font-size: 0.875rem;
+            color: rgba(255,255,255,0.75);
+            margin-top: 8px;
+            position: relative;
+            z-index: 1;
+            font-weight: 300;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .flash {
+            padding: 14px 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .flash-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px 28px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 18px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .card-header h2 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            flex-wrap: wrap;
+        }
+        .status-label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            min-width: 90px;
+        }
+        .status-value {
+            font-size: 0.9375rem;
+            font-weight: 400;
+            color: #0f172a;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .badge-connected { background: #d1fae5; color: #065f46; }
+        .badge-disconnected { background: #fee2e2; color: #991b1b; }
+        .badge-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .cred-info {
+            font-size: 0.8125rem;
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 400;
+        }
+        .cred-custom { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+        .cred-default { background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .form-group label .required { color: #ef4444; margin-left: 2px; }
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.9375rem;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-weight: 300;
+            color: #0f172a;
+            background: white;
+            transition: all 0.15s ease;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 4px rgba(45, 107, 184, 0.12);
+        }
+        .form-group input::placeholder { color: #94a3b8; font-weight: 300; }
+
+        .help-text {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 6px;
+            font-weight: 300;
+            line-height: 1.5;
+        }
+
+        .action-grid {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(11,26,51,0.25);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(11,26,51,0.35); }
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 8px 20px rgba(16,185,129,0.25);
+        }
+        .btn-success:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(16,185,129,0.35); }
+        .btn-danger {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        .btn-danger:hover { background: #fee2e2; border-color: #ef4444; }
+
+        .help-list {
+            list-style: none;
+            padding: 0;
+            counter-reset: step;
+        }
+        .help-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 0;
+            font-size: 0.875rem;
+            color: #475569;
+            line-height: 1.55;
+            border-bottom: 1px solid #f1f5f9;
+            font-weight: 300;
+            counter-increment: step;
+        }
+        .help-list li:last-child { border-bottom: none; }
+        .help-list li::before {
+            content: counter(step);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            font-weight: 500;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+        .help-list li strong { font-weight: 500; color: #0f172a; }
+        .help-list li a { color: #4f46e5; font-weight: 500; text-decoration: none; }
+        .help-list li a:hover { text-decoration: underline; }
+    </style>
 </head>
 <body>
-    <div class="container mt-4">
-        <h1>Xero Integration Setup</h1>
-        
-        <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
-        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+<div class="container">
 
-        <div class="card mt-4">
-            <div class="card-header">
-                <h5>Connection Status</h5>
-            </div>
-            <div class="card-body">
-                <p><strong>Tenant ID:</strong> <span th:text="${tenantId}"></span></p>
-                <p><strong>Status:</strong> 
-                    <span th:if="${isConnected}" class="badge bg-success">✅ Connected</span>
-                    <span th:unless="${isConnected}" class="badge bg-danger">❌ Not Connected</span>
-                </p>
-                <p th:if="${hasCustomCreds}" class="text-info">🔑 Using custom credentials</p>
-                <p th:unless="${hasCustomCreds}" class="text-secondary">Using default system credentials</p>
-            </div>
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/admin/xero" class="back-link">← Xero Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">⚙️</span> Xero Integration Setup</h1>
+        <p>Connect your Xero account using your own credentials or the system defaults.</p>
+    </div>
+
+    <div th:if="${success}" class="flash flash-success">
+        <span style="font-size:1.125rem;">✅</span>
+        <span th:text="${success}">Success</span>
+    </div>
+    <div th:if="${error}" class="flash flash-error">
+        <span style="font-size:1.125rem;">❌</span>
+        <span th:text="${error}">Error</span>
+    </div>
+
+    <!-- Connection Status -->
+    <div class="card">
+        <div class="card-header">
+            <h2>🔗 Connection Status</h2>
+            <span th:if="${isConnected}" class="badge badge-connected">
+                <span class="badge-dot"></span> Connected
+            </span>
+            <span th:unless="${isConnected}" class="badge badge-disconnected">
+                <span class="badge-dot"></span> Not Connected
+            </span>
         </div>
 
-        <!-- Custom Credentials Form -->
-        <div class="card mt-4" th:unless="${isConnected}">
-            <div class="card-header">
-                <h5>Connect Your Xero Account</h5>
-            </div>
-            <div class="card-body">
-                <p>Enter your Xero App credentials to connect your account.</p>
-                <form th:action="@{/admin/xero/setup/connect}" method="post">
-                    <div class="mb-3">
-                        <label for="clientId" class="form-label">Xero Client ID</label>
-                        <input type="text" class="form-control" id="clientId" name="clientId" required 
-                               placeholder="Enter your Xero Client ID">
-                        <small class="text-muted">Find this in your Xero Developer Portal → My Apps → Configuration</small>
-                    </div>
-                    <div class="mb-3">
-                        <label for="clientSecret" class="form-label">Xero Client Secret</label>
-                        <input type="password" class="form-control" id="clientSecret" name="clientSecret" required
-                               placeholder="Enter your Xero Client Secret">
-                        <small class="text-muted">Generate this in your Xero Developer Portal</small>
-                    </div>
-                    <button type="submit" class="btn btn-primary">🔗 Connect to Xero</button>
-                </form>
-            </div>
+        <div class="status-row">
+            <span class="status-label">Tenant ID</span>
+            <span class="status-value" th:text="${tenantId}">—</span>
         </div>
 
-        <!-- Actions -->
-        <div class="card mt-4" th:if="${isConnected}">
-            <div class="card-header">
-                <h5>Actions</h5>
-            </div>
-            <div class="card-body">
-                <div class="d-flex gap-2">
-                    <form th:action="@{/admin/xero/setup/disconnect}" method="post">
-                        <button type="submit" class="btn btn-danger">🔌 Disconnect</button>
-                    </form>
-                    <a th:href="@{/admin/xero}" class="btn btn-primary">📊 Go to Xero Dashboard</a>
-                </div>
-            </div>
+        <div th:if="${hasCustomCreds}" class="cred-info cred-custom">
+            <span style="font-size:1.125rem;">🔑</span>
+            <span>Using custom credentials</span>
         </div>
-
-        <!-- Help Section -->
-        <div class="card mt-4">
-            <div class="card-header">
-                <h5>How to get your Xero credentials</h5>
-            </div>
-            <div class="card-body">
-                <ol>
-                    <li>Go to <a href="https://developer.xero.com/myapps/" target="_blank">Xero Developer Portal</a></li>
-                    <li>Create a new app or select an existing one</li>
-                    <li>Copy the <strong>Client ID</strong> from the Configuration tab</li>
-                    <li>Click <strong>"Generate a secret"</strong> and copy it</li>
-                    <li>Enter both above and click "Connect to Xero"</li>
-                </ol>
-            </div>
+        <div th:unless="${hasCustomCreds}" class="cred-info cred-default">
+            <span style="font-size:1.125rem;">📦</span>
+            <span>Using default system credentials</span>
         </div>
     </div>
+
+    <!-- Connect Form -->
+    <div class="card" th:unless="${isConnected}">
+        <div class="card-header">
+            <h2>🔗 Connect Your Xero Account</h2>
+        </div>
+
+        <p style="font-size:0.875rem; color:#475569; margin-bottom:20px; line-height:1.55;">
+            Enter your Xero App credentials to connect your account.
+        </p>
+
+        <form th:action="@{/admin/xero/setup/connect}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+
+            <div class="form-group">
+                <label for="clientId">Xero Client ID <span class="required">*</span></label>
+                <input type="text" id="clientId" name="clientId" required
+                       placeholder="Enter your Xero Client ID" />
+                <div class="help-text">Find this in your Xero Developer Portal → My Apps → Configuration.</div>
+            </div>
+
+            <div class="form-group">
+                <label for="clientSecret">Xero Client Secret <span class="required">*</span></label>
+                <input type="password" id="clientSecret" name="clientSecret" required
+                       placeholder="Enter your Xero Client Secret" />
+                <div class="help-text">Generate this in your Xero Developer Portal.</div>
+            </div>
+
+            <div class="action-grid">
+                <button type="submit" class="btn btn-primary">🔗 Connect to Xero</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Actions (connected) -->
+    <div class="card" th:if="${isConnected}">
+        <div class="card-header">
+            <h2>⚡ Actions</h2>
+        </div>
+        <div class="action-grid">
+            <a th:href="@{/admin/xero}" class="btn btn-primary">📊 Go to Xero Dashboard</a>
+            <form th:action="@{/admin/xero/setup/disconnect}" method="post" style="display:inline;">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Disconnect Xero?')">
+                    🔌 Disconnect
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Help -->
+    <div class="card">
+        <div class="card-header">
+            <h2>📖 How to get your Xero credentials</h2>
+        </div>
+        <ol class="help-list">
+            <li>
+                <div>Go to <a href="https://developer.xero.com/myapps/" target="_blank" rel="noopener">Xero Developer Portal</a>.</div>
+            </li>
+            <li>
+                <div>Create a new app, or select an existing one.</div>
+            </li>
+            <li>
+                <div>Copy the <strong>Client ID</strong> from the Configuration tab.</div>
+            </li>
+            <li>
+                <div>Click <strong>Generate a secret</strong> and copy the value.</div>
+            </li>
+            <li>
+                <div>Paste both into the fields above and click <strong>Connect to Xero</strong>.</div>
+            </li>
+        </ol>
+    </div>
+
+</div>
 </body>
 </html>

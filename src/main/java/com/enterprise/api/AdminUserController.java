@@ -6,10 +6,13 @@ import com.enterprise.identity.Role;
 import com.enterprise.identity.RoleRepository;
 import com.enterprise.identity.UserRepository;
 import com.enterprise.notification.NotificationService;
+import com.enterprise.security.TwoFactorOverrideService;
 import com.enterprise.tenant.TenantRepository;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,25 +31,30 @@ import java.util.stream.Collectors;
 @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MERCHANT_ADMIN')")
 public class AdminUserController {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminUserController.class);
+
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final NotificationService notificationService;
     private final PasswordEncoder passwordEncoder;
     private final TenantRepository tenantRepository;
     private final UserActivityLogService activityLogService;
+    private final TwoFactorOverrideService twoFactorOverrideService;
 
     public AdminUserController(UserRepository userRepository,
                                RoleRepository roleRepository,
                                NotificationService notificationService,
                                PasswordEncoder passwordEncoder,
                                TenantRepository tenantRepository,
-                               UserActivityLogService activityLogService) {
+                               UserActivityLogService activityLogService,
+                               TwoFactorOverrideService twoFactorOverrideService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.notificationService = notificationService;
         this.passwordEncoder = passwordEncoder;
         this.tenantRepository = tenantRepository;
         this.activityLogService = activityLogService;
+        this.twoFactorOverrideService = twoFactorOverrideService;
     }
 
     private AppUser getCurrentAdmin(Authentication authentication) {
@@ -54,6 +62,9 @@ public class AdminUserController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
+    // ============================================================
+    // LIST USERS
+    // ============================================================
     @GetMapping
     public String listUsers(@RequestParam(required = false) String search,
                             @RequestParam(required = false) String role,
@@ -99,6 +110,9 @@ public class AdminUserController {
         return "admin/users/list";
     }
 
+    // ============================================================
+    // IMPERSONATE
+    // ============================================================
     @PostMapping("/{id}/impersonate")
     public String impersonateUser(@PathVariable Long id, HttpServletRequest request) throws Exception {
         AppUser user = userRepository.findById(id)
@@ -107,6 +121,9 @@ public class AdminUserController {
         return "redirect:" + switchUrl;
     }
 
+    // ============================================================
+    // CREATE USER
+    // ============================================================
     @GetMapping("/create")
     public String showCreateForm(Model model, Authentication authentication) {
         AppUser admin = getCurrentAdmin(authentication);
@@ -148,7 +165,6 @@ public class AdminUserController {
             user.setTenantId(admin.getTenantId());
         }
 
-        // ===== NEW: Default to MERCHANT_ADMIN =====
         if (roleIds != null && !roleIds.isEmpty()) {
             Set<Role> roles = new HashSet<>(roleRepository.findAllById(roleIds));
             user.setRoles(roles);
@@ -179,6 +195,9 @@ public class AdminUserController {
         return "redirect:/admin/users";
     }
 
+    // ============================================================
+    // EDIT USER
+    // ============================================================
     @GetMapping("/{id}/edit")
     public String showEditForm(@PathVariable Long id, Model model, Authentication authentication) {
         AppUser admin = getCurrentAdmin(authentication);
@@ -223,7 +242,6 @@ public class AdminUserController {
             user.setTenantId(tenantId);
         }
 
-        // ===== NEW: Default to MERCHANT_ADMIN =====
         if (roleIds != null && !roleIds.isEmpty()) {
             Set<Role> roles = new HashSet<>(roleRepository.findAllById(roleIds));
             user.setRoles(roles);
@@ -282,6 +300,9 @@ public class AdminUserController {
         return "redirect:/admin/users";
     }
 
+    // ============================================================
+    // REVOKE
+    // ============================================================
     @PostMapping("/revoke/{userId}")
     public String revokeUserById(@PathVariable Long userId,
                                  Authentication authentication,
@@ -318,6 +339,9 @@ public class AdminUserController {
         return "redirect:/admin/users";
     }
 
+    // ============================================================
+    // RESTORE
+    // ============================================================
     @GetMapping("/restore")
     public String restorePage(@RequestParam(required = false) String search,
                               Model model,
@@ -378,5 +402,44 @@ public class AdminUserController {
                 null
         );
         return "redirect:/admin/users/restore" + (search != null ? "?search=" + search : "");
+    }
+
+    // ============================================================
+    // SUPER ADMIN: 2FA OVERRIDE
+    // ============================================================
+    @PostMapping("/{id}/disable-2fa")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public String disableTwoFactor(@PathVariable Long id,
+                                   @RequestParam(required = false, defaultValue = "Lost device") String reason,
+                                   @RequestParam(required = false) Integer hoursValid,
+                                   Authentication authentication,
+                                   RedirectAttributes redirectAttributes) {
+        try {
+            AppUser admin = getCurrentAdmin(authentication);
+            twoFactorOverrideService.disableTwoFactorForUser(id, admin.getId(), reason, hoursValid);
+            redirectAttributes.addFlashAttribute("success",
+                "✅ 2FA temporarily disabled. " +
+                (hoursValid != null ? "Override expires in " + hoursValid + " hours." : "Override is indefinite."));
+        } catch (Exception e) {
+            log.error("Error disabling 2FA for user {}", id, e);
+            redirectAttributes.addFlashAttribute("error", "Failed to disable 2FA: " + e.getMessage());
+        }
+        return "redirect:/admin/users";
+    }
+
+    @PostMapping("/{id}/enable-2fa")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public String enableTwoFactor(@PathVariable Long id,
+                                  Authentication authentication,
+                                  RedirectAttributes redirectAttributes) {
+        try {
+            AppUser admin = getCurrentAdmin(authentication);
+            twoFactorOverrideService.enableTwoFactorForUser(id, admin.getId());
+            redirectAttributes.addFlashAttribute("success", "✅ 2FA re-enabled for user.");
+        } catch (Exception e) {
+            log.error("Error re-enabling 2FA for user {}", id, e);
+            redirectAttributes.addFlashAttribute("error", "Failed to re-enable 2FA: " + e.getMessage());
+        }
+        return "redirect:/admin/users";
     }
 }

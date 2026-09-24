@@ -1,191 +1,504 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Subscription Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Plans · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
         .container { max-width: 1200px; margin: 0 auto; }
-        .nav-tabs { display: flex; gap: 5px; margin: 20px 0; border-bottom: 2px solid #ddd; flex-wrap: wrap; }
-        .nav-tabs a { padding: 10px 20px; text-decoration: none; color: #555; border-radius: 4px 4px 0 0; }
-        .nav-tabs a.active { background: #2d7a3a; color: white; }
-        .nav-tabs a:hover { background: #e9ecef; }
-        .nav-tabs a .badge-count { background: #c0392b; color: white; padding: 1px 8px; border-radius: 12px; font-size: 11px; margin-left: 5px; }
-        .card { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 20px; margin: 20px 0; }
-        .stats { display: flex; gap: 20px; flex-wrap: wrap; }
-        .stat-card { background: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex: 1; min-width: 150px; text-align: center; }
-        .stat-card .number { font-size: 24px; font-weight: bold; color: #2d7a3a; }
-        .stat-card .label { color: #666; font-size: 14px; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background: #f2f2f2; }
-        .badge { padding: 4px 12px; border-radius: 12px; color: white; font-size: 12px; display: inline-block; }
-        .badge-active { background: #2d7a3a; }
-        .badge-trialing { background: #f39c12; }
-        .badge-cancelled { background: #95a5a6; }
-        .badge-pending { background: #f39c12; }
-        .badge-approved { background: #2d7a3a; }
-        .badge-rejected { background: #c0392b; }
-        .badge-assigned { background: #2980b9; }
-        .back-link { color: #007bff; text-decoration: none; }
-        .back-link:hover { text-decoration: underline; }
-        .btn { padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 12px; }
-        .btn-cancel { background: #c0392b; color: white; }
-        .btn-upgrade { background: #2980b9; color: white; }
-        .btn-approve { background: #2d7a3a; color: white; }
-        .btn-reject { background: #c0392b; color: white; }
-        .btn-sm { padding: 4px 10px; font-size: 11px; }
-        .empty { text-align: center; color: #666; padding: 40px; }
-        .plan-select { padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd; }
-        .flash-success { background: #d4edda; padding: 12px; border-radius: 4px; color: #155724; margin: 10px 0; }
-        .flash-error { background: #f8d7da; padding: 12px; border-radius: 4px; color: #721c24; margin: 10px 0; }
-        .flash-warning { background: #fff3cd; padding: 12px; border-radius: 4px; color: #856404; margin: 10px 0; }
-        .action-cell { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
-        .reason-input { width: 100%; max-width: 200px; padding: 4px 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; }
-        .request-row { background: #fffde7; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .flash {
+            padding: 14px 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .flash-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+        .flash-warning { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+
+        /* Nav tabs */
+        .nav-tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            background: white;
+            padding: 6px;
+            border-radius: 14px;
+            border: 1px solid rgba(226,232,240,0.6);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .nav-tabs a {
+            padding: 10px 18px;
+            text-decoration: none;
+            color: #475569;
+            font-size: 0.875rem;
+            font-weight: 400;
+            border-radius: 10px;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .nav-tabs a:hover { background: #f1f5f9; color: #0f172a; }
+        .nav-tabs a.active {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(11,26,51,0.2);
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px 28px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+        }
+        .card-accent {
+            background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+            border: 1px solid #a7f3d0;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+        .card-header h3 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-accent h3 { color: #065f46; }
+
+        /* Form */
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            align-items: end;
+        }
+        .form-group { margin-bottom: 14px; }
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-weight: 300;
+            color: #0f172a;
+            background: white;
+            transition: all 0.15s ease;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 3px rgba(45, 107, 184, 0.12);
+        }
+        .form-group input::placeholder { color: #94a3b8; font-weight: 300; }
+        .form-group input[type="checkbox"] { width: auto; margin-right: 6px; }
+        .form-group.checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .form-group.checkbox-label label {
+            text-transform: none;
+            letter-spacing: 0;
+            font-size: 0.8125rem;
+            color: #334155;
+            margin-bottom: 0;
+            font-weight: 400;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        /* Table */
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .data-table td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover td { background: #fafbfc; }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .badge-active { background: #d1fae5; color: #065f46; }
+        .badge-inactive { background: #fee2e2; color: #991b1b; }
+        .badge-trial {
+            background: #fef3c7;
+            color: #92400e;
+            font-size: 0.65rem;
+            padding: 3px 10px;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(11,26,51,0.25);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(11,26,51,0.35); }
+        .btn-subscribe {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 8px 20px rgba(16,185,129,0.25);
+            padding: 11px 24px;
+        }
+        .btn-subscribe:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(16,185,129,0.35); }
+        .btn-edit { background: #3b82f6; color: white; box-shadow: 0 4px 12px rgba(59,130,246,0.2); }
+        .btn-edit:hover { background: #2563eb; transform: translateY(-1px); }
+        .btn-delete { background: #f1f5f9; color: #475569; }
+        .btn-delete:hover { background: #fee2e2; color: #dc2626; }
+        .btn-sm { padding: 6px 12px; font-size: 0.75rem; border-radius: 8px; }
+
+        .action-cell { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+        .empty {
+            text-align: center;
+            padding: 50px 20px;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 10px; }
+
+        .hint {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 300;
+        }
+
         @media (max-width: 768px) {
-            .action-cell { flex-direction: column; align-items: stretch; }
-            .reason-input { max-width: 100%; }
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
         }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>📊 Subscription Dashboard</h1>
-    <a href="/dashboard" class="back-link">← Back to Dashboard</a>
 
-    <!-- Flash Messages -->
-    <div th:if="${success}" class="flash-success" th:text="${success}"></div>
-    <div th:if="${error}" class="flash-error" th:text="${error}"></div>
-    <div th:if="${warning}" class="flash-warning" th:text="${warning}"></div>
-
-    <!-- Navigation Tabs -->
-    <div class="nav-tabs">
-        <a href="/merchant/subscriptions" class="active">📊 Dashboard</a>
-        <a href="/merchant/subscriptions/plans">📋 Plans</a>
-        <a href="/merchant/subscriptions/customers">👥 Customers</a>
-        <a href="/merchant/subscriptions/requests">📋 Requests 
-            <span th:if="${pendingRequests != null and !pendingRequests.isEmpty()}" class="badge-count" 
-                  th:text="${#lists.size(pendingRequests)}">0</span>
-        </a>
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">📋</span> Subscription Plans</h1>
     </div>
 
-    <!-- Stats -->
-    <div class="stats">
-        <div class="stat-card">
-            <div class="number" th:text="${stats.activeSubscriptions}">0</div>
-            <div class="label">Active Subscriptions</div>
-        </div>
-        <div class="stat-card">
-            <div class="number" th:text="${stats.totalSubscriptions}">0</div>
-            <div class="label">Total Subscriptions</div>
-        </div>
-        <div class="stat-card">
-            <div class="number" th:text="${#numbers.formatDecimal(stats.monthlyRevenue, 0, 'COMMA', 2, 'POINT')}">0.00</div>
-            <div class="label">Monthly Revenue</div>
-        </div>
-        <div class="stat-card">
-            <div class="number" th:text="${#numbers.formatDecimal(stats.annualRevenue, 0, 'COMMA', 2, 'POINT')}">0.00</div>
-            <div class="label">Annual Revenue</div>
-        </div>
-        <div class="stat-card" style="background: #fff3cd;">
-            <div class="number" style="color: #f39c12;" th:text="${stats.pendingRequests}">0</div>
-            <div class="label">Pending Requests</div>
-        </div>
+    <!-- Flash -->
+    <div th:if="${success}" class="flash flash-success">
+        <span style="font-size:1.125rem;">✅</span>
+        <span th:text="${success}">Success</span>
+    </div>
+    <div th:if="${error}" class="flash flash-error">
+        <span style="font-size:1.125rem;">❌</span>
+        <span th:text="${error}">Error</span>
+    </div>
+    <div th:if="${warning}" class="flash flash-warning">
+        <span style="font-size:1.125rem;">⚠️</span>
+        <span th:text="${warning}">Warning</span>
     </div>
 
-    <!-- Pending Requests Section -->
-    <div class="card" th:if="${pendingRequests != null and !pendingRequests.isEmpty()}">
-        <h3>⏳ Pending Subscription Requests</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Customer</th>
-                    <th>Plan</th>
-                    <th>Requested</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr th:each="req : ${pendingRequests}" class="request-row">
-                    <td th:text="${req.customerEmail}">customer@test.com</td>
-                    <td th:text="${req.planName}">Basic Plan</td>
-                    <td th:text="${#temporals.format(req.createdAt, 'yyyy-MM-dd HH:mm')}">2026-09-01 12:00</td>
-                    <td>
-                        <span class="badge badge-pending" th:text="${req.status}">PENDING</span>
-                    </td>
-                    <td>
-                        <div class="action-cell">
-                            <form method="post" th:action="'/merchant/subscriptions/requests/' + ${req.id} + '/approve'" style="display:inline;">
-                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                                <button type="submit" class="btn btn-approve btn-sm">✅ Approve</button>
-                            </form>
-                            <form method="post" th:action="'/merchant/subscriptions/requests/' + ${req.id} + '/reject'" style="display:inline;">
-                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                                <input type="text" name="reason" placeholder="Reason (optional)" class="reason-input" />
-                                <button type="submit" class="btn btn-reject btn-sm">❌ Reject</button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-        <div style="margin-top: 10px;">
-            <a href="/merchant/subscriptions/requests" class="btn" style="background: #3498db; color: white; padding: 6px 16px;">View All Requests →</a>
+<div class="nav-tabs">
+    <a href="/merchant/subscriptions" class="active">📊 Dashboard</a>
+    <a href="/merchant/subscriptions/plans">📋 Plans</a>
+    <a href="/merchant/subscriptions/customers">👥 Customers</a>
+    <a href="/merchant/subscriptions/requests">📋 Requests</a>
+</div>
+    <!-- Subscribe Customer to Plan -->
+    <div class="card card-accent">
+        <div class="card-header">
+            <h3>👤 Subscribe Customer to Plan</h3>
         </div>
+
+        <form method="post" th:action="@{/merchant/subscriptions/subscribe}">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Customer Email</label>
+                    <input type="email" name="customerEmail" required placeholder="customer@example.com" />
+                </div>
+
+                <div class="form-group">
+                    <label>Select Plan</label>
+                    <select name="planId" required>
+                        <option value="">— Select a Plan —</option>
+                        <option th:each="plan : ${plans}"
+                                th:value="${plan.id}"
+                                th:text="${plan.name + ' · ' + plan.billingPeriod + ' · ' + plan.price + ' ' + plan.currency}">
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom:0;">
+                    <button type="submit" class="btn btn-subscribe" style="width:100%;">
+                        ➕ Subscribe Customer
+                    </button>
+                </div>
+            </div>
+
+            <div class="hint">
+                💡 If the customer doesn't exist, an account will be created automatically.
+            </div>
+        </form>
     </div>
 
-    <!-- Recent Subscriptions -->
+    <!-- Create New Plan -->
     <div class="card">
-        <h3>📋 Recent Subscriptions</h3>
-        <div th:if="${subscriptions != null and !subscriptions.isEmpty()}">
-            <table>
+        <div class="card-header">
+            <h3>➕ Create New Plan</h3>
+        </div>
+
+        <form method="post" th:action="@{/merchant/subscriptions/plans/create}">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Plan Name</label>
+                    <input type="text" name="name" required placeholder="e.g., Pro, Enterprise" />
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" name="description" placeholder="Brief description" />
+                </div>
+
+                <div class="form-group">
+                    <label>Billing Period</label>
+                    <select name="billingPeriod">
+                        <option value="MONTHLY">Monthly</option>
+                        <option value="QUARTERLY">Quarterly</option>
+                        <option value="YEARLY">Yearly</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Price</label>
+                    <input type="number" step="0.01" name="price" required placeholder="9.99" />
+                </div>
+
+                <div class="form-group">
+                    <label>Currency</label>
+                    <select name="currency">
+                        <option value="GBP">GBP (£)</option>
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Trial Days</label>
+                    <input type="number" name="trialDays" value="0" placeholder="0 = no trial" />
+                </div>
+            </div>
+
+            <div class="form-group checkbox-label">
+                <label>
+                    <input type="checkbox" name="active" checked />
+                    Active
+                </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Create Plan</button>
+        </form>
+    </div>
+
+    <!-- Existing Plans -->
+    <div class="card">
+        <div class="card-header">
+            <h3>📋 Existing Plans</h3>
+        </div>
+
+        <div th:if="${plans != null and !plans.isEmpty()}">
+            <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Customer</th>
-                        <th>Plan</th>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Period</th>
                         <th>Price</th>
+                        <th>Trial</th>
                         <th>Status</th>
-                        <th>Next Billing</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr th:each="sub : ${subscriptions.content}">
-                        <td th:text="${sub.customerEmail}">customer@test.com</td>
-                        <td th:text="${sub.plan.name}">Basic</td>
-                        <td th:text="${currencyHelper.getFormattedAmount(sub.plan.price, sub.plan.currency)}">£ 9.99</td>
+                    <tr th:each="plan : ${plans}">
+                        <td style="font-weight:500;" th:text="${plan.name}">Basic</td>
+                        <td th:text="${plan.description}">Description</td>
+                        <td th:text="${plan.billingPeriod}">MONTHLY</td>
+                        <td style="font-weight:500;" th:text="${currencyHelper.getFormattedAmount(plan.price, plan.currency)}">£ 9.99</td>
                         <td>
-                            <span class="badge" 
-                                  th:classappend="${sub.status.name() == 'ACTIVE' ? 'badge-active' : sub.status.name() == 'TRIALING' ? 'badge-trialing' : 'badge-cancelled'}"
-                                  th:text="${sub.status}">Active</span>
+                            <span th:if="${plan.trialDays > 0}" class="badge badge-trial"
+                                  th:text="${plan.trialDays} + ' days'">14 days</span>
+                            <span th:unless="${plan.trialDays > 0}" style="color:#94a3b8;">—</span>
                         </td>
-                        <td th:text="${#temporals.format(sub.nextBillingDate, 'yyyy-MM-dd')}">2026-09-01</td>
                         <td>
-                            <form method="post" th:action="'/merchant/subscriptions/' + ${sub.id} + '/upgrade'" style="display:inline;">
-                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                                <select name="planId" class="plan-select">
-                                    <option th:each="plan : ${plans}" 
-                                            th:value="${plan.id}" 
-                                            th:text="${plan.name + ' - ' + plan.price + ' ' + plan.currency}"
-                                            th:selected="${plan.id == sub.plan.id}">
-                                    </option>
-                                </select>
-                                <button type="submit" class="btn btn-upgrade btn-sm">Upgrade</button>
-                            </form>
-                            <form method="post" th:action="'/merchant/subscriptions/' + ${sub.id} + '/cancel'" style="display:inline;">
-                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                                <button type="submit" class="btn btn-cancel btn-sm" onclick="return confirm('Cancel this subscription?')">Cancel</button>
-                            </form>
+                            <span class="badge"
+                                  th:classappend="${plan.isActive ? 'badge-active' : 'badge-inactive'}"
+                                  th:text="${plan.isActive ? 'Active' : 'Inactive'}">Active</span>
+                        </td>
+                        <td>
+                            <div class="action-cell">
+                                <a th:href="@{/merchant/subscriptions/plans/{id}/edit(id=${plan.id})}" class="btn btn-edit btn-sm">Edit</a>
+                                <form method="post" th:action="@{/merchant/subscriptions/plans/{id}/delete(id=${plan.id})}" style="display:inline;">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                    <button type="submit" class="btn btn-delete btn-sm"
+                                            onclick="return confirm('Delete this plan?')">
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 </tbody>
             </table>
         </div>
-        <div th:unless="${subscriptions != null and !subscriptions.isEmpty()}" class="empty">
-            <p>No subscriptions found.</p>
+
+        <div th:unless="${plans != null and !plans.isEmpty()}" class="empty">
+            <span class="emoji">📭</span>
+            <p>No plans found. Create your first plan above!</p>
         </div>
     </div>
+
 </div>
 </body>
 </html>

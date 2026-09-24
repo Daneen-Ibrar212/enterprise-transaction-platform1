@@ -1,82 +1,365 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Audit Events</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Events · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #f2f2f2; }
-        .btn { padding: 6px 15px; background: #2d7a3a; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .btn:hover { background: #1e5c2a; }
-        .pagination { margin-top: 15px; }
-        .pagination a, .pagination span { padding: 6px 12px; border: 1px solid #ddd; text-decoration: none; }
-        .pagination .active { background: #2d7a3a; color: white; border-color: #2d7a3a; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+            margin-top: 16px;
+        }
+        .back-link,
+        .header-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+        }
+        .back-link {
+            color: rgba(255,255,255,0.9);
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(255,255,255,0.2);
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+        .chip-verify {
+            background: rgba(16,185,129,0.9);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .chip-verify:hover { background: #059669; transform: translateY(-1px); }
+
+        #verifyResult {
+            margin-top: 16px;
+            padding: 16px 20px;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            display: none;
+        }
+        #verifyResult.show { display: block; }
+        #verifyResult.success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        #verifyResult.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            overflow: hidden;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .data-table td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover td { background: #fafbfc; }
+        .data-table td.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #0f172a;
+        }
+        .data-table td.details-cell {
+            max-width: 240px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.7rem;
+            color: #64748b;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .data-table td.hash-cell {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.7rem;
+            color: #64748b;
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .event-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            background: #dbeafe;
+            color: #1e40af;
+            white-space: nowrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+        .btn-diff {
+            background: #8b5cf6;
+            color: white;
+            box-shadow: 0 4px 12px rgba(139,92,246,0.2);
+        }
+        .btn-diff:hover { background: #7c3aed; transform: translateY(-1px); }
+
+        .pagination-wrap {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+            padding: 0 4px;
+        }
+        .pagination-info {
+            font-size: 0.8125rem;
+            color: #64748b;
+            font-weight: 300;
+        }
+        .pagination-info strong { color: #0f172a; font-weight: 500; }
+        .pagination {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .pagination a,
+        .pagination span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 38px;
+            height: 38px;
+            padding: 0 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            color: #475569;
+            background: white;
+            transition: all 0.15s ease;
+        }
+        .pagination a:hover {
+            border-color: #2d6bb8;
+            color: #2d6bb8;
+            background: #f8faff;
+        }
+        .pagination .active {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            border-color: transparent;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(11,26,51,0.2);
+        }
+        .pagination .disabled {
+            color: #cbd5e1;
+            background: #f8fafc;
+            border-color: #f1f5f9;
+            cursor: not-allowed;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+        @media (max-width: 1100px) {
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
+            .data-table td.details-cell,
+            .data-table td.hash-cell { max-width: none; }
+        }
     </style>
 </head>
 <body>
-    <h1>Audit Events</h1>
-    <a href="/dashboard">← Back to Dashboard</a>
-    <button id="verifyBtn" class="btn">Verify Chain Integrity</button>
-    <div id="verifyResult"></div>
+<div class="container">
 
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Type</th>
-                <th>User</th>
-                <th>Details</th>
-                <th>Previous Hash</th>
-                <th>Current Hash</th>
-                <th>Created</th>
-                <th>Diff</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="event : ${events.content}">
-                <td th:text="${event.id}">1</td>
-                <td th:text="${event.eventType}">PAYMENT_SETTLED</td>
-                <td th:text="${event.userId}">1</td>
-                <td th:text="${event.details}">{...}</td>
-                <td th:text="${event.previousHash}">abc</td>
-                <td th:text="${event.currentHash}">def</td>
-                <td th:text="${event.createdAt}">2026-01-01</td>
-                <td>
-                    <!-- ✅ Use /audit/diff instead of /admin/audit/diff -->
-                    <a th:if="${event.previousState != null && event.currentState != null}"
-                       th:href="@{/audit/diff/{id}(id=${event.id})}" class="btn">Diff</a>
-                    <span th:unless="${event.previousState != null && event.currentState != null}">—</span>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-
-    <!-- Pagination -->
-    <div class="pagination">
-        <span th:if="${currentPage > 0}">
-            <a th:href="@{/audit/events(page=${currentPage - 1})}">← Previous</a>
-        </span>
-        <span class="active" th:text="${currentPage + 1}">1</span>
-        <span th:if="${currentPage + 1 < totalPages}">
-            <a th:href="@{/audit/events(page=${currentPage + 1})}">Next →</a>
-        </span>
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">📋</span> Audit Events</h1>
+        <div class="header-actions">
+            <button id="verifyBtn" class="header-chip chip-verify">🛡️ Verify Chain Integrity</button>
+        </div>
+        <div id="verifyResult"></div>
     </div>
 
-    <script>
-        document.getElementById('verifyBtn').addEventListener('click', function() {
-            fetch('/audit/verify')
-                .then(response => response.json())
-                .then(data => {
-                    const result = document.getElementById('verifyResult');
-                    result.innerHTML = `<p><strong>Status:</strong> ${data.status}</p>`;
-                    result.style.color = data.valid ? 'green' : 'red';
-                })
-                .catch(err => {
-                    document.getElementById('verifyResult').innerHTML =
-                        `<p style="color:red;">Error verifying chain: ${err.message}</p>`;
-                });
-        });
-    </script>
+    <div class="card">
+        <table class="data-table" th:unless="${events.empty}">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Type</th>
+                    <th>User</th>
+                    <th>Details</th>
+                    <th>Previous Hash</th>
+                    <th>Current Hash</th>
+                    <th>Created</th>
+                    <th>Diff</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="event : ${events.content}">
+                    <td class="mono" th:text="${event.id}">1</td>
+                    <td><span class="event-badge" th:text="${event.eventType}">PAYMENT_SETTLED</span></td>
+                    <td class="mono" th:text="${event.userId}">1</td>
+                    <td class="details-cell" th:text="${event.details}" th:title="${event.details}">{...}</td>
+                    <td class="hash-cell" th:text="${event.previousHash}" th:title="${event.previousHash}">abc</td>
+                    <td class="hash-cell" th:text="${event.currentHash}" th:title="${event.currentHash}">def</td>
+                    <td th:text="${event.createdAt != null ? #temporals.format(event.createdAt, 'dd MMM yyyy · HH:mm') : '—'}">01 Jan 2026 · 12:00</td>
+                    <td>
+                        <a th:if="${event.previousState != null && event.currentState != null}"
+                           th:href="@{/audit/diff/{id}(id=${event.id})}"
+                           class="btn btn-diff">🔍 Diff</a>
+                        <span th:unless="${event.previousState != null && event.currentState != null}"
+                              style="color:#cbd5e1;">—</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div th:if="${events.empty}" class="empty">
+            <span class="emoji">📋</span>
+            <p>No audit events found.</p>
+        </div>
+    </div>
+
+    <div class="pagination-wrap" th:unless="${events.empty}">
+        <span class="pagination-info">
+            Page <strong th:text="${currentPage + 1}">1</strong>
+            of <strong th:text="${totalPages}">1</strong>
+        </span>
+
+        <div class="pagination">
+            <a th:if="${currentPage > 0}" th:href="@{/audit/events(page=${currentPage - 1})}">← Prev</a>
+            <span th:unless="${currentPage > 0}" class="disabled">← Prev</span>
+
+            <span class="active" th:text="${currentPage + 1}">1</span>
+
+            <a th:if="${currentPage + 1 < totalPages}" th:href="@{/audit/events(page=${currentPage + 1})}">Next →</a>
+            <span th:unless="${currentPage + 1 < totalPages}" class="disabled">Next →</span>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    document.getElementById('verifyBtn').addEventListener('click', function() {
+        const result = document.getElementById('verifyResult');
+        result.classList.remove('show', 'success', 'error');
+
+        fetch('/audit/verify')
+            .then(response => response.json())
+            .then(data => {
+                result.classList.add('show');
+                result.classList.add(data.valid ? 'success' : 'error');
+                result.innerHTML = `<strong>Status:</strong> ${data.status}`;
+            })
+            .catch(err => {
+                result.classList.add('show', 'error');
+                result.innerHTML = `Error verifying chain: ${err.message}`;
+            });
+    });
+</script>
 </body>
 </html>

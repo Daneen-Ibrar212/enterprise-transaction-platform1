@@ -1,111 +1,192 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Reconciliation Reports</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reconciliation Reports · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-            padding: 20px;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
         }
-        h1 {
-            color: #333;
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
         }
         .back-link {
-            display: inline-block;
-            margin-bottom: 20px;
-            color: #2563eb;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
             text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
         }
-        .back-link:hover {
-            text-decoration: underline;
-        }
-        table {
-            width: 100%;
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .card {
             background: white;
-            border-collapse: collapse;
-            border-radius: 8px;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
             overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        th {
-            background: #f9fafb;
+
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
             text-align: left;
-            padding: 12px 16px;
-            font-size: 12px;
-            font-weight: 600;
-            color: #6b7280;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 1px solid #e5e7eb;
+            letter-spacing: 0.06em;
+            padding: 14px 18px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
         }
-        td {
-            padding: 12px 16px;
-            border-bottom: 1px solid #e5e7eb;
-            font-size: 14px;
+        .data-table td {
+            padding: 16px 18px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
         }
-        tr:hover {
-            background: #f9fafb;
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover td { background: #fafbfc; }
+        .data-table td.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
         }
-        .status-pass {
-            background: #d1fae5;
-            color: #065f46;
+        .data-table td.count-cell {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-weight: 500;
+        }
+        .data-table td.count-green { color: #059669; }
+        .data-table td.count-red { color: #dc2626; }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
             padding: 4px 12px;
             border-radius: 9999px;
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
         }
-        .status-fail {
-            background: #fee2e2;
-            color: #991b1b;
-            padding: 4px 12px;
-            border-radius: 9999px;
-            font-size: 12px;
-            font-weight: 600;
+        .status-pass { background: #d1fae5; color: #065f46; }
+        .status-fail { background: #fee2e2; color: #991b1b; }
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
         }
-        .text-green {
-            color: #16a34a;
-            font-weight: 600;
-        }
-        .text-red {
-            color: #dc2626;
-            font-weight: 600;
-        }
-        .text-blue {
-            color: #2563eb;
-        }
-        .text-blue a {
-            color: #2563eb;
+
+        .btn-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #4f46e5;
+            font-size: 0.8125rem;
+            font-weight: 500;
             text-decoration: none;
+            padding: 6px 14px;
+            border-radius: 8px;
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            transition: all 0.15s ease;
         }
-        .text-blue a:hover {
-            text-decoration: underline;
+        .btn-link:hover {
+            background: #dbeafe;
+            border-color: #bfdbfe;
+            color: #3730a3;
         }
-        .text-gray {
-            color: #6b7280;
-        }
-        .text-center {
+
+        .empty {
             text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 0.875rem;
         }
-        .py-4 {
-            padding: 16px 0;
-        }
-        .px-6 {
-            padding-left: 24px;
-            padding-right: 24px;
+        .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+        @media (max-width: 900px) {
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Reconciliation Reports</h1>
-        <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+<div class="container">
 
-        <table>
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">📈</span> Reconciliation Reports</h1>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+        <table class="data-table" th:unless="${records.empty}">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -120,24 +201,35 @@
             </thead>
             <tbody>
                 <tr th:each="record : ${records}">
-                    <td th:text="${record.id}">1</td>
-                    <td th:text="${#dates.format(record.startedAt, 'dd/MM/yyyy HH:mm')}">2026-01-01</td>
-                    <td th:text="${#dates.format(record.completedAt, 'dd/MM/yyyy HH:mm')}">2026-01-01</td>
+                    <td class="mono" th:text="${record.id}">1</td>
+                    <td th:text="${#temporals.format(record.startedAt, 'dd MMM yyyy · HH:mm')}">01 Jan 2026 · 12:00</td>
+                    <td th:text="${#temporals.format(record.completedAt, 'dd MMM yyyy · HH:mm')}">01 Jan 2026 · 12:05</td>
                     <td>
-                        <span th:class="${record.status == 'PASS'} ? 'status-pass' : 'status-fail'" th:text="${record.status}">PASS</span>
+                        <span th:if="${record.status == 'PASS'}" class="status-badge status-pass">
+                            <span class="status-dot"></span> Pass
+                        </span>
+                        <span th:unless="${record.status == 'PASS'}" class="status-badge status-fail">
+                            <span class="status-dot"></span> <span th:text="${record.status}">Fail</span>
+                        </span>
                     </td>
-                    <td th:text="${record.totalTransactions}">10</td>
-                    <td class="text-green" th:text="${record.matchedTransactions}">10</td>
-                    <td class="text-red" th:text="${record.mismatchedTransactions}">0</td>
-                    <td class="text-blue">
-                        <a th:href="'/admin/reconciliation/' + ${record.id}">View Details</a>
+                    <td class="count-cell" th:text="${record.totalTransactions}">10</td>
+                    <td class="count-cell count-green" th:text="${record.matchedTransactions}">10</td>
+                    <td class="count-cell count-red" th:text="${record.mismatchedTransactions}">0</td>
+                    <td>
+                        <a th:href="'/admin/reconciliation/' + ${record.id}" class="btn-link">
+                            View →
+                        </a>
                     </td>
-                </tr>
-                <tr th:if="${records.empty}">
-                    <td colspan="8" class="text-center text-gray" style="padding: 16px;">No reconciliation runs found.</td>
                 </tr>
             </tbody>
         </table>
+
+        <div th:if="${records.empty}" class="empty">
+            <span class="emoji">📭</span>
+            <p>No reconciliation runs found.</p>
+        </div>
     </div>
+
+</div>
 </body>
 </html>

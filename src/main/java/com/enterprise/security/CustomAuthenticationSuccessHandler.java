@@ -48,13 +48,10 @@ public class CustomAuthenticationSuccessHandler extends SavedRequestAwareAuthent
                 log.info("   User: {}, locked: {}, attempts: {}",
                         user.getEmail(), user.isAccountLocked(), user.getFailedLoginAttempts());
 
-                // 👈 Set TenantContext before logging
                 TenantContext.setTenantId(user.getTenantId());
 
-                // Reset failed attempts and unlock if needed
                 loginAttemptService.loginSucceeded(user.getEmail());
 
-                // Log activity
                 activityLogService.logActivity(
                         user.getId(),
                         "LOGIN_SUCCESS",
@@ -62,18 +59,33 @@ public class CustomAuthenticationSuccessHandler extends SavedRequestAwareAuthent
                         request
                 );
 
-                // ===== ENFORCE 2FA FOR ADMIN USERS =====
+                // ===== 2FA ENFORCEMENT =====
                 boolean isAdmin = user.getRoles().stream()
-                        .anyMatch(r -> r.getName().equals("ADMIN"));
+                        .anyMatch(r -> r.getName().equals("ADMIN") || r.getName().equals("SUPER_ADMIN"));
+                boolean hasAdminOverride = user.isTwoFactorDisabledByAdmin() 
+                        && (user.getTwoFactorDisableExpiresAt() == null 
+                            || user.getTwoFactorDisableExpiresAt().isAfter(java.time.LocalDateTime.now()));
+
+                // Admin without 2FA setup
                 if (isAdmin && !user.isTwoFactorEnabled()) {
-                    log.info("🔐 Admin user {} must set up 2FA – redirecting to setup", email);
-                    HttpSession session = request.getSession();
-                    session.setAttribute("2FA_REQUIRED", true);
-                    getRedirectStrategy().sendRedirect(request, response, "/2fa/setup?required=true");
-                    return;
+                    if (hasAdminOverride) {
+                        log.info("✅ 2FA override active for admin {}, skipping 2FA setup", email);
+                    } else {
+                        log.info("🔐 Admin user {} must set up 2FA – redirecting to setup", email);
+                        HttpSession session = request.getSession();
+                        session.setAttribute("2FA_REQUIRED", true);
+                        getRedirectStrategy().sendRedirect(request, response, "/2fa/setup?required=true");
+                        return;
+                    }
                 }
 
-                if (user.isTwoFactorEnabled()) {
+                // 2FA enabled but admin override is active
+                if (user.isTwoFactorEnabled() && hasAdminOverride) {
+                    log.info("✅ 2FA bypassed for {} due to admin override", email);
+                    // Allow direct login without 2FA verification
+                }
+                // 2FA enabled - require verification
+                else if (user.isTwoFactorEnabled()) {
                     HttpSession session = request.getSession();
                     session.setAttribute("2FA_PENDING", true);
                     session.removeAttribute("2FA_AUTHENTICATED");

@@ -21,4 +21,15 @@ public interface RecurringScheduleRepository extends JpaRepository<RecurringSche
     @Transactional
     @Query("UPDATE RecurringSchedule s SET s.nextRunDate = :newDate WHERE s.id = :id")
     void updateNextRunDate(@Param("id") Long id, @Param("newDate") LocalDate newDate);
+
+    // ✅ ADD THIS METHOD - Find all schedules for a tenant
+    @Query("SELECT s FROM RecurringSchedule s WHERE s.tenantId = :tenantId")
+    List<RecurringSchedule> findAllByTenantId(@Param("tenantId") Long tenantId);
+
+    // ✅ ADD THIS METHOD - Count active schedules for a tenant
+    @Query("SELECT COUNT(s) FROM RecurringSchedule s WHERE s.tenantId = :tenantId AND s.active = true")
+    long countByTenantIdAndActiveTrue(@Param("tenantId") Long tenantId);
+
+    // ✅ ADD THIS METHOD - Find all active schedules
+    List<RecurringSchedule> findByActiveTrue();
 }

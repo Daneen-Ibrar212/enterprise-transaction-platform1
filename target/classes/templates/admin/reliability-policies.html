@@ -1,28 +1,276 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Reliability Policies</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reliability Policies · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        /* Header */
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .page-header p {
+            font-size: 0.875rem;
+            color: rgba(255,255,255,0.75);
+            margin-top: 8px;
+            position: relative;
+            z-index: 1;
+            font-weight: 300;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        /* Card */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .card-header h2 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: -0.015em;
+        }
+        .card-count {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 400;
+            background: #f1f5f9;
+            padding: 4px 12px;
+            border-radius: 9999px;
+        }
+
+        /* Data table */
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 14px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .data-table td {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover td { background: #fafbfc; }
+        .data-table td.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #0f172a;
+        }
+        .data-table td.num-cell {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #0f172a;
+        }
+
+        /* Strategy badges */
+        .strategy-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+        .strategy-fixed { background: #dbeafe; color: #1e40af; }
+        .strategy-linear { background: #fef3c7; color: #92400e; }
+        .strategy-exponential { background: #ede9fe; color: #5b21b6; }
+        .strategy-default { background: #f1f5f9; color: #64748b; }
+
+        /* Empty state */
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+        @media (max-width: 900px) {
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
+        }
+    </style>
 </head>
 <body>
-    <h1>🔧 Retry Policies</h1>
-    <table border="1">
-        <tr><th>Operation</th><th>Max Attempts</th><th>Strategy</th></tr>
-        <tr th:each="p : ${retryPolicies}">
-            <td th:text="${p.operationType}">tx</td>
-            <td th:text="${p.maxAttempts}">3</td>
-            <td th:text="${p.backoffStrategy}">EXPONENTIAL</td>
-        </tr>
-    </table>
+<div class="container">
 
-    <h1>⚡ Circuit Breaker Policies</h1>
-    <table border="1">
-        <tr><th>Operation</th><th>Failure Threshold</th><th>Timeout (ms)</th></tr>
-        <tr th:each="p : ${circuitBreakerPolicies}">
-            <td th:text="${p.operationType}">tx</td>
-            <td th:text="${p.failureThreshold}">5</td>
-            <td th:text="${p.timeoutMs}">30000</td>
-        </tr>
-    </table>
-    <a href="/dashboard">← Back</a>
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">🔧</span> Reliability Policies</h1>
+        <p>Retry backoff strategies and circuit breaker thresholds applied across the platform.</p>
+    </div>
+
+    <!-- Retry Policies -->
+    <div class="card">
+        <div class="card-header">
+            <h2>🔄 Retry Policies</h2>
+            <span th:if="${retryPolicies != null and !retryPolicies.empty}"
+                  class="card-count"
+                  th:text="${#lists.size(retryPolicies)} + ' polic' + (${#lists.size(retryPolicies)} == 1 ? 'y' : 'ies')">0 policies</span>
+        </div>
+
+        <table class="data-table" th:unless="${retryPolicies == null or retryPolicies.empty}">
+            <thead>
+                <tr>
+                    <th>Operation</th>
+                    <th>Max Attempts</th>
+                    <th>Backoff Strategy</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="p : ${retryPolicies}">
+                    <td class="mono" th:text="${p.operationType}">tx</td>
+                    <td class="num-cell" th:text="${p.maxAttempts}">3</td>
+                    <td>
+                        <span th:if="${p.backoffStrategy.name() == 'FIXED'}" class="strategy-badge strategy-fixed">Fixed</span>
+                        <span th:if="${p.backoffStrategy.name() == 'LINEAR'}" class="strategy-badge strategy-linear">Linear</span>
+                        <span th:if="${p.backoffStrategy.name() == 'EXPONENTIAL'}" class="strategy-badge strategy-exponential">Exponential</span>
+                        <span th:if="${p.backoffStrategy.name() != 'FIXED' and p.backoffStrategy.name() != 'LINEAR' and p.backoffStrategy.name() != 'EXPONENTIAL'}"
+                              class="strategy-badge strategy-default" th:text="${p.backoffStrategy}">—</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div th:if="${retryPolicies == null or retryPolicies.empty}" class="empty">
+            <span class="emoji">🔄</span>
+            <p>No retry policies configured.</p>
+        </div>
+    </div>
+
+    <!-- Circuit Breaker Policies -->
+    <div class="card">
+        <div class="card-header">
+            <h2>⚡ Circuit Breaker Policies</h2>
+            <span th:if="${circuitBreakerPolicies != null and !circuitBreakerPolicies.empty}"
+                  class="card-count"
+                  th:text="${#lists.size(circuitBreakerPolicies)} + ' polic' + (${#lists.size(circuitBreakerPolicies)} == 1 ? 'y' : 'ies')">0 policies</span>
+        </div>
+
+        <table class="data-table" th:unless="${circuitBreakerPolicies == null or circuitBreakerPolicies.empty}">
+            <thead>
+                <tr>
+                    <th>Operation</th>
+                    <th>Failure Threshold</th>
+                    <th>Timeout (ms)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="p : ${circuitBreakerPolicies}">
+                    <td class="mono" th:text="${p.operationType}">tx</td>
+                    <td class="num-cell" th:text="${p.failureThreshold}">5</td>
+                    <td class="num-cell" th:text="${p.timeoutMs}">30000</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div th:if="${circuitBreakerPolicies == null or circuitBreakerPolicies.empty}" class="empty">
+            <span class="emoji">⚡</span>
+            <p>No circuit breaker policies configured.</p>
+        </div>
+    </div>
+
+</div>
 </body>
 </html>

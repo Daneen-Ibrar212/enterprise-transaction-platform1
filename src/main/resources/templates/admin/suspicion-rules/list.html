@@ -1,99 +1,363 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Suspicion Rules</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suspicion Rules · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #f2f2f2; }
-        .btn { padding: 4px 10px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
-        .btn-create { background: #2d7a3a; color: white; padding: 8px 16px; }
-        .btn-edit { background: #3498db; color: white; }
-        .btn-delete { background: #c0392b; color: white; }
-        .btn-toggle { background: #e67e22; color: white; }
-        .badge { padding: 2px 8px; border-radius: 12px; font-size: 12px; }
-        .badge-active { background: #d4edda; color: #155724; }
-        .badge-inactive { background: #f8d7da; color: #721c24; }
-        .badge-red { background: #f8d7da; color: #721c24; }
-        .badge-yellow { background: #fff3cd; color: #856404; }
-        .badge-green { background: #d4edda; color: #155724; }
-        .actions { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
-        .flash-success { background: #d4edda; color: #155724; padding: 10px; border: 1px solid #c3e6cb; margin: 10px 0; }
-        .flash-error { background: #f8d7da; color: #721c24; padding: 10px; border: 1px solid #f5c6cb; margin: 10px 0; }
-        .priority-badge { background: #e9ecef; padding: 2px 8px; border-radius: 4px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1300px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+            margin-top: 16px;
+        }
+        .back-link,
+        .header-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+        }
+        .back-link {
+            color: rgba(255,255,255,0.9);
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(255,255,255,0.2);
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+        .chip-create {
+            background: rgba(255,255,255,0.95);
+            color: #0b1a33;
+        }
+        .chip-create:hover { background: white; transform: translateY(-1px); }
+        .chip-export {
+            background: rgba(16,185,129,0.9);
+            color: white;
+        }
+        .chip-export:hover { background: #059669; transform: translateY(-1px); }
+
+        .flash {
+            padding: 14px 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .flash-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+        .io-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .io-form {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+            background: white;
+            padding: 4px 4px 4px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .io-form input[type="file"] {
+            font-size: 0.75rem;
+            color: #64748b;
+            border: none;
+            background: transparent;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            max-width: 220px;
+        }
+        .io-form input[type="file"]::file-selector-button {
+            background: #f1f5f9;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: #334155;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            overflow: hidden;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .data-table td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover td { background: #fafbfc; }
+        .data-table td.priority-cell {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-weight: 500;
+            color: #0f172a;
+            width: 80px;
+        }
+        .data-table td.condition-cell {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            color: #4f46e5;
+            max-width: 320px;
+            word-break: break-all;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+        .badge-active { background: #d1fae5; color: #065f46; }
+        .badge-inactive { background: #f1f5f9; color: #64748b; }
+        .badge-red { background: #fee2e2; color: #991b1b; }
+        .badge-yellow { background: #fef3c7; color: #92400e; }
+        .badge-green { background: #d1fae5; color: #065f46; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 6px 16px rgba(11,26,51,0.2);
+            padding: 10px 20px;
+            font-size: 0.8125rem;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(11,26,51,0.3); }
+        .btn-edit { background: #3b82f6; color: white; box-shadow: 0 4px 12px rgba(59,130,246,0.2); }
+        .btn-edit:hover { background: #2563eb; transform: translateY(-1px); }
+        .btn-toggle-on { background: #f59e0b; color: white; box-shadow: 0 4px 12px rgba(245,158,11,0.2); }
+        .btn-toggle-on:hover { background: #d97706; transform: translateY(-1px); }
+        .btn-toggle-off { background: #10b981; color: white; box-shadow: 0 4px 12px rgba(16,185,129,0.2); }
+        .btn-toggle-off:hover { background: #059669; transform: translateY(-1px); }
+        .btn-delete { background: #f1f5f9; color: #475569; }
+        .btn-delete:hover { background: #fee2e2; color: #dc2626; }
+
+        .action-cell { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+        @media (max-width: 900px) {
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
+        }
     </style>
 </head>
 <body>
-    <h1>⚠️ Suspicion Rules</h1>
-    <a href="/dashboard">← Back to Dashboard</a>
-    <a href="/admin/suspicion-rules/create" class="btn btn-create" style="margin-left: 20px;">+ Create Rule</a>
-<!-- Export / Import -->
-<div style="margin: 15px 0;">
-    <a th:href="@{/admin/suspicion-rules/export}" class="btn btn-primary" style="background:#2d7a3a;">📤 Export JSON</a>
-    <form method="post" th:action="@{/admin/suspicion-rules/import}" enctype="multipart/form-data" style="display:inline-block; margin-left:10px;">
-        <input type="file" name="file" accept=".json" required style="display:inline-block;"/>
-        <button type="submit" class="btn btn-primary" style="background:#2980b9;">📥 Import JSON</button>
-    </form>
+<div class="container">
+
+    <!-- Header -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">⚠️</span> Suspicion Rules</h1>
+        <div class="header-actions">
+            <a href="/admin/suspicion-rules/create" class="header-chip chip-create">➕ Create Rule</a>
+            <a th:href="@{/admin/suspicion-rules/export}" class="header-chip chip-export">📤 Export JSON</a>
+        </div>
+    </div>
+
+    <!-- Import row -->
+    <div class="io-row">
+        <form method="post" th:action="@{/admin/suspicion-rules/import}" enctype="multipart/form-data" class="io-form">
+            <input type="file" name="file" accept=".json" required />
+            <button type="submit" class="btn btn-primary">📥 Import JSON</button>
+        </form>
+    </div>
+
+    <!-- Flash -->
+    <div th:if="${success}" class="flash flash-success">
+        <span style="font-size:1.125rem;">✅</span>
+        <span th:text="${success}">Success</span>
+    </div>
+    <div th:if="${error}" class="flash flash-error">
+        <span style="font-size:1.125rem;">❌</span>
+        <span th:text="${error}">Error</span>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+        <table class="data-table" th:unless="${rules.empty}">
+            <thead>
+                <tr>
+                    <th>Priority</th>
+                    <th>Condition (SpEL)</th>
+                    <th>Risk Level</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="rule : ${rules}">
+                    <td class="priority-cell" th:text="${rule.priority}">10</td>
+                    <td class="condition-cell" th:text="${rule.conditionExpression}">#description.contains("urgent")</td>
+                    <td>
+                        <span th:if="${rule.riskLevel == 'RED'}" class="badge badge-red">🔴 Red</span>
+                        <span th:if="${rule.riskLevel == 'YELLOW'}" class="badge badge-yellow">🟡 Yellow</span>
+                        <span th:if="${rule.riskLevel == 'GREEN'}" class="badge badge-green">🟢 Green</span>
+                    </td>
+                    <td th:text="${rule.description}">Description</td>
+                    <td>
+                        <span th:if="${rule.active}" class="badge badge-active">Active</span>
+                        <span th:unless="${rule.active}" class="badge badge-inactive">Inactive</span>
+                    </td>
+                    <td>
+                        <div class="action-cell">
+                            <a th:href="@{/admin/suspicion-rules/{id}/edit(id=${rule.id})}" class="btn btn-edit">✏️ Edit</a>
+                            <form method="post" th:action="@{/admin/suspicion-rules/{id}/toggle(id=${rule.id})}" style="display:inline;">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <button type="submit"
+                                        th:classappend="${rule.active ? 'btn-toggle-on' : 'btn-toggle-off'}"
+                                        class="btn"
+                                        th:data-active="${rule.active}"
+                                        onclick="return confirmToggle(this);"
+                                        th:text="${rule.active ? 'Deactivate' : 'Activate'}">
+                                </button>
+                            </form>
+                            <form method="post" th:action="@{/admin/suspicion-rules/{id}/delete(id=${rule.id})}" style="display:inline;">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <button type="submit" class="btn btn-delete"
+                                        onclick="return confirm('Delete this rule? This will re-evaluate all invoices.')">
+                                    🗑️
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div th:if="${rules.empty}" class="empty">
+            <span class="emoji">⚠️</span>
+            <p>No suspicion rules defined. Create one to start detecting suspicious invoices.</p>
+        </div>
+    </div>
+
 </div>
-    <div th:if="${success}" class="flash-success" th:text="${success}"></div>
-    <div th:if="${error}" class="flash-error" th:text="${error}"></div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Priority</th>
-                <th>Condition (SpEL)</th>
-                <th>Risk Level</th>
-                <th>Description</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="rule : ${rules}">
-                <td th:text="${rule.priority}">10</td>
-                <td th:text="${rule.conditionExpression}">#description.contains("urgent")</td>
-                <td>
-                    <span class="badge" th:classappend="${rule.riskLevel == 'RED' ? 'badge-red' : rule.riskLevel == 'YELLOW' ? 'badge-yellow' : 'badge-green'}"
-                          th:text="${rule.riskLevel}">
-                    </span>
-                </td>
-                <td th:text="${rule.description}">Description</td>
-                <td>
-                    <span class="badge" th:classappend="${rule.active ? 'badge-active' : 'badge-inactive'}"
-                          th:text="${rule.active ? 'Active' : 'Inactive'}">
-                    </span>
-                </td>
-                <td class="actions">
-                    <a th:href="@{/admin/suspicion-rules/{id}/edit(id=${rule.id})}" class="btn btn-edit">✏️ Edit</a>
-                    <form method="post" th:action="@{/admin/suspicion-rules/{id}/toggle(id=${rule.id})}" style="display:inline;">
-                        <button type="submit" class="btn btn-toggle"
-                                th:data-active="${rule.active}"
-                                onclick="return confirmToggle(this);"
-                                th:text="${rule.active ? 'Deactivate' : 'Activate'}">
-                        </button>
-                    </form>
-                    <form method="post" th:action="@{/admin/suspicion-rules/{id}/delete(id=${rule.id})}" style="display:inline;">
-                        <button type="submit" class="btn btn-delete"
-                                onclick="return confirm('Delete this rule? This will re-evaluate all invoices.')">
-                            🗑️
-                        </button>
-                    </form>
-                </td>
-            </tr>
-            <tr th:if="${rules.empty}">
-                <td colspan="6">No suspicion rules defined. Create one to start detecting suspicious invoices.</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <script>
-        function confirmToggle(button) {
-            var active = button.getAttribute('data-active') === 'true';
-            var action = active ? 'deactivate' : 'activate';
-            return confirm('Are you sure you want to ' + action + ' this rule? This will re-evaluate all invoices.');
-        }
-    </script>
+<script>
+    function confirmToggle(button) {
+        var active = button.getAttribute('data-active') === 'true';
+        var action = active ? 'deactivate' : 'activate';
+        return confirm('Are you sure you want to ' + action + ' this rule? This will re-evaluate all invoices.');
+    }
+</script>
 </body>
 </html>

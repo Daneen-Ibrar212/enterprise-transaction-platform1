@@ -1,40 +1,304 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Bulk Actions</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Actions · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .section { margin: 30px 0; border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
-        .section h2 { margin-top: 0; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #f2f2f2; }
-        .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; }
-        .btn-primary { background: #2d7a3a; }
-        .btn-danger { background: #c0392b; }
-        .btn-warning { background: #f39c12; }
-        .btn-secondary { background: #6c757d; }
-        .btn:hover { opacity: 0.8; }
-        .progress-container { width: 100%; background: #f3f3f3; border-radius: 4px; margin: 10px 0; display: none; }
-        .progress-bar { width: 0%; height: 20px; background: #2d7a3a; border-radius: 4px; text-align: center; color: white; line-height: 20px; }
-        #jobStatus { margin: 10px 0; }
-        .job-summary { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px; display: none; }
-        .badge { padding: 2px 8px; border-radius: 12px; color: white; }
-        .badge-success { background: #2d7a3a; }
-        .badge-failure { background: #c0392b; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .card-header h2 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .data-table td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover td { background: #fafbfc; }
+        .data-table td.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #0f172a;
+        }
+        .data-table input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #2d6bb8;
+            cursor: pointer;
+        }
+
+        .risk-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .risk-green { background: #d1fae5; color: #065f46; }
+        .risk-yellow { background: #fef3c7; color: #92400e; }
+        .risk-red { background: #fee2e2; color: #991b1b; }
+        .risk-default { background: #f1f5f9; color: #64748b; }
+
+        .card-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 16px 24px 20px;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            letter-spacing: -0.005em;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+        .btn-approve {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 6px 16px rgba(16,185,129,0.2);
+        }
+        .btn-approve:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(16,185,129,0.3); }
+        .btn-reject {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 6px 16px rgba(239,68,68,0.2);
+        }
+        .btn-reject:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(239,68,68,0.3); }
+        .btn-refund {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            box-shadow: 0 6px 16px rgba(245,158,11,0.2);
+        }
+        .btn-refund:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(245,158,11,0.3); }
+
+        /* Progress */
+        .progress-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px 28px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            margin-bottom: 20px;
+            display: none;
+        }
+        .progress-card.show { display: block; }
+        .progress-container {
+            width: 100%;
+            background: #f1f5f9;
+            border-radius: 9999px;
+            height: 24px;
+            overflow: hidden;
+            margin: 14px 0;
+        }
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-radius: 9999px;
+            text-align: center;
+            color: white;
+            line-height: 24px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            transition: width 0.3s ease;
+        }
+        .job-status {
+            font-size: 0.8125rem;
+            color: #64748b;
+            font-weight: 400;
+        }
+        .job-summary {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-top: 16px;
+            display: none;
+            font-size: 0.875rem;
+            line-height: 1.6;
+        }
+        .job-summary.show { display: block; }
+        .job-summary h4 {
+            font-size: 0.9375rem;
+            font-weight: 500;
+            color: #0f172a;
+            margin-bottom: 10px;
+        }
+        .job-summary p { margin: 4px 0; color: #475569; }
+        .job-summary pre {
+            background: white;
+            border: 1px solid #e2e8f0;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.75rem;
+            margin-top: 8px;
+            overflow-x: auto;
+            color: #334155;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-failure { background: #fee2e2; color: #991b1b; }
+
+        @media (max-width: 900px) {
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
+        }
     </style>
 </head>
 <body>
-    <h1>⚡ Bulk Actions</h1>
-    <a href="/dashboard">← Back to Dashboard</a>
+<div class="container">
 
-    <div class="section">
-        <h2>📋 Pending Invoices</h2>
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">⚡</span> Bulk Actions</h1>
+    </div>
+
+    <!-- Pending invoices -->
+    <div class="card">
+        <div class="card-header">
+            <h2>📋 Pending Invoices</h2>
+        </div>
+
         <form id="bulkForm" onsubmit="return submitBulk(event)">
-            <table>
+            <table class="data-table">
                 <thead>
                     <tr>
-                        <th><input type="checkbox" id="selectAllInvoices" onclick="toggleAll('invoice')"/></th>
+                        <th style="width:40px;"><input type="checkbox" id="selectAllInvoices" onclick="toggleAll('invoice')"/></th>
                         <th>ID</th>
                         <th>Customer</th>
                         <th>Amount</th>
@@ -44,27 +308,37 @@
                 <tbody>
                     <tr th:each="inv : ${pendingInvoices}">
                         <td><input type="checkbox" class="invoice-checkbox" th:value="${inv.id}"/></td>
-                        <td th:text="${inv.id}">1</td>
+                        <td class="mono" th:text="${inv.id}">1</td>
                         <td th:text="${inv.customerEmail}">customer@test.com</td>
-                        <td th:text="${inv.amount}">100.00</td>
-                        <td th:text="${inv.riskLevel}">GREEN</td>
+                        <td class="mono" th:text="${inv.amount}">100.00</td>
+                        <td>
+                            <span th:if="${inv.riskLevel == 'GREEN'}" class="risk-badge risk-green">Green</span>
+                            <span th:if="${inv.riskLevel == 'YELLOW'}" class="risk-badge risk-yellow">Yellow</span>
+                            <span th:if="${inv.riskLevel == 'RED'}" class="risk-badge risk-red">Red</span>
+                            <span th:if="${inv.riskLevel != 'GREEN' and inv.riskLevel != 'YELLOW' and inv.riskLevel != 'RED'}"
+                                  class="risk-badge risk-default" th:text="${inv.riskLevel}">—</span>
+                        </td>
                     </tr>
                 </tbody>
             </table>
-            <div style="margin-top: 15px;">
-                <button type="button" class="btn btn-primary" onclick="submitBulkAction('APPROVE')">Approve Selected</button>
-                <button type="button" class="btn btn-danger" onclick="submitBulkAction('REJECT')">Reject Selected</button>
+            <div class="card-actions">
+                <button type="button" class="btn btn-approve" onclick="submitBulkAction('APPROVE')">✅ Approve Selected</button>
+                <button type="button" class="btn btn-reject" onclick="submitBulkAction('REJECT')">❌ Reject Selected</button>
             </div>
         </form>
     </div>
 
-    <div class="section">
-        <h2>💸 Settled Transactions (for Refund)</h2>
+    <!-- Settled transactions -->
+    <div class="card">
+        <div class="card-header">
+            <h2>💸 Settled Transactions (for Refund)</h2>
+        </div>
+
         <form id="refundForm" onsubmit="return submitRefund(event)">
-            <table>
+            <table class="data-table">
                 <thead>
                     <tr>
-                        <th><input type="checkbox" id="selectAllTransactions" onclick="toggleAll('transaction')"/></th>
+                        <th style="width:40px;"><input type="checkbox" id="selectAllTransactions" onclick="toggleAll('transaction')"/></th>
                         <th>ID</th>
                         <th>Invoice</th>
                         <th>Amount</th>
@@ -74,136 +348,134 @@
                 <tbody>
                     <tr th:each="tx : ${settledTransactions}">
                         <td><input type="checkbox" class="transaction-checkbox" th:value="${tx.id}"/></td>
-                        <td th:text="${tx.id}">1</td>
-                        <td th:text="${tx.invoiceId}">100</td>
-                        <td th:text="${tx.amount}">100.00</td>
+                        <td class="mono" th:text="${tx.id}">1</td>
+                        <td class="mono" th:text="${tx.invoiceId}">100</td>
+                        <td class="mono" th:text="${tx.amount}">100.00</td>
                         <td th:text="${tx.currency}">GBP</td>
                     </tr>
                 </tbody>
             </table>
-            <div style="margin-top: 15px;">
-                <button type="button" class="btn btn-warning" onclick="submitBulkAction('REFUND')">Refund Selected</button>
+            <div class="card-actions">
+                <button type="button" class="btn btn-refund" onclick="submitBulkAction('REFUND')">💸 Refund Selected</button>
             </div>
         </form>
     </div>
 
-    <!-- Progress Bar -->
-    <div id="progressContainer" class="progress-container">
-        <div id="progressBar" class="progress-bar" style="width:0%;">0%</div>
+    <!-- Progress -->
+    <div id="progressCard" class="progress-card">
+        <div class="job-status" id="jobStatus">Submitting job...</div>
+        <div class="progress-container">
+            <div id="progressBar" class="progress-bar" style="width:0%;">0%</div>
+        </div>
+        <div id="jobSummary" class="job-summary"></div>
     </div>
-    <div id="jobStatus"></div>
-    <div id="jobSummary" class="job-summary"></div>
 
-    <script>
-        let currentJobId = null;
-        let pollingInterval = null;
+</div>
 
-        function toggleAll(type) {
-            const checkboxes = document.querySelectorAll(type === 'invoice' ? '.invoice-checkbox' : '.transaction-checkbox');
-            const selectAll = document.getElementById(type === 'invoice' ? 'selectAllInvoices' : 'selectAllTransactions');
-            checkboxes.forEach(cb => cb.checked = selectAll.checked);
+<script>
+    let currentJobId = null;
+    let pollingInterval = null;
+
+    function toggleAll(type) {
+        const selector = type === 'invoice' ? '.invoice-checkbox' : '.transaction-checkbox';
+        const selectAllId = type === 'invoice' ? 'selectAllInvoices' : 'selectAllTransactions';
+        const checkboxes = document.querySelectorAll(selector);
+        const selectAll = document.getElementById(selectAllId);
+        checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    }
+
+    function getSelectedIds(type) {
+        const selector = type === 'invoice' ? '.invoice-checkbox' : '.transaction-checkbox';
+        return Array.from(document.querySelectorAll(selector))
+            .filter(cb => cb.checked)
+            .map(cb => parseInt(cb.value, 10));
+    }
+
+    function submitBulkAction(action) {
+        let ids = [];
+        let endpoint = '';
+        if (action === 'APPROVE' || action === 'REJECT') {
+            ids = getSelectedIds('invoice');
+            endpoint = action === 'APPROVE' ? '/admin/bulk/approve-invoices' : '/admin/bulk/reject-invoices';
+        } else if (action === 'REFUND') {
+            ids = getSelectedIds('transaction');
+            endpoint = '/admin/bulk/refund-transactions';
         }
 
-        function getSelectedIds(type) {
-            const checkboxes = document.querySelectorAll(type === 'invoice' ? '.invoice-checkbox' : '.transaction-checkbox');
-            const ids = [];
-            checkboxes.forEach(cb => {
-                if (cb.checked) ids.push(parseInt(cb.value, 10));
-            });
-            return ids;
-        }
+        if (ids.length === 0) { alert('Please select at least one item.'); return; }
+        if (!confirm(`Are you sure you want to ${action} ${ids.length} item(s)?`)) return;
 
-        function submitBulkAction(action) {
-            let ids = [];
-            let endpoint = '';
-            if (action === 'APPROVE' || action === 'REJECT') {
-                ids = getSelectedIds('invoice');
-                endpoint = action === 'APPROVE' ? '/admin/bulk/approve-invoices' : '/admin/bulk/reject-invoices';
-            } else if (action === 'REFUND') {
-                ids = getSelectedIds('transaction');
-                endpoint = '/admin/bulk/refund-transactions';
-            }
+        const card = document.getElementById('progressCard');
+        card.classList.add('show');
+        const bar = document.getElementById('progressBar');
+        bar.style.width = '0%';
+        bar.textContent = '0%';
+        document.getElementById('jobStatus').textContent = 'Submitting job...';
+        document.getElementById('jobSummary').classList.remove('show');
 
-            if (ids.length === 0) {
-                alert('Please select at least one item.');
-                return;
-            }
+        fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ids)
+        })
+        .then(response => {
+            if (!response.ok) return response.text().then(text => { throw new Error(text); });
+            return response.json();
+        })
+        .then(job => {
+            if (!job || !job.id) throw new Error('Invalid job response: ' + JSON.stringify(job));
+            currentJobId = job.id;
+            document.getElementById('jobStatus').textContent = `Job started (ID: ${job.id})`;
+            if (pollingInterval) clearInterval(pollingInterval);
+            pollingInterval = setInterval(pollJobStatus, 1000);
+        })
+        .catch(err => {
+            document.getElementById('jobStatus').textContent = '❌ Error: ' + err.message;
+            console.error('Bulk job submission error:', err);
+        });
+    }
 
-            if (!confirm(`Are you sure you want to ${action} ${ids.length} item(s)?`)) {
-                return;
-            }
-
-            // Show progress
-            document.getElementById('progressContainer').style.display = 'block';
-            document.getElementById('progressBar').style.width = '0%';
-            document.getElementById('progressBar').textContent = '0%';
-            document.getElementById('jobStatus').textContent = 'Submitting job...';
-            document.getElementById('jobSummary').style.display = 'none';
-
-            fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(ids)
-            })
+    function pollJobStatus() {
+        if (!currentJobId) return;
+        fetch(`/admin/bulk/jobs/${currentJobId}`)
             .then(response => {
-                if (!response.ok) {
-                    return response.text().then(text => { throw new Error(text); });
-                }
+                if (!response.ok) throw new Error('Failed to fetch job status');
                 return response.json();
             })
             .then(job => {
-                if (!job || !job.id) {
-                    throw new Error('Invalid job response: ' + JSON.stringify(job));
+                const progress = job.totalItems > 0 ? Math.round((job.processedItems / job.totalItems) * 100) : 0;
+                const bar = document.getElementById('progressBar');
+                bar.style.width = progress + '%';
+                bar.textContent = progress + '%';
+
+                if (job.status === 'COMPLETED' || job.status === 'FAILED') {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                    const summary = document.getElementById('jobSummary');
+                    summary.classList.add('show');
+                    summary.innerHTML = `
+                        <h4>Job ${job.status}</h4>
+                        <p><strong>Total:</strong> ${job.totalItems}</p>
+                        <p><strong>Success:</strong> <span class="badge badge-success">${job.successCount}</span></p>
+                        <p><strong>Failed:</strong> <span class="badge badge-failure">${job.failureCount}</span></p>
+                        <p><strong>Result:</strong> ${job.resultSummary || 'N/A'}</p>
+                        ${job.errorDetails ? `<p><strong>Errors:</strong></p><pre>${job.errorDetails}</pre>` : ''}
+                    `;
+                    document.getElementById('jobStatus').textContent = `✅ Job ${job.status}`;
                 }
-                currentJobId = job.id;
-                document.getElementById('jobStatus').textContent = `Job started (ID: ${job.id})`;
-                if (pollingInterval) clearInterval(pollingInterval);
-                pollingInterval = setInterval(pollJobStatus, 1000);
             })
             .catch(err => {
-                document.getElementById('jobStatus').textContent = '❌ Error: ' + err.message;
-                document.getElementById('progressContainer').style.display = 'none';
-                console.error('Bulk job submission error:', err);
+                console.error('Polling error:', err);
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                    document.getElementById('jobStatus').textContent = '❌ Error polling job status: ' + err.message;
+                }
             });
-        }
+    }
 
-        function pollJobStatus() {
-            if (!currentJobId) return;
-            fetch(`/admin/bulk/jobs/${currentJobId}`)
-                .then(response => {
-                    if (!response.ok) throw new Error('Failed to fetch job status');
-                    return response.json();
-                })
-                .then(job => {
-                    const progress = job.totalItems > 0 ? Math.round((job.processedItems / job.totalItems) * 100) : 0;
-                    document.getElementById('progressBar').style.width = progress + '%';
-                    document.getElementById('progressBar').textContent = progress + '%';
-
-                    if (job.status === 'COMPLETED' || job.status === 'FAILED') {
-                        clearInterval(pollingInterval);
-                        pollingInterval = null;
-                        const summaryDiv = document.getElementById('jobSummary');
-                        summaryDiv.style.display = 'block';
-                        summaryDiv.innerHTML = `
-                            <h4>Job ${job.status}</h4>
-                            <p><strong>Total:</strong> ${job.totalItems}</p>
-                            <p><strong>Success:</strong> <span class="badge badge-success">${job.successCount}</span></p>
-                            <p><strong>Failed:</strong> <span class="badge badge-failure">${job.failureCount}</span></p>
-                            <p><strong>Result:</strong> ${job.resultSummary || 'N/A'}</p>
-                            ${job.errorDetails ? `<p><strong>Errors:</strong><pre>${job.errorDetails}</pre></p>` : ''}
-                        `;
-                        document.getElementById('jobStatus').textContent = `✅ Job ${job.status}`;
-                    }
-                })
-                .catch(err => {
-                    console.error('Polling error:', err);
-                    if (pollingInterval) {
-                        clearInterval(pollingInterval);
-                        pollingInterval = null;
-                        document.getElementById('jobStatus').textContent = '❌ Error polling job status: ' + err.message;
-                    }
-                });
-        }
-    </script>
+    function submitBulk(e) { e.preventDefault(); return false; }
+    function submitRefund(e) { e.preventDefault(); return false; }
+</script>
 </body>
 </html>

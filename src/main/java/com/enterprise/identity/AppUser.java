@@ -12,7 +12,6 @@ import java.util.Set;
 @Table(name = "app_user")
 @FilterDef(name = "tenantFilter", parameters = @ParamDef(name = "tenantId", type = Long.class))
 @Filter(name = "tenantFilter", condition = "tenant_id = :tenantId")
-
 public class AppUser {
 
     @Id
@@ -48,7 +47,6 @@ public class AppUser {
     @Column(name = "tenant_id", nullable = false)
     private Long tenantId;
 
-    // ----- SUPER ADMIN FLAG -----
     @Column(name = "super_admin", nullable = false)
     private boolean superAdmin = false;
 
@@ -56,23 +54,31 @@ public class AppUser {
     private String tenantName;
 
     @Column(name = "failed_login_attempts", nullable = false)
-private int failedLoginAttempts = 0;
+    private int failedLoginAttempts = 0;
 
-@Column(name = "account_locked", nullable = false)
-private boolean accountLocked = false;
+    @Column(name = "account_locked", nullable = false)
+    private boolean accountLocked = false;
 
-@Column(name = "lock_expiry")
-private LocalDateTime lockExpiry;
+    @Column(name = "lock_expiry")
+    private LocalDateTime lockExpiry;
 
-// Getters and setters
-public int getFailedLoginAttempts() { return failedLoginAttempts; }
-public void setFailedLoginAttempts(int failedLoginAttempts) { this.failedLoginAttempts = failedLoginAttempts; }
+    // ============================================================
+    // 2FA ADMIN OVERRIDE FIELDS
+    // ============================================================
+    @Column(name = "two_factor_disabled_by_admin", nullable = false)
+    private boolean twoFactorDisabledByAdmin = false;
 
-public boolean isAccountLocked() { return accountLocked; }
-public void setAccountLocked(boolean accountLocked) { this.accountLocked = accountLocked; }
+    @Column(name = "two_factor_disabled_at")
+    private LocalDateTime twoFactorDisabledAt;
 
-public LocalDateTime getLockExpiry() { return lockExpiry; }
-public void setLockExpiry(LocalDateTime lockExpiry) { this.lockExpiry = lockExpiry; }
+    @Column(name = "two_factor_disabled_by")
+    private Long twoFactorDisabledBy;
+
+    @Column(name = "two_factor_disable_expires_at")
+    private LocalDateTime twoFactorDisableExpiresAt;
+
+    @Column(name = "two_factor_disable_reason", columnDefinition = "TEXT")
+    private String twoFactorDisableReason;
 
     // ----- Getters and Setters -----
     public Long getId() { return id; }
@@ -97,4 +103,38 @@ public void setLockExpiry(LocalDateTime lockExpiry) { this.lockExpiry = lockExpi
     public void setTenantName(String tenantName) { this.tenantName = tenantName; }
     public boolean isSuperAdmin() { return superAdmin; }
     public void setSuperAdmin(boolean superAdmin) { this.superAdmin = superAdmin; }
+    public int getFailedLoginAttempts() { return failedLoginAttempts; }
+    public void setFailedLoginAttempts(int failedLoginAttempts) { this.failedLoginAttempts = failedLoginAttempts; }
+    public boolean isAccountLocked() { return accountLocked; }
+    public void setAccountLocked(boolean accountLocked) { this.accountLocked = accountLocked; }
+    public LocalDateTime getLockExpiry() { return lockExpiry; }
+    public void setLockExpiry(LocalDateTime lockExpiry) { this.lockExpiry = lockExpiry; }
+
+    public boolean isTwoFactorDisabledByAdmin() { return twoFactorDisabledByAdmin; }
+    public void setTwoFactorDisabledByAdmin(boolean twoFactorDisabledByAdmin) { this.twoFactorDisabledByAdmin = twoFactorDisabledByAdmin; }
+
+    public LocalDateTime getTwoFactorDisabledAt() { return twoFactorDisabledAt; }
+    public void setTwoFactorDisabledAt(LocalDateTime twoFactorDisabledAt) { this.twoFactorDisabledAt = twoFactorDisabledAt; }
+
+    public Long getTwoFactorDisabledBy() { return twoFactorDisabledBy; }
+    public void setTwoFactorDisabledBy(Long twoFactorDisabledBy) { this.twoFactorDisabledBy = twoFactorDisabledBy; }
+
+    public LocalDateTime getTwoFactorDisableExpiresAt() { return twoFactorDisableExpiresAt; }
+    public void setTwoFactorDisableExpiresAt(LocalDateTime twoFactorDisableExpiresAt) { this.twoFactorDisableExpiresAt = twoFactorDisableExpiresAt; }
+
+    public String getTwoFactorDisableReason() { return twoFactorDisableReason; }
+    public void setTwoFactorDisableReason(String twoFactorDisableReason) { this.twoFactorDisableReason = twoFactorDisableReason; }
+
+    /**
+     * Returns true if 2FA is effectively disabled (either not enabled OR admin override is active)
+     */
+    public boolean isTwoFactorEffectivelyDisabled() {
+        if (!twoFactorEnabled) return true;
+        if (twoFactorDisabledByAdmin) {
+            if (twoFactorDisableExpiresAt == null) return true;
+            if (twoFactorDisableExpiresAt.isAfter(LocalDateTime.now())) return true;
+            // Expired — treat as disabled (scheduler will clean up)
+        }
+        return false;
+    }
 }
