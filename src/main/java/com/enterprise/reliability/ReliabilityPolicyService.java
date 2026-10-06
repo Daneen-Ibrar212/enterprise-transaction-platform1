@@ -1,6 +1,8 @@
 package com.enterprise.reliability;
 
 import com.enterprise.tenant.TenantContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -8,6 +10,8 @@ import java.util.List;
 
 @Service
 public class ReliabilityPolicyService {
+
+    private static final Logger log = LoggerFactory.getLogger(ReliabilityPolicyService.class);
 
     private final RetryPolicyRepository retryPolicyRepository;
     private final CircuitBreakerPolicyRepository cbPolicyRepository;
@@ -24,11 +28,14 @@ public class ReliabilityPolicyService {
         this.ruleRepository = ruleRepository;
     }
 
+    // ============================================================
+    // RETRY POLICY
+    // ============================================================
     public RetryPolicy getRetryPolicy(String operationType) {
-        Long tenantId = TenantContext.getRequiredTenantId();
-        return retryPolicyRepository.findByOperationTypeAndActiveTrue(operationType)
+        Long tenantId = getTenantIdSafe();
+        return retryPolicyRepository
+                .findFirstByOperationTypeAndTenantIdAndActiveTrue(operationType, tenantId)
                 .orElseGet(() -> {
-                    // Create default in-memory policy
                     RetryPolicy defaultPolicy = new RetryPolicy();
                     defaultPolicy.setOperationType(operationType);
                     defaultPolicy.setMaxAttempts(3);
@@ -37,15 +44,19 @@ public class ReliabilityPolicyService {
                     defaultPolicy.setMaxDelayMs(30000);
                     defaultPolicy.setJitterEnabled(true);
                     defaultPolicy.setActive(true);
+                    defaultPolicy.setTenantId(tenantId);
                     return defaultPolicy;
                 });
     }
 
+    // ============================================================
+    // CIRCUIT BREAKER STATE
+    // ============================================================
     public CircuitBreakerState getCircuitBreakerState(String operationType) {
-        Long tenantId = TenantContext.getRequiredTenantId();
-        return cbStateRepository.findByOperationTypeAndTenantId(operationType, tenantId)
+        Long tenantId = getTenantIdSafe();
+        return cbStateRepository
+                .findFirstByOperationTypeAndTenantId(operationType, tenantId)
                 .orElseGet(() -> {
-                    // Create default state
                     CircuitBreakerState defaultState = new CircuitBreakerState();
                     defaultState.setOperationType(operationType);
                     defaultState.setState("CLOSED");
@@ -57,11 +68,14 @@ public class ReliabilityPolicyService {
                 });
     }
 
+    // ============================================================
+    // CIRCUIT BREAKER POLICY
+    // ============================================================
     public CircuitBreakerPolicy getCircuitBreakerPolicy(String operationType) {
-        Long tenantId = TenantContext.getRequiredTenantId();
-        return cbPolicyRepository.findByOperationTypeAndTenantIdAndActiveTrue(operationType, tenantId)
+        Long tenantId = getTenantIdSafe();
+        return cbPolicyRepository
+                .findFirstByOperationTypeAndTenantIdAndActiveTrue(operationType, tenantId)
                 .orElseGet(() -> {
-                    // Create default policy
                     CircuitBreakerPolicy defaultPolicy = new CircuitBreakerPolicy();
                     defaultPolicy.setOperationType(operationType);
                     defaultPolicy.setFailureThreshold(5);
@@ -74,14 +88,35 @@ public class ReliabilityPolicyService {
                 });
     }
 
+    // ============================================================
+    // FAILURE CLASSIFICATION — FIXED to handle duplicates
+    // ============================================================
     public FailureClassificationRule classifyFailure(String operationType, Exception ex) {
-        String message = ex.getMessage().toLowerCase();
-        List<FailureClassificationRule> rules = ruleRepository.findByActiveTrueOrderByPriorityAsc();
+        Long tenantId = getTenantIdSafe();
+        String message = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
+
+        // ✅ Try tenant-aware rules first
+        List<FailureClassificationRule> rules =
+                ruleRepository.findActiveByTenantIdOrderByPriority(tenantId);
+
+        // ✅ Fallback to global rules if none found for tenant
+        if (rules.isEmpty()) {
+            rules = ruleRepository.findByActiveTrueOrderByPriorityAsc();
+        }
+
         for (FailureClassificationRule rule : rules) {
-            if (message.contains(rule.getConditionExpression().toLowerCase())) {
-                return rule;
+            try {
+                if (rule.getConditionExpression() != null
+                        && !rule.getConditionExpression().isEmpty()
+                        && message.contains(rule.getConditionExpression().toLowerCase())) {
+                    return rule;
+                }
+            } catch (Exception e) {
+                log.warn("Failed to evaluate rule {}: {}", rule.getId(), e.getMessage());
             }
         }
+
+        // Default rule
         FailureClassificationRule defaultRule = new FailureClassificationRule();
         defaultRule.setAction("RETRY");
         defaultRule.setCategory("TRANSIENT");
@@ -89,23 +124,38 @@ public class ReliabilityPolicyService {
         return defaultRule;
     }
 
+    // ============================================================
+    // CIRCUIT BREAKER MUTATIONS — safe against duplicates
+    // ============================================================
     public void updateCircuitBreakerState(String operationType, String state) {
-        Long tenantId = TenantContext.getRequiredTenantId();
+        Long tenantId = getTenantIdSafe();
         cbStateRepository.updateState(operationType, tenantId, state);
     }
 
     public void incrementFailureCount(String operationType) {
-        Long tenantId = TenantContext.getRequiredTenantId();
+        Long tenantId = getTenantIdSafe();
         cbStateRepository.incrementFailureCount(operationType, tenantId);
     }
 
     public void incrementSuccessCount(String operationType) {
-        Long tenantId = TenantContext.getRequiredTenantId();
+        Long tenantId = getTenantIdSafe();
         cbStateRepository.incrementSuccessCount(operationType, tenantId);
     }
 
     public void resetCounts(String operationType) {
-        Long tenantId = TenantContext.getRequiredTenantId();
+        Long tenantId = getTenantIdSafe();
         cbStateRepository.resetCounts(operationType, tenantId);
+    }
+
+    // ============================================================
+    // SAFE TENANT ID
+    // ============================================================
+    private Long getTenantIdSafe() {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) {
+            log.warn("No tenant context, defaulting to tenant 1");
+            return 1L;
+        }
+        return tenantId;
     }
 }

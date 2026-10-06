@@ -24,6 +24,12 @@ public class BackoffPolicy {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    // ============================================================
+    // ✅ TENANT ID
+    // ============================================================
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
     // Getters and setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -37,4 +43,8 @@ public class BackoffPolicy {
     public void setFixedDelayMs(Long fixedDelayMs) { this.fixedDelayMs = fixedDelayMs; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    // ✅ TENANT ID GETTER + SETTER
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
 }

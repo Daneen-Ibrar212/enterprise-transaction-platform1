@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Webhooks · PayFlow</title>
+    <title>Webhook Deliveries · PayFlow</title>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@1.9.10/dist/htmx.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
@@ -16,7 +17,7 @@
             -webkit-font-smoothing: antialiased;
         }
         body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
-        .container { max-width: 1300px; margin: 0 auto; }
+        .container { max-width: 1400px; margin: 0 auto; }
 
         .page-header {
             background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
@@ -55,71 +56,66 @@
             gap: 10px;
             margin-top: 12px;
         }
-        .header-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            position: relative;
-            z-index: 1;
-            margin-top: 16px;
-        }
-        .back-link,
-        .header-chip {
+        .back-link {
             display: inline-flex;
             align-items: center;
             gap: 6px;
+            color: rgba(255,255,255,0.85);
             text-decoration: none;
             font-size: 0.8125rem;
             font-weight: 400;
-            padding: 8px 16px;
+            padding: 6px 14px;
             border-radius: 9999px;
-            transition: all 0.15s ease;
-            border: 1px solid transparent;
-        }
-        .back-link {
-            color: rgba(255,255,255,0.9);
             background: rgba(255,255,255,0.12);
-            border-color: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
         }
         .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
-        .chip-create {
-            background: rgba(255,255,255,0.95);
-            color: #0b1a33;
-        }
-        .chip-create:hover { background: white; transform: translateY(-1px); }
-        .chip-simulator {
-            background: rgba(139,92,246,0.9);
-            color: white;
-        }
-        .chip-simulator:hover { background: #7c3aed; transform: translateY(-1px); }
-        .chip-deliveries {
-            background: rgba(59,130,246,0.9);
-            color: white;
-        }
-        .chip-deliveries:hover { background: #2563eb; transform: translateY(-1px); }
 
-        .feature-card {
+        .filter-card {
             background: white;
             border-radius: 16px;
-            padding: 18px 24px;
+            padding: 20px 24px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.06);
             border: 1px solid rgba(226,232,240,0.6);
             margin-bottom: 20px;
+        }
+        .filter-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            align-items: end;
+        }
+        .filter-group {
             display: flex;
-            align-items: center;
-            gap: 12px;
+            flex-direction: column;
+            gap: 6px;
         }
-        .feature-card .label {
-            font-size: 0.8125rem;
-            font-weight: 400;
-            color: #334155;
+        .filter-group label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
-        .feature-card input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            accent-color: #2d6bb8;
-            cursor: not-allowed;
+        .filter-group input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            font-family: 'Lexend Deca', -apple-system, system-ui, sans-serif;
+            font-weight: 300;
+            color: #0f172a;
+            background: white;
+            transition: all 0.15s ease;
         }
+        .filter-group input:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 3px rgba(45, 107, 184, 0.12);
+        }
+        .filter-actions { display: flex; gap: 8px; align-items: flex-end; }
 
         .card {
             background: white;
@@ -162,15 +158,11 @@
             font-weight: 500;
             color: #0f172a;
         }
-        .data-table td.name-cell {
-            font-weight: 500;
-            color: #0f172a;
-        }
         .data-table td.url-cell {
             font-family: 'SF Mono', Monaco, Consolas, monospace;
             font-size: 0.75rem;
             color: #4f46e5;
-            max-width: 280px;
+            max-width: 260px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -185,8 +177,9 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
-        .badge-active { background: #d1fae5; color: #065f46; }
-        .badge-inactive { background: #fee2e2; color: #991b1b; }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-failure { background: #fee2e2; color: #991b1b; }
+        .badge-replay { background: #fef3c7; color: #92400e; margin-left: 6px; }
 
         .btn {
             display: inline-flex;
@@ -213,18 +206,32 @@
             font-size: 0.8125rem;
         }
         .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(11,26,51,0.3); }
-        .btn-edit { background: #3b82f6; color: white; box-shadow: 0 4px 12px rgba(59,130,246,0.2); }
-        .btn-edit:hover { background: #2563eb; transform: translateY(-1px); }
-        .btn-toggle-on { background: #f59e0b; color: white; box-shadow: 0 4px 12px rgba(245,158,11,0.2); }
-        .btn-toggle-on:hover { background: #d97706; transform: translateY(-1px); }
-        .btn-toggle-off { background: #10b981; color: white; box-shadow: 0 4px 12px rgba(16,185,129,0.2); }
-        .btn-toggle-off:hover { background: #059669; transform: translateY(-1px); }
-        .btn-delete { background: #f1f5f9; color: #475569; }
-        .btn-delete:hover { background: #fee2e2; color: #dc2626; }
-        .btn-deliveries { background: #8b5cf6; color: white; box-shadow: 0 4px 12px rgba(139,92,246,0.2); }
-        .btn-deliveries:hover { background: #7c3aed; transform: translateY(-1px); }
+        .btn-outline {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-outline:hover { border-color: #2d6bb8; color: #2d6bb8; background: #f8faff; }
+        .btn-retry {
+            background: #64748b;
+            color: white;
+            box-shadow: 0 4px 12px rgba(100,116,139,0.2);
+        }
+        .btn-retry:hover { background: #475569; transform: translateY(-1px); }
+        .btn-replay {
+            background: #f59e0b;
+            color: white;
+            box-shadow: 0 4px 12px rgba(245,158,11,0.2);
+        }
+        .btn-replay:hover { background: #d97706; transform: translateY(-1px); }
 
-        .action-cell { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .retry-status {
+            display: inline-block;
+            margin-left: 8px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #059669;
+        }
 
         .empty {
             text-align: center;
@@ -233,6 +240,140 @@
             font-size: 0.875rem;
         }
         .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+        /* Pagination */
+        .pagination-wrap {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+            padding: 0 4px;
+        }
+        .pagination-info {
+            font-size: 0.8125rem;
+            color: #64748b;
+            font-weight: 300;
+        }
+        .pagination {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .pagination a,
+        .pagination span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 38px;
+            height: 38px;
+            padding: 0 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 400;
+            color: #475569;
+            background: white;
+            transition: all 0.15s ease;
+        }
+        .pagination a:hover {
+            border-color: #2d6bb8;
+            color: #2d6bb8;
+            background: #f8faff;
+        }
+        .pagination .disabled {
+            color: #cbd5e1;
+            background: #f8fafc;
+            border-color: #f1f5f9;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(11,26,51,0.55);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 20px;
+            padding: 32px 36px;
+            max-width: 520px;
+            width: 100%;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+        }
+        .modal h3 {
+            margin: 0 0 12px 0;
+            color: #0f172a;
+            font-weight: 500;
+            font-size: 1.25rem;
+        }
+        .modal p {
+            color: #64748b;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+        .modal label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .modal input[type="text"] {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+        .modal input[type="text"]:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 3px rgba(45,107,184,0.12);
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #f1f5f9;
+        }
+        .btn-cancel {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8125rem;
+        }
+        .btn-confirm {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8125rem;
+        }
 
         @media (max-width: 1000px) {
             .data-table { display: block; overflow-x: auto; }
@@ -245,69 +386,145 @@
 
     <div class="page-header">
         <div class="page-header-top">
-            <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+            <a href="/admin/webhooks" class="back-link">← Back to Webhook Configs</a>
         </div>
-        <h1><span style="font-size:1.5rem;">🌐</span> Webhook Configurations</h1>
-        <div class="header-actions">
-            <a href="/admin/webhooks/create" class="header-chip chip-create">➕ Create Webhook</a>
-            <a href="/admin/webhooks/simulator" class="header-chip chip-simulator">🧪 Simulator</a>
-            <a href="/admin/webhook-deliveries" class="header-chip chip-deliveries">📤 All Deliveries</a>
-        </div>
+        <h1><span style="font-size:1.5rem;">📤</span> Webhook Deliveries</h1>
     </div>
 
-    <!-- Feature flag -->
-    <div class="feature-card">
-        <input type="checkbox" th:checked="${webhooksEnabled}" disabled />
-        <span class="label">Webhooks enabled (feature flag)</span>
-        <a href="/admin/features" style="margin-left:auto; color:#4f46e5; font-size:0.75rem; font-weight:500; text-decoration:none;">Manage →</a>
+    <!-- Filter -->
+    <div class="filter-card">
+        <form method="get" class="filter-form">
+            <div class="filter-group">
+                <label for="configId">Config ID</label>
+                <input type="number" id="configId" name="configId" th:value="${configId}" placeholder="Filter by config" />
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary">🔍 Filter</button>
+                <a th:href="@{/admin/webhook-deliveries}" class="btn btn-outline">Reset</a>
+            </div>
+        </form>
     </div>
 
     <!-- Table -->
     <div class="card">
-        <table class="data-table" th:unless="${webhooks.empty}">
+        <table class="data-table" th:unless="${deliveries.empty}">
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Name</th>
-                    <th>URL</th>
+                    <th>Config</th>
                     <th>Event Type</th>
+                    <th>URL</th>
                     <th>Status</th>
+                    <th>Attempt</th>
+                    <th>Response Time</th>
                     <th>Created</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="config : ${webhooks}" th:if="${config != null}">
-                    <td class="mono" th:text="${config.id}">1</td>
-                    <td class="name-cell" th:text="${config.name}">My Webhook</td>
-                    <td class="url-cell" th:text="${config.url}" th:title="${config.url}">https://example.com</td>
-                    <td class="mono" th:text="${config.eventType}">TRANSACTION_SETTLED</td>
+                <tr th:each="delivery : ${deliveries.content}">
+                    <td class="mono" th:text="${delivery.id}">1</td>
+                    <td class="mono" th:text="${delivery.webhookConfigId}">10</td>
+                    <td class="mono" th:text="${delivery.eventType}">TRANSACTION_SETTLED</td>
+                    <td class="url-cell" th:text="${delivery.url}" th:title="${delivery.url}">https://example.com</td>
                     <td>
-                        <span th:if="${config.active}" class="badge badge-active">Active</span>
-                        <span th:unless="${config.active}" class="badge badge-inactive">Inactive</span>
+                        <span th:if="${delivery.success}" class="badge badge-success">✅ Success</span>
+                        <span th:unless="${delivery.success}" class="badge badge-failure">❌ Failed</span>
+                        <span th:if="${delivery.replay}" class="badge badge-replay">🔁 Replay</span>
                     </td>
-                    <td th:text="${#temporals.format(config.createdAt, 'dd MMM yyyy')}">01 Jan 2026</td>
+                    <td class="mono" th:text="${delivery.attemptNumber}">1</td>
                     <td>
-                        <div class="action-cell">
-                            <a th:href="@{/admin/webhooks/{id}/edit(id=${config.id})}" class="btn btn-edit">✏️ Edit</a>
-                            <a th:href="@{/admin/webhooks/{id}/toggle(id=${config.id})}"
-                               th:classappend="${config.active ? 'btn-toggle-on' : 'btn-toggle-off'}"
-                               class="btn"
-                               th:text="${config.active ? '⏸ Deactivate' : '▶ Activate'}">Toggle</a>
-                            <a th:href="@{/admin/webhook-deliveries(configId=${config.id})}" class="btn btn-deliveries">📤 Deliveries</a>
-                            <a th:href="@{/admin/webhooks/{id}/delete(id=${config.id})}" class="btn btn-delete" onclick="return confirm('Delete this webhook?')">🗑️</a>
+                        <span th:if="${delivery.responseTimeMs != null}" th:text="${delivery.responseTimeMs} + 'ms'">—</span>
+                        <span th:unless="${delivery.responseTimeMs != null}">—</span>
+                    </td>
+                    <td th:text="${#temporals.format(delivery.createdAt, 'dd MMM yyyy · HH:mm')}">01 Jan 2026 · 12:00</td>
+                    <td>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                            <!-- Retry via HTMX -->
+                            <button class="btn btn-retry"
+                                    th:hx-post="@{/admin/webhook-deliveries/{id}/retry(id=${delivery.id})}"
+                                    th:hx-target="'#retry-status-' + ${delivery.id}"
+                                    hx-swap="innerHTML">
+                                🔄 Retry
+                            </button>
+                            <!-- Replay via modal -->
+                            <button type="button"
+                                    class="btn btn-replay"
+                                    th:attr="data-delivery-id=${delivery.id}"
+                                    onclick="openReplayModal(this)">
+                                🔁 Replay
+                            </button>
+                            <span th:id="'retry-status-' + ${delivery.id}" class="retry-status"></span>
                         </div>
                     </td>
                 </tr>
             </tbody>
         </table>
 
-        <div th:if="${webhooks.empty}" class="empty">
-            <span class="emoji">🌐</span>
-            <p>No webhooks configured.</p>
+        <div th:if="${deliveries.empty}" class="empty">
+            <span class="emoji">📭</span>
+            <p>No webhook deliveries found.</p>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-wrap" th:unless="${deliveries.empty}">
+        <span class="pagination-info">
+            Page <strong style="font-weight:500;" th:text="${deliveries.number + 1}">1</strong>
+            of <strong style="font-weight:500;" th:text="${deliveries.totalPages}">1</strong>
+        </span>
+
+        <div class="pagination">
+            <a th:if="${deliveries.hasPrevious()}"
+               th:href="@{/admin/webhook-deliveries(page=${deliveries.number - 1}, configId=${configId})}">
+                ← Prev
+            </a>
+            <span th:unless="${deliveries.hasPrevious()}" class="disabled">← Prev</span>
+
+            <a th:if="${deliveries.hasNext()}"
+               th:href="@{/admin/webhook-deliveries(page=${deliveries.number + 1}, configId=${configId})}">
+                Next →
+            </a>
+            <span th:unless="${deliveries.hasNext()}" class="disabled">Next →</span>
         </div>
     </div>
 
 </div>
+
+<!-- Replay Modal -->
+<div id="replayModal" class="modal-overlay">
+    <div class="modal">
+        <h3>🔁 Replay Webhook</h3>
+        <p>Re-send the original payload to the same URL.<br/>
+           Delivery ID: <strong id="replayDeliveryId"></strong></p>
+        <form id="replayForm" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+            <label for="replayReason">Reason (optional)</label>
+            <input type="text" id="replayReason" name="reason" placeholder="e.g., Client reported missing event" />
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" onclick="closeReplayModal()">Cancel</button>
+                <button type="submit" class="btn-confirm">🔁 Replay Now</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openReplayModal(button) {
+        const id = button.getAttribute('data-delivery-id');
+        document.getElementById('replayDeliveryId').textContent = id;
+        document.getElementById('replayForm').action = '/admin/webhook-deliveries/' + id + '/replay';
+        document.getElementById('replayModal').classList.add('show');
+    }
+    function closeReplayModal() {
+        document.getElementById('replayModal').classList.remove('show');
+    }
+    document.getElementById('replayModal').addEventListener('click', function(e) {
+        if (e.target === this) closeReplayModal();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeReplayModal();
+    });
+</script>
 </body>
 </html>

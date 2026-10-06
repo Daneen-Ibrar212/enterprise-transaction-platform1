@@ -2,7 +2,7 @@ package com.enterprise.feature;
 
 import com.enterprise.events.SuspicionEnabledEvent;
 import com.enterprise.tenant.TenantContext;
-import com.enterprise.xero.service.XeroOAuthService;  // ✅ ADD THIS IMPORT
+import com.enterprise.xero.service.XeroOAuthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class FeatureFlagService {
@@ -20,11 +21,11 @@ public class FeatureFlagService {
     private static final Logger log = LoggerFactory.getLogger(FeatureFlagService.class);
     private final FeatureFlagRepository repository;
     private final ApplicationEventPublisher eventPublisher;
-    private final XeroOAuthService xeroOAuthService;  // ✅ ADD THIS
+    private final XeroOAuthService xeroOAuthService;
 
     public FeatureFlagService(FeatureFlagRepository repository,
                               ApplicationEventPublisher eventPublisher,
-                              XeroOAuthService xeroOAuthService) {  // ✅ ADD TO CONSTRUCTOR
+                              XeroOAuthService xeroOAuthService) {
         this.repository = repository;
         this.eventPublisher = eventPublisher;
         this.xeroOAuthService = xeroOAuthService;
@@ -38,7 +39,6 @@ public class FeatureFlagService {
             return false;
         }
 
-        // ✅ If checking XERO_AUTO_SYNC, verify Xero is actually connected
         if ("XERO_AUTO_SYNC".equals(name)) {
             try {
                 boolean isConnected = xeroOAuthService.isConnected(tenantId);
@@ -46,7 +46,6 @@ public class FeatureFlagService {
                     log.debug("🔌 Xero not connected for tenant {}, returning false for XERO_AUTO_SYNC", tenantId);
                     return false;
                 }
-                // Xero is connected, check the flag
                 return repository.findByNameAndTenantId(name, tenantId)
                         .map(FeatureFlag::isEnabled)
                         .orElse(false);
@@ -96,6 +95,32 @@ public class FeatureFlagService {
     @Transactional
     public void deleteFlag(Long id) {
         repository.deleteById(id);
+    }
+
+    @Transactional
+    public void provisionDefaultsForTenant(Long tenantId) {
+        log.info("🔧 Provisioning default feature flags for tenant {}", tenantId);
+
+        int created = 0;
+        for (Map.Entry<String, Boolean> entry : FeatureFlagDefaults.DEFAULTS.entrySet()) {
+            String name = entry.getKey();
+            Boolean enabled = entry.getValue();
+
+            // Skip if already exists
+            if (repository.findByNameAndTenantId(name, tenantId).isPresent()) {
+                continue;
+            }
+
+            FeatureFlag flag = new FeatureFlag();
+            flag.setName(name);
+            flag.setDescription(FeatureFlagDefaults.DESCRIPTIONS.get(name));
+            flag.setEnabled(enabled);
+            flag.setTenantId(tenantId);
+            flag.setUpdatedAt(LocalDateTime.now());
+            repository.save(flag);
+            created++;
+        }
+        log.info("✅ Provisioned {} default feature flags for tenant {}", created, tenantId);
     }
 
     public List<FeatureFlag> findAll() {

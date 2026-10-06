@@ -33,7 +33,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Controller
@@ -52,7 +56,7 @@ public class DashboardController {
     private final InvoiceRepository invoiceRepository;
     private final TenantRepository tenantRepository;
     private final ExchangeRateService exchangeRateService;
-    private final RateLimitService rateLimitService;  // ✅ ADD THIS
+    private final RateLimitService rateLimitService;
 
     public DashboardController(TransactionRepository transactionRepository,
                                AuditRepository auditRepository,
@@ -65,7 +69,7 @@ public class DashboardController {
                                InvoiceRepository invoiceRepository,
                                TenantRepository tenantRepository,
                                ExchangeRateService exchangeRateService,
-                               RateLimitService rateLimitService) {  // ✅ ADD TO CONSTRUCTOR
+                               RateLimitService rateLimitService) {
         this.transactionRepository = transactionRepository;
         this.auditRepository = auditRepository;
         this.reconciliationRecordRepository = reconciliationRecordRepository;
@@ -77,7 +81,7 @@ public class DashboardController {
         this.invoiceRepository = invoiceRepository;
         this.tenantRepository = tenantRepository;
         this.exchangeRateService = exchangeRateService;
-        this.rateLimitService = rateLimitService;  // ✅ ADD THIS
+        this.rateLimitService = rateLimitService;
     }
 
     @GetMapping("/dashboard")
@@ -93,24 +97,18 @@ public class DashboardController {
         boolean isMerchant = user.getRoles().stream().anyMatch(r -> r.getName().equals("MERCHANT"));
         boolean isCustomer = user.getRoles().stream().anyMatch(r -> r.getName().equals("CUSTOMER"));
 
-        // Add role flags to the model
         model.addAttribute("isSuperAdmin", isSuperAdmin);
         model.addAttribute("isMerchantAdmin", isMerchantAdmin);
         model.addAttribute("isMerchant", isMerchant);
         model.addAttribute("isCustomer", isCustomer);
 
         // ===== ROLE BADGE =====
-        if (isSuperAdmin) {
-            model.addAttribute("roleBadge", "Super Admin");
-        } else if (isMerchantAdmin) {
-            model.addAttribute("roleBadge", "Merchant Admin");
-        } else if (isMerchant) {
-            model.addAttribute("roleBadge", "Merchant");
-        } else if (isCustomer) {
-            model.addAttribute("roleBadge", "Customer");
-        } else {
-            model.addAttribute("roleBadge", "User");
-        }
+        String roleBadge = isSuperAdmin ? "Super Admin"
+                : isMerchantAdmin ? "Merchant Admin"
+                : isMerchant ? "Merchant"
+                : isCustomer ? "Customer"
+                : "User";
+        model.addAttribute("roleBadge", roleBadge);
 
         // ===== COMMON STATS (tenant‑aware) =====
         long totalTransactions = transactionRepository.countByTenantId(tenantId);
@@ -138,15 +136,13 @@ public class DashboardController {
             model.addAttribute("suspiciousCount", suspiciousCount);
         }
 
-        // ============================================================
-        // ✅ RATE LIMIT STATS (Super Admin + Merchant Admin only)
-        // ============================================================
+        // ===== RATE LIMIT STATS (Super Admin + Merchant Admin only) =====
         if (isSuperAdmin || isMerchantAdmin) {
             try {
                 List<RateLimitConfig> configs = rateLimitService.getAllConfigsForTenant(tenantId);
                 long violations = rateLimitService.getViolationCountSince(tenantId, LocalDateTime.now().minusDays(7));
                 List<RateLimitViolation> recentViolations = rateLimitService.getViolationsForTenant(tenantId, 5);
-                
+
                 model.addAttribute("totalRateLimitConfigs", configs != null ? configs.size() : 0);
                 model.addAttribute("recentRateLimitViolations", violations);
                 model.addAttribute("rateLimitRecentViolations", recentViolations);
@@ -192,37 +188,63 @@ public class DashboardController {
             model.addAttribute("recentTransactions", recentTransactions);
         }
 
-        // ===== MULTI-CURRENCY DASHBOARD =====
-        Tenant tenant = tenantRepository.findById(user.getTenantId()).orElse(null);
+        // ============================================================
+        // MULTI-CURRENCY DASHBOARD
+        // ============================================================
+        Tenant tenant = tenantRepository.findById(tenantId).orElse(null);
         String baseCurrency = (tenant != null && tenant.getBaseCurrency() != null) ? tenant.getBaseCurrency() : "GBP";
         model.addAttribute("baseCurrency", baseCurrency);
 
-        BigDecimal totalVolume = BigDecimal.ZERO;
-        for (Transaction tx : transactionRepository.findAllByTenantId(tenantId)) {
-            totalVolume = totalVolume.add(exchangeRateService.convert(tx.getAmount(), tx.getCurrency(), baseCurrency));
-        }
+        // ✅ Fetch tenant transactions ONCE (fixes N+1 query)
+        List<Transaction> tenantTransactions = transactionRepository.findAllByTenantId(tenantId);
+
+        BigDecimal totalVolume = tenantTransactions.stream()
+                .map(tx -> exchangeRateService.convert(tx.getAmount(), tx.getCurrency(), baseCurrency))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         model.addAttribute("totalVolume", totalVolume);
 
+        // ============================================================
+        // ✅ 7-DAY OVERVIEW CHARTS (TENANT-AWARE, ZERO-FILLED)
+        // ============================================================
         LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusDays(7);
-
-        var volume = reportingService.getDailyVolume(startDate, endDate, tenantId);
-        var statusDist = reportingService.getStatusDistribution(startDate, endDate, tenantId);
+        LocalDate startDate = endDate.minusDays(6); // 7 days inclusive
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        List<String> labels = volume.keySet().stream().sorted().map(d -> d.format(formatter)).collect(Collectors.toList());
-        List<BigDecimal> volumeData = labels.stream()
-                .map(label -> {
-                    LocalDate date = LocalDate.parse(label, formatter);
-                    BigDecimal dailyTotal = BigDecimal.ZERO;
-                    for (Transaction tx : transactionRepository.findAllByTenantId(tenantId)) {
-                        if (tx.getCreatedAt().toLocalDate().equals(date)) {
-                            dailyTotal = dailyTotal.add(exchangeRateService.convert(tx.getAmount(), tx.getCurrency(), baseCurrency));
-                        }
-                    }
-                    return dailyTotal;
+
+        // ✅ Build 7-day window with zeros (ensures every day is present)
+        Map<LocalDate, BigDecimal> dailyVolumeMap = new LinkedHashMap<>();
+        LocalDate cursor = startDate;
+        while (!cursor.isAfter(endDate)) {
+            dailyVolumeMap.put(cursor, BigDecimal.ZERO);
+            cursor = cursor.plusDays(1);
+        }
+
+        // ✅ Fill in real values from tenant transactions
+        for (Transaction tx : tenantTransactions) {
+            LocalDate txDate = tx.getCreatedAt().toLocalDate();
+            if (txDate.isBefore(startDate) || txDate.isAfter(endDate)) continue;
+
+            BigDecimal amountInBase = exchangeRateService.convert(tx.getAmount(), tx.getCurrency(), baseCurrency);
+            dailyVolumeMap.merge(txDate, amountInBase, BigDecimal::add);
+        }
+
+        List<String> labels = new ArrayList<>();
+        List<BigDecimal> volumeData = new ArrayList<>();
+        for (Map.Entry<LocalDate, BigDecimal> entry : dailyVolumeMap.entrySet()) {
+            labels.add(entry.getKey().format(formatter));
+            volumeData.add(entry.getValue());
+        }
+
+        // ✅ Status distribution — tenant-aware
+        Map<String, Long> statusDist = tenantTransactions.stream()
+                .filter(tx -> {
+                    LocalDate txDate = tx.getCreatedAt().toLocalDate();
+                    return !txDate.isBefore(startDate) && !txDate.isAfter(endDate);
                 })
-                .collect(Collectors.toList());
+                .collect(Collectors.groupingBy(
+                        tx -> tx.getStatus().name(),
+                        Collectors.counting()
+                ));
 
         List<String> statusLabels = new ArrayList<>(statusDist.keySet());
         List<Long> statusValues = statusLabels.stream().map(statusDist::get).collect(Collectors.toList());
@@ -232,7 +254,7 @@ public class DashboardController {
         model.addAttribute("dashboardStatusLabels", statusLabels);
         model.addAttribute("dashboardStatusValues", statusValues);
         model.addAttribute("viewType", "merchant");
-        model.addAttribute("tenantId", user.getTenantId());
+        model.addAttribute("tenantId", tenantId);
         model.addAttribute("merchantId", userId);
 
         return "dashboard";

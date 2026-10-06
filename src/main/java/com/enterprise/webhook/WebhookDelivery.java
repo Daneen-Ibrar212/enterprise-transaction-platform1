@@ -41,7 +41,21 @@ public class WebhookDelivery {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    // Getters and setters
+    // ===== REPLAY FIELDS =====
+    @Column(name = "is_replay", nullable = false)
+    private boolean isReplay = false;
+
+    @Column(name = "replay_of_id")
+    private Long replayOfId;
+
+    @Column(name = "replay_reason", columnDefinition = "TEXT")
+    private String replayReason;
+
+    // ===== RESPONSE TIME (NEW) =====
+    @Column(name = "response_time_ms")
+    private Long responseTimeMs;
+
+    // ===== Getters and Setters =====
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -74,4 +88,16 @@ public class WebhookDelivery {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public boolean isReplay() { return isReplay; }
+    public void setReplay(boolean replay) { isReplay = replay; }
+
+    public Long getReplayOfId() { return replayOfId; }
+    public void setReplayOfId(Long replayOfId) { this.replayOfId = replayOfId; }
+
+    public String getReplayReason() { return replayReason; }
+    public void setReplayReason(String replayReason) { this.replayReason = replayReason; }
+
+    public Long getResponseTimeMs() { return responseTimeMs; }
+    public void setResponseTimeMs(Long responseTimeMs) { this.responseTimeMs = responseTimeMs; }
 }

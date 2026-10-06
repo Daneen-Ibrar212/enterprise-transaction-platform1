@@ -38,11 +38,22 @@ public class RecoveryService {
 
         while (attempts < retryPolicy.getMaxAttempts()) {
             try {
-                // Check circuit breaker (tenant-aware)
+                // ============================================================
+                // CIRCUIT BREAKER CHECK (tenant-aware + safe)
+                // ============================================================
                 CircuitBreakerState cbState = policyService.getCircuitBreakerState(operationType);
+
                 if ("OPEN".equals(cbState.getState())) {
                     CircuitBreakerPolicy cbPolicy = policyService.getCircuitBreakerPolicy(operationType);
-                    if (cbState.getOpenedAt().plusSeconds(cbPolicy.getTimeoutMs() / 1000).isBefore(LocalDateTime.now())) {
+
+                    // ✅ Guard against null openedAt
+                    LocalDateTime openedAt = cbState.getOpenedAt() != null
+                            ? cbState.getOpenedAt()
+                            : cbState.getUpdatedAt() != null ? cbState.getUpdatedAt() : LocalDateTime.now();
+
+                    long timeoutSeconds = cbPolicy.getTimeoutMs() / 1000;
+
+                    if (openedAt.plusSeconds(timeoutSeconds).isBefore(LocalDateTime.now())) {
                         cbState.setState("HALF_OPEN");
                         cbStateRepository.save(cbState);
                         log.info("Circuit breaker moved to HALF_OPEN for {}", operationType);
@@ -53,11 +64,16 @@ public class RecoveryService {
 
                 Object result = action.get();
 
-                // On success: reset circuit breaker
+                // ============================================================
+                // ON SUCCESS: reset circuit breaker
+                // ============================================================
                 CircuitBreakerState state = policyService.getCircuitBreakerState(operationType);
                 if ("HALF_OPEN".equals(state.getState())) {
                     policyService.incrementSuccessCount(operationType);
                     CircuitBreakerPolicy cbPolicy = policyService.getCircuitBreakerPolicy(operationType);
+
+                    // ✅ Reload to get updated count
+                    state = policyService.getCircuitBreakerState(operationType);
                     if (state.getSuccessCount() >= cbPolicy.getSuccessThreshold()) {
                         state.setState("CLOSED");
                         state.setFailureCount(0);
@@ -73,7 +89,15 @@ public class RecoveryService {
                 attempts++;
                 log.warn("Attempt {} failed for {}: {}", attempts, operationType, e.getMessage());
 
-                FailureClassificationRule rule = policyService.classifyFailure(operationType, e);
+                FailureClassificationRule rule;
+                try {
+                    rule = policyService.classifyFailure(operationType, e);
+                } catch (Exception classifyEx) {
+                    log.error("classifyFailure failed, defaulting to RETRY", classifyEx);
+                    rule = new FailureClassificationRule();
+                    rule.setAction("RETRY");
+                }
+
                 String ruleAction = rule.getAction();
 
                 if ("IGNORE".equals(ruleAction)) {
@@ -85,7 +109,6 @@ public class RecoveryService {
                     sendToDlq(operationType, context, e);
                     throw new RuntimeException("Operation sent to DLQ", e);
                 } else if ("RETRY".equals(ruleAction)) {
-                    // Record failure in circuit breaker (tenant-aware)
                     policyService.incrementFailureCount(operationType);
                     long delay = calculateBackoff(retryPolicy, attempts);
                     try {
@@ -125,17 +148,22 @@ public class RecoveryService {
             DlqEntry entry = new DlqEntry();
             entry.setOperationType(operationType);
             entry.setPayload(payload);
-            entry.setFailureReason(e.getMessage());
+            entry.setFailureReason(e != null ? e.getMessage() : "Unknown error");
             entry.setStatus("PENDING");
+
+            // ✅ Safe tenant fallback
             Long tenantId = TenantContext.getTenantId();
             if (tenantId == null) {
-                tenantId = TenantContext.getRequiredTenantId();
+                log.warn("No tenant context for DLQ entry, using default tenant 1");
+                tenantId = 1L;
             }
             entry.setTenantId(tenantId);
             dlqEntryRepository.save(entry);
             log.info("Operation {} sent to DLQ for tenant {}", operationType, tenantId);
         } catch (JsonProcessingException ex) {
             log.error("Failed to serialize payload for DLQ", ex);
+        } catch (Exception ex) {
+            log.error("Failed to send operation {} to DLQ", operationType, ex);
         }
     }
 }

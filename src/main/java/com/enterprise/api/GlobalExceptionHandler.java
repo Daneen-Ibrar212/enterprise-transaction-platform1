@@ -10,6 +10,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;  // ✅ ADDED
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -28,6 +29,35 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    // ============================================================
+    // ✅ 405 METHOD NOT ALLOWED (e.g., GET on POST-only endpoint)
+    // ============================================================
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
+    @ResponseBody
+    public ErrorResponse handleMethodNotSupported(HttpRequestMethodNotSupportedException e,
+                                                  HttpServletRequest request) {
+        String supported = (e.getSupportedMethods() != null && e.getSupportedMethods().length > 0)
+                ? String.join(", ", e.getSupportedMethods())
+                : "POST";
+
+        // ✅ Log at DEBUG – this is normal HTTP behaviour, not an application error
+        log.debug("Method {} not allowed for {} (supported: {})",
+                e.getMethod(), request.getRequestURI(), supported);
+
+        return new ErrorResponse(
+                "HTTP-405",
+                String.format("Method %s is not supported for this endpoint. Use: %s",
+                        e.getMethod(), supported),
+                getCorrelationId(request),
+                Instant.now(),
+                null
+        );
+    }
+
+    // ============================================================
+    // 500 – Catch-all
+    // ============================================================
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ResponseBody
@@ -74,19 +104,20 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(OptimisticLockException.class)
-@ResponseStatus(HttpStatus.CONFLICT)
-@ResponseBody
-public ErrorResponse handleOptimisticLock(OptimisticLockException e, HttpServletRequest request) {
-    return new ErrorResponse("CONCURRENCY-001", "The rule was updated by another user. Please refresh and try again.",
-            getCorrelationId(request), Instant.now(), null);
-}
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ResponseBody
+    public ErrorResponse handleOptimisticLock(OptimisticLockException e, HttpServletRequest request) {
+        return new ErrorResponse("CONCURRENCY-001",
+                "The rule was updated by another user. Please refresh and try again.",
+                getCorrelationId(request), Instant.now(), null);
+    }
 
     @ExceptionHandler(IllegalStateException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ResponseBody
     public ErrorResponse handleIllegalState(IllegalStateException e, HttpServletRequest request) {
         String code = "STATE-001";
-        if (e.getMessage().contains("not approved")) {
+        if (e.getMessage() != null && e.getMessage().contains("not approved")) {
             code = "PAY-003";
         }
         return new ErrorResponse(code, e.getMessage(),
@@ -119,7 +150,6 @@ public ErrorResponse handleOptimisticLock(OptimisticLockException e, HttpServlet
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponse> handleRuntime(RuntimeException e, HttpServletRequest request) {
-        // Get the root cause message (aspect may wrap the exception)
         Throwable cause = e.getCause();
         String message = cause != null ? cause.getMessage() : e.getMessage();
         if (message == null) {

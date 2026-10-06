@@ -1,10 +1,12 @@
 package com.enterprise.api;
 
 import com.enterprise.webhook.WebhookConfig;
-import com.enterprise.webhook.WebhookConfigRepository;
+import com.enterprise.webhook.WebhookRepository;
 import com.enterprise.webhook.WebhookDelivery;
 import com.enterprise.webhook.WebhookDeliveryRepository;
 import com.enterprise.webhook.WebhookService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -18,16 +20,18 @@ import org.springframework.web.bind.annotation.*;
 @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MERCHANT_ADMIN')")
 public class AdminWebhookDeliveryController {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminWebhookDeliveryController.class);
+
     private final WebhookDeliveryRepository deliveryRepository;
     private final WebhookService webhookService;
-    private final WebhookConfigRepository webhookConfigRepository;
+    private final WebhookRepository webhookRepository;
 
     public AdminWebhookDeliveryController(WebhookDeliveryRepository deliveryRepository,
                                           WebhookService webhookService,
-                                          WebhookConfigRepository webhookConfigRepository) {
+                                          WebhookRepository webhookRepository) {
         this.deliveryRepository = deliveryRepository;
         this.webhookService = webhookService;
-        this.webhookConfigRepository = webhookConfigRepository;
+        this.webhookRepository = webhookRepository;
     }
 
     @GetMapping
@@ -51,7 +55,22 @@ public class AdminWebhookDeliveryController {
         return "admin/webhook-deliveries/list";
     }
 
-    // ===== RETRY endpoint (HTMX-friendly) =====
+    // ===== REPLAY endpoint =====
+    @PostMapping("/{id}/replay")
+    @ResponseBody
+    public String replayDelivery(@PathVariable Long id,
+                                 @RequestParam(required = false) String reason) {
+        try {
+            WebhookDelivery replay = webhookService.replayDelivery(id, reason);
+            return "✅ Replay initiated (new delivery #" + replay.getId() + ")"
+                    + (replay.isSuccess() ? " – SUCCESS" : " – FAILED");
+        } catch (Exception e) {
+            log.error("Replay failed for delivery {}", id, e);
+            return "❌ Replay failed: " + e.getMessage();
+        }
+    }
+
+    // ===== RETRY endpoint =====
     @PostMapping("/{id}/retry")
     @ResponseBody
     public String retryDelivery(@PathVariable Long id) {
@@ -67,7 +86,7 @@ public class AdminWebhookDeliveryController {
     @PostMapping("/test-fail")
     @ResponseBody
     public String testFailedDelivery(@RequestParam Long configId) {
-        WebhookConfig config = webhookConfigRepository.findById(configId)
+        WebhookConfig config = webhookRepository.findById(configId)
                 .orElseThrow(() -> new RuntimeException("Webhook config not found"));
 
         WebhookDelivery delivery = new WebhookDelivery();

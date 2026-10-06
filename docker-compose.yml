@@ -91,12 +91,6 @@ services:
       XERO_CLIENT_SECRET: HRr50i4hY0B_bBIpeJNN61LhcvPc74J9ndOCIErA2GnccMqh
       XERO_REDIRECT_URI: https://potential-parakeet-gx7rj5w94q4p3v5v4-8080.app.github.dev/admin/xero/callback
 
-      # =============================================
-      # VATLAYER API CONFIGURATION
-      # =============================================
-      VATLAYER_API_KEY: b1f7e06a189a7383c8abef5908f032c8
-      VATLAYER_BASE_URL: http://apilayer.net/api
-
       # Java Options
       JAVA_OPTS: "-Xmx512m -Xms256m -Dnetworkaddress.cache.ttl=10 -Dnetworkaddress.cache.negative.ttl=10"
 

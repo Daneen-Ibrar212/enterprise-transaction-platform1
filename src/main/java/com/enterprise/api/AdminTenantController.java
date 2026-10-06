@@ -3,6 +3,9 @@ package com.enterprise.api;
 import com.enterprise.currency.CurrencyCodes;
 import com.enterprise.tenant.Tenant;
 import com.enterprise.tenant.TenantRepository;
+import com.enterprise.tenant.TenantSeeder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -18,10 +21,15 @@ import java.util.List;
 @PreAuthorize("hasRole('SUPER_ADMIN')")
 public class AdminTenantController {
 
-    private final TenantRepository tenantRepository;
+    private static final Logger log = LoggerFactory.getLogger(AdminTenantController.class);
 
-    public AdminTenantController(TenantRepository tenantRepository) {
+    private final TenantRepository tenantRepository;
+    private final TenantSeeder tenantSeeder;
+
+    public AdminTenantController(TenantRepository tenantRepository,
+                                 TenantSeeder tenantSeeder) {
         this.tenantRepository = tenantRepository;
+        this.tenantSeeder = tenantSeeder;
     }
 
     @GetMapping
@@ -43,14 +51,27 @@ public class AdminTenantController {
         try {
             tenant.setCreatedAt(LocalDateTime.now());
             tenant.setBaseCurrency(tenant.getBaseCurrency() != null ? tenant.getBaseCurrency() : "GBP");
-            tenantRepository.save(tenant);
-            redirectAttributes.addFlashAttribute("success", "Tenant created.");
+            Tenant saved = tenantRepository.save(tenant);
+
+            // ✅ SEED DEFAULT FEATURE FLAGS FOR NEW TENANT
+            try {
+                tenantSeeder.seedDefaultFeatureFlags(saved.getId());
+                log.info("✅ Seeded feature flags for new tenant: {} ({})", saved.getId(), saved.getName());
+            } catch (Exception e) {
+                log.warn("⚠️ Failed to seed feature flags for tenant {}: {}", saved.getId(), e.getMessage());
+                // Don't fail the tenant creation just because flag seeding failed
+            }
+
+            redirectAttributes.addFlashAttribute("success", "Tenant created with default feature flags.");
         } catch (DataIntegrityViolationException e) {
-            if (e.getMessage().contains("duplicate key")) {
+            if (e.getMessage() != null && e.getMessage().contains("duplicate key")) {
                 redirectAttributes.addFlashAttribute("error", "Tenant with this name already exists.");
             } else {
                 redirectAttributes.addFlashAttribute("error", "Failed to create tenant: " + e.getMessage());
             }
+        } catch (Exception e) {
+            log.error("Error creating tenant", e);
+            redirectAttributes.addFlashAttribute("error", "Failed to create tenant: " + e.getMessage());
         }
         return "redirect:/admin/tenants";
     }
