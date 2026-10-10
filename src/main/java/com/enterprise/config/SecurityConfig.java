@@ -133,6 +133,8 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/",
                     "/login",
+                    "/forgot-password",   // ← NEW
+                    "/reset-password",    // ← NEW
                     "/css/**",
                     "/js/**",
                     "/images/**",
@@ -165,6 +167,11 @@ public class SecurityConfig {
             .logout(logout -> logout
                 .logoutSuccessHandler(logoutSuccessHandler)
                 .permitAll()
+            )
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                .maximumSessions(1)
+                .maxSessionsPreventsLogin(false)  // evict oldest, don't block new login
             )
             .addFilterAfter(
                 new TwoFactorAuthenticationFilter(featureFlagService, userRepository),

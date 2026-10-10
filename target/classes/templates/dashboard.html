@@ -291,17 +291,24 @@
         </div>
     </div>
 
+  
+
     <!-- ====== QUICK ACTIONS ====== -->
     <div style="background:white; border-radius:16px; padding:24px 28px; margin-bottom:24px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border:1px solid rgba(226,232,240,0.6);">
         <h2 style="font-size:1.125rem; font-weight:500; color:#0f172a; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
             <span>⚡</span> Quick Actions
         </h2>
         <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr)); gap:8px;">
+            <a href="/account/password" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">🔐 Change Password</a>
             <a sec:authorize="hasRole('MERCHANT')" href="#" onclick="alert('Payment link: '+window.location.origin+'/pay/1')" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">🔗 Share Payment Link</a>
             <a sec:authorize="hasRole('ADMIN')" href="/admin/exchange-rates" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">💱 Exchange Rates</a>
+           <a sec:authorize="hasAnyRole('ADMIN')" href="/admin/disputes" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">⚖️ Disputes</a>
+            <a sec:authorize="hasRole('SUPER_ADMIN')" href="/admin/roles" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">🔐 Roles & Permissions</a>
             <a sec:authorize="hasRole('MERCHANT')" href="/invoices/create" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">📄 Create Invoice</a>
+           <a sec:authorize="hasAnyRole('SUPER_ADMIN','MERCHANT_ADMIN')" href="/admin/reminders" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">🔔 Invoice Reminders</a>
             <a sec:authorize="hasRole('MERCHANT')" href="/invoices/merchant" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">📋 My Invoices</a>
             <a sec:authorize="hasRole('CUSTOMER')" href="/invoices/customer" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">💳 My Invoices</a>
+             <a sec:authorize="hasRole('CUSTOMER')" href="/portal" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">🏠 My Portal →</a>
             <a href="/2fa/setup" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">🔐 2FA Setup</a>
             <a sec:authorize="hasRole('ADMIN')" href="/admin/activity" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">📋 User Activity</a>
             <a sec:authorize="hasRole('ADMIN')" href="/admin/suspicion-rules" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">⚠️ Suspicion Rules</a>

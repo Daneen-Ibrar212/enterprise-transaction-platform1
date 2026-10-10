@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,6 +20,7 @@
         body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
         .container { max-width: 1100px; margin: 0 auto; }
 
+        /* ===== Header ===== */
         .page-header {
             background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
             border-radius: 16px;
@@ -72,7 +74,19 @@
         }
         .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
 
-        /* Summary card */
+        /* ===== Flash ===== */
+        .flash-success {
+            background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46;
+            padding: 14px 20px; border-radius: 12px; margin-bottom: 16px;
+            font-size: 0.875rem; display: flex; align-items: center; gap: 10px;
+        }
+        .flash-error {
+            background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+            padding: 14px 20px; border-radius: 12px; margin-bottom: 16px;
+            font-size: 0.875rem; display: flex; align-items: center; gap: 10px;
+        }
+
+        /* ===== Summary card ===== */
         .summary-card {
             background: white;
             border-radius: 16px;
@@ -99,7 +113,6 @@
             align-items: center;
             gap: 8px;
         }
-
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -120,7 +133,7 @@
             background: currentColor;
         }
 
-        /* Stat grid */
+        /* ===== Stat grid ===== */
         .stat-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -159,7 +172,7 @@
             margin-top: 6px;
         }
 
-        /* Meta row */
+        /* ===== Meta row ===== */
         .meta-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -184,7 +197,7 @@
             font-size: 0.8125rem;
         }
 
-        /* Detail list */
+        /* ===== Detail list ===== */
         .detail-card {
             background: white;
             border-radius: 16px;
@@ -218,7 +231,22 @@
             padding: 4px 12px;
             border-radius: 9999px;
         }
+        .bulk-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 10px;
+            font-size: 0.8125rem;
+            font-family: inherit;
+            font-weight: 400;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(16,185,129,0.25);
+            transition: all 0.15s ease;
+        }
+        .bulk-btn:hover { transform: translateY(-1px); }
 
+        /* ===== Detail rows ===== */
         .detail-row {
             padding: 16px 24px;
             border-bottom: 1px solid #f1f5f9;
@@ -226,6 +254,12 @@
         }
         .detail-row:last-child { border-bottom: none; }
         .detail-row:hover { background: #fafbfc; }
+
+        /* Repair status row backgrounds */
+        .row-repaired  { background: #ecfdf5 !important; }
+        .row-escalated { background: #fffbeb !important; }
+        .row-failed    { background: #fef2f2 !important; }
+
         .detail-main {
             display: flex;
             align-items: center;
@@ -255,11 +289,7 @@
             border: 1px solid #dbeafe;
             transition: all 0.15s ease;
         }
-        .tx-link:hover {
-            background: #dbeafe;
-            border-color: #bfdbfe;
-            color: #3730a3;
-        }
+        .tx-link:hover { background: #dbeafe; border-color: #bfdbfe; color: #3730a3; }
 
         .badge {
             display: inline-block;
@@ -274,7 +304,21 @@
         .badge-yellow { background: #fef3c7; color: #92400e; }
         .badge-red { background: #fee2e2; color: #991b1b; }
         .badge-blue { background: #dbeafe; color: #1e40af; }
-        .badge-default { background: #f1f5f9; color: #64748b; }
+
+        .repair-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+        .repair-pending   { background: #f1f5f9; color: #64748b; }
+        .repair-repaired  { background: #d1fae5; color: #065f46; }
+        .repair-escalated { background: #fef3c7; color: #92400e; }
+        .repair-failed    { background: #fee2e2; color: #991b1b; }
 
         .detail-amounts {
             display: flex;
@@ -288,10 +332,7 @@
             align-items: center;
             gap: 6px;
         }
-        .amount-label {
-            color: #64748b;
-            font-weight: 300;
-        }
+        .amount-label { color: #64748b; font-weight: 300; }
         .amount-value {
             font-family: 'SF Mono', Monaco, Consolas, monospace;
             font-weight: 500;
@@ -307,6 +348,32 @@
             padding-left: 8px;
             border-left: 3px solid #e2e8f0;
         }
+        .repair-notes {
+            border-left-color: #10b981;
+            color: #065f46;
+        }
+
+        /* Action buttons */
+        .action-btn {
+            border: none;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-family: inherit;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .btn-autofix {
+            background: #10b981;
+            color: white;
+        }
+        .btn-autofix:hover { background: #059669; transform: translateY(-1px); }
+        .btn-escalate {
+            background: #f59e0b;
+            color: white;
+        }
+        .btn-escalate:hover { background: #d97706; transform: translateY(-1px); }
 
         .empty {
             text-align: center;
@@ -331,6 +398,16 @@
             <a href="/admin/reconciliation" class="back-link">← Back to Reports</a>
         </div>
         <h1><span style="font-size:1.5rem;">📊</span> Reconciliation Report #<span th:text="${record.id}">1</span></h1>
+    </div>
+
+    <!-- Flash -->
+    <div th:if="${success}" class="flash-success">
+        <span style="font-size:1.125rem;">✅</span>
+        <span th:text="${success}">Success</span>
+    </div>
+    <div th:if="${error}" class="flash-error">
+        <span style="font-size:1.125rem;">❌</span>
+        <span th:text="${error}">Error</span>
     </div>
 
     <!-- Summary -->
@@ -380,29 +457,55 @@
         </div>
     </div>
 
-    <!-- Details -->
+    <!-- Mismatches -->
     <div class="detail-card">
         <div class="detail-list-header">
             <h3>⚠️ Mismatched Transactions</h3>
-            <span class="detail-count" th:text="${#lists.size(details)} + ' items'">0 items</span>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <span class="detail-count" th:text="${#lists.size(details)} + ' items'">0 items</span>
+                <form th:if="${record.mismatchedTransactions > 0 and record.missingLedgerCount > 0}"
+                      method="post"
+                      th:action="@{/admin/reconciliation/{id}/bulk-repair(id=${record.id})}"
+                      sec:authorize="hasRole('SUPER_ADMIN')"
+                      style="display:inline;"
+                      onsubmit="return confirm('Auto-repair all MISSING_LEDGER discrepancies in this run?');">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <button type="submit" class="bulk-btn">🔧 Auto-Fix All Missing Ledger</button>
+                </form>
+            </div>
         </div>
 
-        <div th:if="${details.empty}" class="empty">
+        <!-- Empty state -->
+        <div th:if="${details.isEmpty()}" class="empty">
             <span class="emoji">✨</span>
             <p>No mismatches found for this reconciliation.</p>
         </div>
 
-        <div th:each="detail : ${details}" class="detail-row">
+        <!-- Rows -->
+        <div th:each="detail : ${details}" class="detail-row"
+             th:classappend="${detail.repairStatus == 'REPAIRED'} ? 'row-repaired' : (${detail.repairStatus == 'ESCALATED'} ? 'row-escalated' : (${detail.repairStatus == 'FAILED'} ? 'row-failed' : ''))">
+
             <div class="detail-main">
                 <div class="detail-left">
                     <a th:href="'/transactions/' + ${detail.transactionId}"
                        class="tx-link"
                        th:text="'#' + ${detail.transactionId}">#123</a>
 
-                    <span th:if="${detail.discrepancyType == 'MISSING_LEDGER'}" class="badge badge-yellow">Missing Ledger</span>
-                    <span th:if="${detail.discrepancyType == 'AMOUNT_MISMATCH'}" class="badge badge-red">Amount Mismatch</span>
+                    <span th:if="${detail.discrepancyType == 'MISSING_LEDGER'}"
+                          class="badge badge-yellow">Missing Ledger</span>
+                    <span th:if="${detail.discrepancyType == 'AMOUNT_MISMATCH'}"
+                          class="badge badge-red">Amount Mismatch</span>
                     <span th:if="${detail.discrepancyType != 'MISSING_LEDGER' and detail.discrepancyType != 'AMOUNT_MISMATCH'}"
                           class="badge badge-blue" th:text="${detail.discrepancyType}">Type</span>
+
+                    <span th:if="${detail.repairStatus == 'PENDING'}"
+                          class="repair-badge repair-pending">Pending</span>
+                    <span th:if="${detail.repairStatus == 'REPAIRED'}"
+                          class="repair-badge repair-repaired">✅ Repaired</span>
+                    <span th:if="${detail.repairStatus == 'ESCALATED'}"
+                          class="repair-badge repair-escalated">📮 Escalated</span>
+                    <span th:if="${detail.repairStatus == 'FAILED'}"
+                          class="repair-badge repair-failed">❌ Failed</span>
                 </div>
 
                 <div class="detail-amounts">
@@ -414,10 +517,33 @@
                         <span class="amount-label">Actual:</span>
                         <span class="amount-value" th:text="${detail.actualAmount}">0.00</span>
                     </div>
+
+                    <!-- Auto-fix -->
+                    <form th:if="${detail.repairStatus == 'PENDING' and detail.discrepancyType == 'MISSING_LEDGER'}"
+                          method="post"
+                          th:action="@{/admin/reconciliation/details/{id}/auto-fix(id=${detail.id})}"
+                          sec:authorize="hasRole('SUPER_ADMIN')"
+                          style="display:inline; margin-left:12px;"
+                          onsubmit="return confirm('Reconstruct the missing ledger entries?');">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <button type="submit" class="action-btn btn-autofix">🔧 Auto-Fix</button>
+                    </form>
+
+                    <!-- Escalate -->
+                    <form th:if="${detail.repairStatus == 'PENDING' and detail.discrepancyType == 'AMOUNT_MISMATCH'}"
+                          method="post"
+                          th:action="@{/admin/reconciliation/details/{id}/escalate(id=${detail.id})}"
+                          sec:authorize="hasRole('SUPER_ADMIN')"
+                          style="display:inline; margin-left:12px;"
+                          onsubmit="return confirm('Escalate this mismatch to the DLQ for manual review?');">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <button type="submit" class="action-btn btn-escalate">📮 Escalate</button>
+                    </form>
                 </div>
             </div>
 
             <div th:if="${detail.description != null}" class="detail-description" th:text="${detail.description}">Description</div>
+            <div th:if="${detail.repairNotes != null}" class="detail-description repair-notes" th:text="${detail.repairNotes}">Repair notes</div>
         </div>
     </div>
 

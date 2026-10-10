@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Subscriptions · PayFlow</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { font-family: 'Lexend Deca', -apple-system, sans-serif; font-weight: 300;
+            letter-spacing: -0.011em; -webkit-font-smoothing: antialiased; }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px; padding: 28px 32px; margin-bottom: 24px; color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2); position: relative; overflow: hidden; }
+        .page-header h1 { font-size: 1.5rem; font-weight: 500; color: white;
+            display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; }
+        .back-link { display: inline-flex; align-items: center; gap: 6px;
+            color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.8125rem;
+            padding: 6px 14px; border-radius: 9999px; background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2); margin-bottom: 12px;
+            position: relative; z-index: 1; transition: all 0.15s ease; }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+        .flash-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46;
+            padding: 14px 20px; border-radius: 12px; margin-bottom: 16px;
+            font-size: 0.875rem; display: flex; align-items: center; gap: 10px; }
+        .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+            padding: 14px 20px; border-radius: 12px; margin-bottom: 16px;
+            font-size: 0.875rem; display: flex; align-items: center; gap: 10px; }
+        .card { background: white; border-radius: 16px; padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6); overflow: hidden; }
+        .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .data-table th { text-align: left; font-size: 0.7rem; font-weight: 500;
+            color: #64748b; text-transform: uppercase; letter-spacing: 0.06em;
+            padding: 14px 16px; border-bottom: 1px solid #f1f5f9; background: #fafbfc; }
+        .data-table td { padding: 16px; border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem; color: #334155; vertical-align: middle; }
+        .data-table tr:last-child td { border-bottom: none; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 9999px;
+            font-size: 0.65rem; font-weight: 500; text-transform: uppercase;
+            letter-spacing: 0.05em; }
+        .badge-active    { background: #d1fae5; color: #065f46; }
+        .badge-trialing  { background: #fef3c7; color: #92400e; }
+        .badge-cancelled { background: #f1f5f9; color: #64748b; }
+        .btn-danger { background: #ef4444; color: white; padding: 8px 16px;
+            border: none; border-radius: 10px; cursor: pointer;
+            font-size: 0.75rem; font-family: inherit; }
+        .btn-danger:hover { background: #dc2626; }
+        .empty { text-align: center; padding: 60px 20px; color: #94a3b8; font-size: 0.875rem; }
+    </style>
+    <link rel="stylesheet" th:href="@{/css/portal.css}">
+</head>
+<body>
+<div class="container">
+
+    <div class="page-header">
+        <a href="/portal" class="back-link">← My Portal</a>
+        <h1><span style="font-size:1.5rem;">📋</span> My Subscriptions</h1>
+    </div>
+
+    <div th:replace="~{portal/fragments/nav :: nav('subscriptions')}"></div>
+
+    <div th:if="${success}" class="flash-success">
+        <span>✅</span><span th:text="${success}">Success</span>
+    </div>
+    <div th:if="${error}" class="flash-error">
+        <span>❌</span><span th:text="${error}">Error</span>
+    </div>
+
+    <div class="card">
+        <table class="data-table" th:unless="${subscriptions.isEmpty()}">
+            <thead>
+            <tr>
+                <th>Plan</th>
+                <th>Price</th>
+                <th>Status</th>
+                <th>Next Billing</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="sub : ${subscriptions}">
+                <td>
+                    <div style="font-weight:500;color:#0f172a;" th:text="${sub.plan.name}">Plan</div>
+                    <div style="font-size:0.75rem;color:#94a3b8;" th:text="${sub.plan.description}">Description</div>
+                </td>
+                <td th:text="${currencyHelper.getFormattedAmount(sub.plan.price, sub.plan.currency)}">£9.99</td>
+                <td>
+                    <span th:if="${sub.status.name() == 'ACTIVE'}" class="badge badge-active">Active</span>
+                    <span th:if="${sub.status.name() == 'TRIALING'}" class="badge badge-trialing">Trial</span>
+                    <span th:if="${sub.status.name() != 'ACTIVE' and sub.status.name() != 'TRIALING'}"
+                          class="badge badge-cancelled" th:text="${sub.status}">Cancelled</span>
+                </td>
+                <td th:text="${#temporals.format(sub.nextBillingDate, 'dd MMM yyyy')}">01 Oct 2026</td>
+                <td>
+                    <form method="post"
+                          th:action="@{/portal/subscriptions/{id}/cancel(id=${sub.id})}"
+                          th:if="${sub.status.name() == 'ACTIVE' or sub.status.name() == 'TRIALING'}"
+                          style="display:inline;"
+                          onsubmit="return confirm('Cancel this subscription?');">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <button type="submit" class="btn-danger">Cancel</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <div th:if="${subscriptions.isEmpty()}" class="empty">No subscriptions yet.</div>
+    </div>
+
+</div>
+</body>
+</html>

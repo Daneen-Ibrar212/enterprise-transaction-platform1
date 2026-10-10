@@ -62,6 +62,10 @@ public class AppUser {
     @Column(name = "lock_expiry")
     private LocalDateTime lockExpiry;
 
+    // ✅ NEW — tracks last password change (used by PasswordService)
+    @Column(name = "password_changed_at")
+    private LocalDateTime passwordChangedAt;
+
     // ============================================================
     // 2FA ADMIN OVERRIDE FIELDS
     // ============================================================
@@ -109,6 +113,10 @@ public class AppUser {
     public void setAccountLocked(boolean accountLocked) { this.accountLocked = accountLocked; }
     public LocalDateTime getLockExpiry() { return lockExpiry; }
     public void setLockExpiry(LocalDateTime lockExpiry) { this.lockExpiry = lockExpiry; }
+
+    // ✅ NEW — password change tracking
+    public LocalDateTime getPasswordChangedAt() { return passwordChangedAt; }
+    public void setPasswordChangedAt(LocalDateTime passwordChangedAt) { this.passwordChangedAt = passwordChangedAt; }
 
     public boolean isTwoFactorDisabledByAdmin() { return twoFactorDisabledByAdmin; }
     public void setTwoFactorDisabledByAdmin(boolean twoFactorDisabledByAdmin) { this.twoFactorDisabledByAdmin = twoFactorDisabledByAdmin; }

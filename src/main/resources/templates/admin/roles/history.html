@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Permission History · PayFlow</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { font-family: 'Lexend Deca', -apple-system, sans-serif; font-weight: 300;
+            letter-spacing: -0.011em; -webkit-font-smoothing: antialiased; }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px; padding: 28px 32px; margin-bottom: 24px; color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2); position: relative; overflow: hidden; }
+        .page-header h1 { font-size: 1.5rem; font-weight: 500; color: white;
+            display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; }
+        .back-link { display: inline-flex; align-items: center; gap: 6px;
+            color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.8125rem;
+            padding: 6px 14px; border-radius: 9999px; background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2); margin-bottom: 12px;
+            position: relative; z-index: 1; }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+        .card { background: white; border-radius: 16px; padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6); overflow: hidden; }
+        .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .data-table th { text-align: left; font-size: 0.7rem; font-weight: 500;
+            color: #64748b; text-transform: uppercase; letter-spacing: 0.06em;
+            padding: 14px 16px; border-bottom: 1px solid #f1f5f9; background: #fafbfc; }
+        .data-table td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem; color: #334155; }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table td.mono { font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.75rem; color: #475569; }
+        .action-badge { display: inline-block; padding: 3px 10px; border-radius: 9999px;
+            font-size: 0.65rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+        .action-grant  { background: #d1fae5; color: #065f46; }
+        .action-revoke { background: #fee2e2; color: #991b1b; }
+        .json-preview { font-family: 'SF Mono', Monaco, monospace; font-size: 0.7rem;
+            color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0;
+            padding: 6px 10px; border-radius: 6px; max-width: 320px;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .empty { text-align: center; padding: 60px 20px; color: #94a3b8; font-size: 0.875rem; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="page-header">
+        <a href="/admin/roles" class="back-link">← Back to Roles</a>
+        <h1><span style="font-size:1.5rem;">📜</span> Permission Change History</h1>
+    </div>
+
+    <div class="card">
+        <table class="data-table" th:unless="${audits.isEmpty()}">
+            <thead>
+            <tr>
+                <th>When</th>
+                <th>Action</th>
+                <th>Permission</th>
+                <th>Change</th>
+                <th>By</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="a : ${audits}">
+                <td th:text="${#temporals.format(a.createdAt, 'dd MMM yyyy · HH:mm')}">01 Jan 2026 · 12:00</td>
+                <td>
+                    <span th:if="${a.action == 'GRANT'}"  class="action-badge action-grant">Grant</span>
+                    <span th:if="${a.action == 'REVOKE'}" class="action-badge action-revoke">Revoke</span>
+                </td>
+                <td class="mono" th:text="'#' + ${a.ruleId}">#1</td>
+                <td>
+                    <div class="json-preview"
+                         th:text="${a.action == 'GRANT' ? a.newValues : a.oldValues}"
+                         th:title="${a.action == 'GRANT' ? a.newValues : a.oldValues}">{"role":"ADMIN"}</div>
+                </td>
+                <td class="mono" th:text="${a.changedBy}">1</td>
+            </tr>
+            </tbody>
+        </table>
+        <div th:if="${audits.isEmpty()}" class="empty">No permission changes recorded yet.</div>
+    </div>
+
+</div>
+</body>
+</html>

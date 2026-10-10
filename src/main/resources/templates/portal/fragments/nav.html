@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="nav(active)" class="portal-nav">
+    <a th:href="@{/portal}"               th:classappend="${active == 'dashboard'} ? 'active' : ''">📊 Dashboard</a>
+    <a th:href="@{/portal/invoices}"      th:classappend="${active == 'invoices'} ? 'active' : ''">📄 Invoices</a>
+    <a th:href="@{/portal/payments}"      th:classappend="${active == 'payments'} ? 'active' : ''">💳 Payments</a>
+    <a th:href="@{/portal/subscriptions}" th:classappend="${active == 'subscriptions'} ? 'active' : ''">📋 Subscriptions</a>
+    <a th:href="@{/portal/statements}"    th:classappend="${active == 'statements'} ? 'active' : ''">📑 Statements</a>
+    <a th:href="@{/portal/billing}"       th:classappend="${active == 'billing'} ? 'active' : ''">⚙️ Billing</a>
+</div>
+</body>
+</html>

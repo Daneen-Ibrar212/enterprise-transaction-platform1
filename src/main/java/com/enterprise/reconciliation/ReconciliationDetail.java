@@ -30,6 +30,21 @@ public class ReconciliationDetail {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    // ============================================================
+    // REPAIR TRACKING
+    // ============================================================
+    @Column(name = "repair_status", nullable = false)
+    private String repairStatus = "PENDING"; // PENDING, REPAIRED, ESCALATED, SKIPPED, FAILED
+
+    @Column(name = "repaired_at")
+    private LocalDateTime repairedAt;
+
+    @Column(name = "repaired_by")
+    private Long repairedBy;
+
+    @Column(name = "repair_notes", columnDefinition = "TEXT")
+    private String repairNotes;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -48,6 +63,14 @@ public class ReconciliationDetail {
     public void setActualAmount(BigDecimal actualAmount) { this.actualAmount = actualAmount; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getRepairStatus() { return repairStatus; }
+    public void setRepairStatus(String repairStatus) { this.repairStatus = repairStatus; }
+    public LocalDateTime getRepairedAt() { return repairedAt; }
+    public void setRepairedAt(LocalDateTime repairedAt) { this.repairedAt = repairedAt; }
+    public Long getRepairedBy() { return repairedBy; }
+    public void setRepairedBy(Long repairedBy) { this.repairedBy = repairedBy; }
+    public String getRepairNotes() { return repairNotes; }
+    public void setRepairNotes(String repairNotes) { this.repairNotes = repairNotes; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

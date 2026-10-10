@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Billing · PayFlow</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, sans-serif;
+            font-weight: 300; letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 900px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px; padding: 28px 32px; margin-bottom: 24px; color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2); position: relative; overflow: hidden;
+        }
+        .page-header h1 { font-size: 1.5rem; font-weight: 500; color: white;
+            display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; }
+        .back-link { display: inline-flex; align-items: center; gap: 6px;
+            color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.8125rem;
+            padding: 6px 14px; border-radius: 9999px; background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2); margin-bottom: 12px;
+            position: relative; z-index: 1; }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .flash-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46;
+            padding: 14px 20px; border-radius: 12px; margin-bottom: 16px;
+            font-size: 0.875rem; display: flex; align-items: center; gap: 10px; }
+        .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+            padding: 14px 20px; border-radius: 12px; margin-bottom: 16px;
+            font-size: 0.875rem; display: flex; align-items: center; gap: 10px; }
+
+        .card { background: white; border-radius: 16px; padding: 24px 28px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6); margin-bottom: 20px; }
+        .card h2 { font-size: 1.125rem; font-weight: 500; margin-bottom: 16px;
+            display: flex; align-items: center; gap: 8px; }
+
+        .detail-row { display: flex; padding: 12px 0; border-bottom: 1px solid #f1f5f9;
+            align-items: center; gap: 16px; }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { width: 160px; flex-shrink: 0; font-size: 0.7rem;
+            font-weight: 500; color: #64748b; text-transform: uppercase;
+            letter-spacing: 0.06em; }
+        .detail-value { flex: 1; font-size: 0.9375rem; color: #0f172a; }
+
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 9999px;
+            font-size: 0.65rem; font-weight: 500; text-transform: uppercase;
+            letter-spacing: 0.05em; }
+        .badge-active    { background: #d1fae5; color: #065f46; }
+        .badge-paused    { background: #fef3c7; color: #92400e; }
+        .badge-cancelled { background: #f1f5f9; color: #64748b; }
+        .badge-trialing  { background: #dbeafe; color: #1e40af; }
+
+        .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px;
+            padding-top: 16px; border-top: 1px solid #f1f5f9; }
+        .btn { display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 20px; border: none; border-radius: 10px; cursor: pointer;
+            font-size: 0.8125rem; font-family: inherit; text-decoration: none;
+            transition: all 0.15s ease; }
+        .btn-primary { background: linear-gradient(135deg, #0b1a33, #1a3a6e);
+            color: white; box-shadow: 0 6px 16px rgba(11,26,51,0.2); }
+        .btn-primary:hover { transform: translateY(-1px); }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-warning:hover { background: #d97706; transform: translateY(-1px); }
+        .btn-success { background: linear-gradient(135deg, #10b981, #059669);
+            color: white; box-shadow: 0 6px 16px rgba(16,185,129,0.25); }
+        .btn-success:hover { transform: translateY(-1px); }
+        .btn-outline { background: white; color: #475569; border: 1px solid #e2e8f0; }
+        .btn-outline:hover { border-color: #2d6bb8; color: #2d6bb8; }
+
+        .plan-grid { display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 12px; }
+        .plan-card { border: 2px solid #e2e8f0; border-radius: 12px;
+            padding: 16px 20px; cursor: pointer; transition: all 0.15s ease;
+            user-select: none; }
+        .plan-card:hover { border-color: #cbd5e1; }
+        .plan-card.selected { border-color: #2d6bb8; background: #f8faff; }
+        .plan-card.current { border-color: #10b981; background: #ecfdf5; cursor: default; }
+        .plan-name { font-weight: 500; color: #0f172a; font-size: 0.9375rem; }
+        .plan-price { font-size: 1.25rem; font-weight: 500; color: #0f172a;
+            letter-spacing: -0.02em; margin-top: 6px; }
+        .plan-period { font-size: 0.75rem; color: #94a3b8; }
+        .current-tag { display: inline-block; margin-top: 6px;
+            font-size: 0.65rem; font-weight: 500; text-transform: uppercase;
+            letter-spacing: 0.05em; background: #d1fae5; color: #065f46;
+            padding: 3px 10px; border-radius: 9999px; }
+
+        .preview-box { background: #f8fafc; border: 1px solid #e2e8f0;
+            border-radius: 12px; padding: 16px 20px; margin-top: 16px; display: none; }
+        .preview-box.show { display: block; }
+        .preview-row { display: flex; justify-content: space-between;
+            padding: 6px 0; font-size: 0.875rem; }
+        .preview-row.total { font-weight: 500; font-size: 1rem;
+            border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 6px; }
+        .preview-label { color: #64748b; }
+        .preview-value { color: #0f172a; font-family: 'SF Mono', Monaco, monospace; }
+
+        .empty { text-align: center; padding: 24px 20px; color: #94a3b8;
+            font-size: 0.875rem; }
+
+        .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .data-table th { text-align: left; font-size: 0.7rem; font-weight: 500;
+            color: #64748b; text-transform: uppercase; letter-spacing: 0.06em;
+            padding: 12px 16px; border-bottom: 1px solid #f1f5f9; background: #fafbfc; }
+        .data-table td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem; color: #334155; }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table td.mono { font-family: 'SF Mono', Monaco, monospace; font-weight: 500; }
+    </style>
+</head>
+<body>
+
+<div class="container"
+     th:attr="data-subscription-id=${subscription.id},
+              data-current-plan-id=${subscription.plan.id}">
+
+    <div class="page-header">
+        <a href="/merchant/subscriptions" class="back-link">← Back to Subscriptions</a>
+        <h1><span style="font-size:1.5rem;">💳</span> Subscription Billing</h1>
+    </div>
+
+    <div th:if="${success}" class="flash-success"><span>✅</span><span th:text="${success}">Success</span></div>
+    <div th:if="${error}" class="flash-error"><span>❌</span><span th:text="${error}">Error</span></div>
+
+    <!-- Current subscription -->
+    <div class="card">
+        <h2>📋 Current Subscription</h2>
+        <div class="detail-row">
+            <span class="detail-label">Customer</span>
+            <span class="detail-value" th:text="${subscription.customerEmail}">customer@test.com</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Plan</span>
+            <span class="detail-value" th:text="${subscription.plan.name}">Pro</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Price</span>
+            <span class="detail-value"
+                  th:text="${currencyHelper.getFormattedAmount(subscription.plan.price, subscription.plan.currency)} + ' / ' + ${#strings.toLowerCase(subscription.plan.billingPeriod)}">£29.99</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Status</span>
+            <span class="detail-value">
+                <span th:if="${subscription.status.name() == 'ACTIVE'}" class="badge badge-active">Active</span>
+                <span th:if="${subscription.status.name() == 'PAUSED'}" class="badge badge-paused">Paused</span>
+                <span th:if="${subscription.status.name() == 'TRIALING'}" class="badge badge-trialing">Trialing</span>
+                <span th:if="${subscription.status.name() == 'CANCELLED'}" class="badge badge-cancelled">Cancelled</span>
+            </span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Next Billing</span>
+            <span class="detail-value" th:text="${#temporals.format(subscription.nextBillingDate, 'dd MMM yyyy')}">01 Nov 2026</span>
+        </div>
+        <div th:if="${subscription.pauseReason != null}" class="detail-row">
+            <span class="detail-label">Pause Reason</span>
+            <span class="detail-value" th:text="${subscription.pauseReason}">—</span>
+        </div>
+
+        <div class="actions">
+            <form th:if="${subscription.status.name() == 'ACTIVE' or subscription.status.name() == 'TRIALING'}"
+                  method="post"
+                  th:action="@{/merchant/subscriptions/{id}/pause(id=${subscription.id})}"
+                  style="display:inline;"
+                  onsubmit="return confirm('Pause this subscription?');">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <input type="hidden" name="reason" value="Requested by merchant">
+                <button type="submit" class="btn btn-warning">⏸️ Pause</button>
+            </form>
+            <form th:if="${subscription.status.name() == 'PAUSED'}"
+                  method="post"
+                  th:action="@{/merchant/subscriptions/{id}/resume(id=${subscription.id})}"
+                  style="display:inline;">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <button type="submit" class="btn btn-success">▶️ Resume</button>
+            </form>
+            <a href="/merchant/subscriptions" class="btn btn-outline">Back</a>
+        </div>
+    </div>
+
+    <!-- Next invoice preview -->
+    <div class="card">
+        <h2>🧾 Next Invoice Preview</h2>
+        <div class="detail-row">
+            <span class="detail-label">Base Plan</span>
+            <span class="detail-value"
+                  th:text="${invoicePreview.planName} + ' — ' + ${currencyHelper.getFormattedAmount(invoicePreview.baseAmount, invoicePreview.currency)}">Pro</span>
+        </div>
+        <div class="detail-row" th:if="${invoicePreview.usageCharges != null and invoicePreview.usageCharges.signum() > 0}">
+            <span class="detail-label">Usage Overage</span>
+            <span class="detail-value"
+                  th:text="${currencyHelper.getFormattedAmount(invoicePreview.usageCharges, invoicePreview.currency)}">£5.00</span>
+        </div>
+        <div class="detail-row" style="border-top: 2px solid #f1f5f9;">
+            <span class="detail-label">Total</span>
+            <span class="detail-value" style="font-weight:500; font-size:1.125rem;"
+                  th:text="${currencyHelper.getFormattedAmount(invoicePreview.total, invoicePreview.currency)}">£34.99</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Due</span>
+            <span class="detail-value" th:text="${#temporals.format(invoicePreview.nextBillingDate, 'dd MMM yyyy')}">01 Nov 2026</span>
+        </div>
+    </div>
+
+    <!-- Usage -->
+    <div class="card" th:if="${!usage.isEmpty()}">
+        <h2>📊 Usage This Period</h2>
+        <table class="data-table">
+            <thead>
+            <tr>
+                <th>Metric</th>
+                <th>Usage</th>
+                <th>Included</th>
+                <th>Overage</th>
+                <th>Overage Charge</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="u : ${usage}">
+                <td th:text="${u.metricName}">API_CALLS</td>
+                <td class="mono" th:text="${u.usageCount}">0</td>
+                <td class="mono" th:text="${u.includedQuantity}">0</td>
+                <td class="mono" th:text="${u.usageCount > u.includedQuantity ? u.usageCount - u.includedQuantity : 0}">0</td>
+                <td class="mono" th:text="${currencyHelper.getFormattedAmount(u.overageCharge, 'GBP')}">£0.00</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Change plan -->
+    <div class="card">
+        <h2>🔄 Change Plan</h2>
+        <p style="font-size:0.875rem; color:#64748b; margin-bottom:16px;">
+            Select a new plan. Upgrades are prorated immediately; downgrades take effect next billing cycle.
+        </p>
+
+        <div class="plan-grid">
+            <div th:each="plan : ${plans}"
+                 class="plan-card"
+                 th:classappend="${plan.id == subscription.plan.id} ? 'current' : ''"
+                 th:attr="data-plan-id=${plan.id}"
+                 th:onclick="${plan.id == subscription.plan.id} ? '' : 'selectPlan(this)'">
+                <div class="plan-name" th:text="${plan.name}">Pro</div>
+                <div class="plan-price"
+                     th:text="${currencyHelper.getFormattedAmount(plan.price, plan.currency)}">£29.99</div>
+                <div class="plan-period"
+                     th:text="'/' + ${#strings.toLowerCase(plan.billingPeriod)}">/monthly</div>
+                <div th:if="${plan.id == subscription.plan.id}" class="current-tag">Current</div>
+            </div>
+        </div>
+
+        <!-- Proration preview -->
+        <div id="previewBox" class="preview-box">
+            <div class="preview-row">
+                <span class="preview-label">Current plan</span>
+                <span class="preview-value" id="previewCurrent">—</span>
+            </div>
+            <div class="preview-row">
+                <span class="preview-label">New plan</span>
+                <span class="preview-value" id="previewNew">—</span>
+            </div>
+            <div class="preview-row">
+                <span class="preview-label">Days remaining</span>
+                <span class="preview-value" id="previewDays">—</span>
+            </div>
+            <div class="preview-row">
+                <span class="preview-label">Unused credit</span>
+                <span class="preview-value" id="previewUnused">—</span>
+            </div>
+            <div class="preview-row total">
+                <span class="preview-label" id="previewChargeLabel">Charge now</span>
+                <span class="preview-value" id="previewCharge">—</span>
+            </div>
+
+            <div class="actions" style="border-top:none; padding-top:12px; margin-top:0;">
+                <form id="changePlanForm" method="post" style="display:inline;">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <input type="hidden" id="selectedPlanId" name="planId" value="">
+                    <button type="submit" id="confirmBtn" class="btn btn-primary">
+                        ✅ Confirm Change
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div id="previewEmpty" class="empty">
+            Select a plan above to see the prorated charge.
+        </div>
+    </div>
+
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const container = document.querySelector('.container');
+        const subscriptionId = parseInt(container.dataset.subscriptionId, 10);
+        const currentPlanId = parseInt(container.dataset.currentPlanId, 10);
+
+        console.log('Billing — subscriptionId:', subscriptionId, 'currentPlanId:', currentPlanId);
+
+        // Expose globally so onclick="selectPlan(this)" finds it
+        window.selectPlan = function (el) {
+            const planId = parseInt(el.dataset.planId, 10);
+            if (planId === currentPlanId) return;
+
+            document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+
+            const url = '/merchant/subscriptions/' + subscriptionId + '/preview-proration?newPlanId=' + planId;
+            console.log('Fetching:', url);
+
+            fetch(url, {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json' }
+            })
+                .then(r => {
+                    if (!r.ok) return r.text().then(t => { throw new Error('HTTP ' + r.status + ' — ' + t); });
+                    return r.json();
+                })
+                .then(data => {
+                    console.log('Preview:', data);
+                    renderPreview(data, planId);
+                })
+                .catch(err => {
+                    console.error('Preview failed:', err);
+                    alert('Preview failed: ' + err.message);
+                });
+        };
+
+        function renderPreview(data, planId) {
+            const box = document.getElementById('previewBox');
+            const empty = document.getElementById('previewEmpty');
+
+            if (!data.isChange) {
+                box.classList.remove('show');
+                empty.style.display = 'block';
+                return;
+            }
+
+            document.getElementById('previewCurrent').textContent = data.currentPlan + ' — ' + data.currentPrice;
+            document.getElementById('previewNew').textContent = data.newPlan + ' — ' + data.newPrice;
+            document.getElementById('previewDays').textContent = data.daysRemaining + ' / ' + data.totalDays;
+            document.getElementById('previewUnused').textContent = data.unusedValue;
+
+            const charge = parseFloat(data.charge);
+            document.getElementById('previewChargeLabel').textContent = data.isUpgrade ? 'Charge now' : 'Credit / no charge';
+            document.getElementById('previewCharge').textContent = (charge > 0 ? '+' : '') + charge.toFixed(2);
+
+            const form = document.getElementById('changePlanForm');
+            form.action = data.isUpgrade
+                ? '/merchant/subscriptions/' + subscriptionId + '/upgrade'
+                : '/merchant/subscriptions/' + subscriptionId + '/downgrade';
+            document.getElementById('selectedPlanId').value = planId;
+
+            box.classList.add('show');
+            empty.style.display = 'none';
+        }
+    });
+</script>
+
+</body>
+</html>

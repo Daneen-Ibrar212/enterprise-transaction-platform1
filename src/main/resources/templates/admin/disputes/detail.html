@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dispute #<span th:text="${dispute.id}">1</span> · PayFlow</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { font-family: 'Lexend Deca', -apple-system, sans-serif; font-weight: 300;
+            letter-spacing: -0.011em; -webkit-font-smoothing: antialiased; }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px; padding: 28px 32px; margin-bottom: 24px; color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2); position: relative; overflow: hidden; }
+        .page-header h1 { font-size: 1.5rem; font-weight: 500; color: white;
+            display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; }
+        .back-link { display: inline-flex; align-items: center; gap: 6px;
+            color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.8125rem;
+            padding: 6px 14px; border-radius: 9999px; background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2); margin-bottom: 12px;
+            position: relative; z-index: 1; }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+        .flash-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46;
+            padding: 14px 20px; border-radius: 12px; margin-bottom: 16px;
+            font-size: 0.875rem; display: flex; align-items: center; gap: 10px; }
+        .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+            padding: 14px 20px; border-radius: 12px; margin-bottom: 16px;
+            font-size: 0.875rem; display: flex; align-items: center; gap: 10px; }
+        .deadline-banner { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+            padding: 16px 20px; border-radius: 12px; margin-bottom: 20px;
+            font-size: 0.9375rem; display: flex; align-items: center; gap: 12px; }
+        .card { background: white; border-radius: 16px; padding: 24px 28px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6); margin-bottom: 20px; }
+        .card h2 { font-size: 1.125rem; font-weight: 500; margin-bottom: 18px;
+            display: flex; align-items: center; gap: 8px; }
+        .detail-row { display: flex; padding: 12px 0; border-bottom: 1px solid #f1f5f9;
+            align-items: center; gap: 16px; }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { width: 160px; flex-shrink: 0; font-size: 0.7rem;
+            font-weight: 500; color: #64748b; text-transform: uppercase;
+            letter-spacing: 0.06em; }
+        .detail-value { flex: 1; font-size: 0.9375rem; color: #0f172a; }
+        .detail-value.mono { font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.875rem; font-weight: 500; }
+        .badge { display: inline-block; padding: 5px 14px; border-radius: 9999px;
+            font-size: 0.7rem; font-weight: 500; text-transform: uppercase;
+            letter-spacing: 0.05em; }
+        .status-opened    { background: #fef3c7; color: #92400e; }
+        .status-review    { background: #dbeafe; color: #1e40af; }
+        .status-evidence  { background: #e0e7ff; color: #3730a3; }
+        .status-won       { background: #d1fae5; color: #065f46; }
+        .status-lost      { background: #fee2e2; color: #991b1b; }
+        .status-accepted  { background: #f1f5f9; color: #475569; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 0.7rem; font-weight: 500;
+            color: #475569; text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: 6px; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0;
+            border-radius: 12px; font-family: inherit; font-size: 0.9375rem;
+            background: white; }
+        .form-group textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none; border-color: #2d6bb8;
+            box-shadow: 0 0 0 4px rgba(45,107,184,0.12); }
+        .evidence-list { display: flex; flex-direction: column; gap: 10px; }
+        .evidence-item { border: 1px solid #e2e8f0; border-radius: 12px;
+            padding: 14px 18px; background: #f8fafc; }
+        .evidence-item .header { display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 6px; gap: 12px; }
+        .evidence-item .type { font-size: 0.7rem; font-weight: 500;
+            text-transform: uppercase; letter-spacing: 0.05em; color: #1e40af; }
+        .evidence-item .desc { font-size: 0.875rem; color: #334155; line-height: 1.5; }
+        .evidence-item .meta { font-size: 0.75rem; color: #94a3b8; margin-top: 6px; }
+        .actions { display: flex; gap: 10px; padding-top: 20px;
+            margin-top: 8px; border-top: 1px solid #f1f5f9; }
+        .btn { display: inline-flex; align-items: center; gap: 8px;
+            padding: 12px 24px; border: none; border-radius: 12px; cursor: pointer;
+            font-size: 0.875rem; font-family: inherit; text-decoration: none; }
+        .btn-primary { background: linear-gradient(135deg, #0b1a33, #1a3a6e);
+            color: white; box-shadow: 0 8px 20px rgba(11,26,51,0.25); }
+        .btn-primary:hover { transform: translateY(-1px); }
+        .btn-outline { background: white; color: #475569; border: 1px solid #e2e8f0; }
+        .btn-outline:hover { border-color: #2d6bb8; color: #2d6bb8; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-danger:hover { background: #dc2626; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="page-header">
+        <a href="/admin/disputes" class="back-link">← Back to Disputes</a>
+        <h1><span style="font-size:1.5rem;">⚖️</span> Dispute #<span th:text="${dispute.id}">1</span></h1>
+    </div>
+
+    <div th:if="${success}" class="flash-success"><span>✅</span><span th:text="${success}">Success</span></div>
+    <div th:if="${error}" class="flash-error"><span>❌</span><span th:text="${error}">Error</span></div>
+
+    <div th:if="${dispute.status.isOpen() and dispute.daysUntilDeadline() <= 3}"
+         class="deadline-banner">
+        <span style="font-size:1.5rem;">⏰</span>
+        <div>
+            <strong>Deadline approaching</strong><br/>
+            You have <span th:text="${dispute.daysUntilDeadline()}">0</span> day(s) to respond.
+            Submit evidence by <span th:text="${#temporals.format(dispute.respondBy, 'dd MMM yyyy · HH:mm')}">—</span>.
+        </div>
+    </div>
+
+    <!-- DETAILS -->
+    <div class="card">
+        <h2>📋 Details</h2>
+        <div class="detail-row">
+            <span class="detail-label">Transaction</span>
+            <span class="detail-value mono">
+                <a th:href="@{/transactions/{id}(id=${dispute.transactionId})}"
+                   style="color:#4f46e5; text-decoration:none;"
+                   th:text="'#' + ${dispute.transactionId}">#100</a>
+            </span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Amount</span>
+            <span class="detail-value" th:text="${currencyHelper.getFormattedAmount(dispute.amount, dispute.currency)}">£100.00</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Reason</span>
+            <span class="detail-value" th:text="${dispute.reason.displayName}">Fraudulent Charge</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Source</span>
+            <span class="detail-value" th:text="${dispute.source}">MANUAL</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Status</span>
+            <span class="detail-value">
+                <span th:with="cls=${'status-' + (
+                        dispute.status.name() == 'OPENED' ? 'opened' :
+                        dispute.status.name() == 'UNDER_REVIEW' ? 'review' :
+                        dispute.status.name() == 'EVIDENCE_SUBMITTED' ? 'evidence' :
+                        dispute.status.name() == 'WON' ? 'won' :
+                        dispute.status.name() == 'LOST' ? 'lost' : 'accepted')}"
+                      th:classappend="${cls}"
+                      class="badge"
+                      th:text="${dispute.status}">OPENED</span>
+            </span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Opened</span>
+            <span class="detail-value" th:text="${#temporals.format(dispute.openedAt, 'dd MMM yyyy · HH:mm')}">01 Jan 2026 · 12:00</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Respond by</span>
+            <span class="detail-value" th:text="${#temporals.format(dispute.respondBy, 'dd MMM yyyy · HH:mm')}">08 Jan 2026 · 12:00</span>
+        </div>
+        <div class="detail-row" th:if="${dispute.resolvedAt != null}">
+            <span class="detail-label">Resolved</span>
+            <span class="detail-value" th:text="${#temporals.format(dispute.resolvedAt, 'dd MMM yyyy · HH:mm')}">—</span>
+        </div>
+        <div class="detail-row" th:if="${dispute.outcomeNotes != null and !dispute.outcomeNotes.isEmpty()}">
+            <span class="detail-label">Outcome</span>
+            <span class="detail-value" th:text="${dispute.outcomeNotes}">—</span>
+        </div>
+    </div>
+
+    <!-- STATUS UPDATE -->
+    <div class="card" th:unless="${dispute.status.isTerminal()}">
+        <h2>🔄 Update Status</h2>
+        <form method="post" th:action="@{/admin/disputes/{id}/status(id=${dispute.id})}">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <div class="form-group">
+                <label for="status">New Status</label>
+                <select id="status" name="status" required>
+                    <option th:each="s : ${statuses}"
+                            th:if="${!s.isTerminal() or s.isTerminal()}"
+                            th:value="${s}"
+                            th:text="${s}">OPENED</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="notes">Notes (optional)</label>
+                <textarea id="notes" name="notes" placeholder="Reason for change, outcome details..."></textarea>
+            </div>
+            <div class="actions">
+                <button type="submit" class="btn btn-primary">💾 Update</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- EVIDENCE -->
+    <div class="card">
+        <h2>📎 Evidence</h2>
+
+        <div th:if="${evidence.isEmpty()}" style="text-align:center; padding:24px; color:#94a3b8; font-size:0.875rem;">
+            No evidence submitted yet.
+        </div>
+
+        <div th:unless="${evidence.isEmpty()}" class="evidence-list" style="margin-bottom:20px;">
+            <div th:each="e : ${evidence}" class="evidence-item">
+                <div class="header">
+                    <span class="type" th:text="${e.evidenceType}">RECEIPT</span>
+                    <span style="font-size:0.75rem; color:#94a3b8;"
+                          th:text="${#temporals.format(e.submittedAt, 'dd MMM yyyy · HH:mm')}">01 Jan 2026 · 12:00</span>
+                </div>
+                <div class="desc" th:if="${e.description != null}" th:text="${e.description}">Description</div>
+                <div class="meta" th:if="${e.filename != null}">
+                    📎 <span th:text="${e.filename}">file.pdf</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADD EVIDENCE -->
+        <div th:unless="${dispute.status.isTerminal()}"
+             style="padding-top:20px; border-top:1px solid #f1f5f9;">
+            <h3 style="font-size:0.875rem; font-weight:500; margin-bottom:12px;">➕ Add Evidence</h3>
+            <form method="post" enctype="multipart/form-data"
+                  th:action="@{/admin/disputes/{id}/evidence(id=${dispute.id})}">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <div class="form-group">
+                    <label for="evidenceType">Type</label>
+                    <select id="evidenceType" name="evidenceType" required>
+                        <option value="RECEIPT">Receipt</option>
+                        <option value="SHIPPING">Shipping / Delivery Proof</option>
+                        <option value="COMMUNICATION">Customer Communication</option>
+                        <option value="REFUND_POLICY">Refund Policy</option>
+                        <option value="OTHER">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description"
+                              placeholder="Explain the evidence and how it supports your case..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="file">Attach file (optional, max 10MB)</label>
+                    <input type="file" id="file" name="file">
+                </div>
+                <div class="actions" style="border-top:none; padding-top:0;">
+                    <button type="submit" class="btn btn-primary">📎 Submit Evidence</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Statements · PayFlow</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { font-family: 'Lexend Deca', -apple-system, sans-serif; font-weight: 300;
+            letter-spacing: -0.011em; -webkit-font-smoothing: antialiased; }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px; padding: 28px 32px; margin-bottom: 24px; color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2); position: relative; overflow: hidden; }
+        .page-header h1 { font-size: 1.5rem; font-weight: 500; color: white;
+            display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; }
+        .back-link { display: inline-flex; align-items: center; gap: 6px;
+            color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.8125rem;
+            padding: 6px 14px; border-radius: 9999px; background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2); margin-bottom: 12px;
+            position: relative; z-index: 1; transition: all 0.15s ease; }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+        .flash-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46;
+            padding: 14px 20px; border-radius: 12px; margin-bottom: 16px;
+            font-size: 0.875rem; display: flex; align-items: center; gap: 10px; }
+        .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+            padding: 14px 20px; border-radius: 12px; margin-bottom: 16px;
+            font-size: 0.875rem; display: flex; align-items: center; gap: 10px; }
+        .card { background: white; border-radius: 16px; padding: 24px 28px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6); margin-bottom: 20px; }
+        .card h2 { font-size: 1.125rem; font-weight: 500; margin-bottom: 16px;
+            display: flex; align-items: center; gap: 8px; }
+        .gen-form { display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px; align-items: end; }
+        .field label { display: block; font-size: 0.7rem; font-weight: 500;
+            color: #475569; text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: 6px; }
+        .field input { width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0;
+            border-radius: 10px; font-family: inherit; font-size: 0.875rem; }
+        .field input:focus { outline: none; border-color: #2d6bb8;
+            box-shadow: 0 0 0 3px rgba(45,107,184,0.12); }
+        .btn { display: inline-flex; align-items: center; gap: 6px;
+            padding: 10px 20px; border: none; border-radius: 10px; cursor: pointer;
+            font-size: 0.8125rem; font-family: inherit; text-decoration: none; }
+        .btn-primary { background: linear-gradient(135deg, #0b1a33, #1a3a6e);
+            color: white; box-shadow: 0 4px 12px rgba(11,26,51,0.2); }
+        .btn-primary:hover { transform: translateY(-1px); }
+        .btn-download { background: #3b82f6; color: white; padding: 6px 14px;
+            border-radius: 8px; font-size: 0.75rem; }
+        .btn-download:hover { background: #2563eb; }
+        .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .data-table th { text-align: left; font-size: 0.7rem; font-weight: 500;
+            color: #64748b; text-transform: uppercase; letter-spacing: 0.06em;
+            padding: 14px 16px; border-bottom: 1px solid #f1f5f9; background: #fafbfc; }
+        .data-table td { padding: 16px; border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem; color: #334155; }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table td.mono { font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.8125rem; font-weight: 500; color: #0f172a; }
+        .empty { text-align: center; padding: 40px 20px; color: #94a3b8;
+            font-size: 0.875rem; }
+    </style>
+    <link rel="stylesheet" th:href="@{/css/portal.css}">
+</head>
+<body>
+<div class="container">
+
+    <div class="page-header">
+        <a href="/portal" class="back-link">← My Portal</a>
+        <h1><span style="font-size:1.5rem;">📑</span> My Statements</h1>
+    </div>
+
+    <div th:replace="~{portal/fragments/nav :: nav('statements')}"></div>
+
+    <div th:if="${success}" class="flash-success">
+        <span>✅</span><span th:text="${success}">Success</span>
+    </div>
+    <div th:if="${error}" class="flash-error">
+        <span>❌</span><span th:text="${error}">Error</span>
+    </div>
+
+    <!-- Generate form -->
+    <div class="card">
+        <h2>📄 Generate New Statement</h2>
+        <form method="post" th:action="@{/portal/statements/generate}" class="gen-form">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <div class="field">
+                <label for="startDate">From</label>
+                <input type="date" id="startDate" name="startDate" required>
+            </div>
+            <div class="field">
+                <label for="endDate">To</label>
+                <input type="date" id="endDate" name="endDate" required>
+            </div>
+            <div>
+                <button type="submit" class="btn btn-primary">📄 Generate</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Statements list -->
+    <div class="card">
+        <h2>📑 Your Statements</h2>
+        <table class="data-table" th:unless="${receipts.isEmpty()}">
+            <thead>
+            <tr>
+                <th>Period</th>
+                <th>Generated</th>
+                <th>Filename</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${receipts}">
+                <td th:text="${#temporals.format(r.startDate, 'dd MMM yyyy')} + ' → ' + ${#temporals.format(r.endDate, 'dd MMM yyyy')}">01 Jan → 31 Jan</td>
+                <td th:text="${#temporals.format(r.generatedAt, 'dd MMM yyyy · HH:mm')}">01 Feb 2026 · 12:00</td>
+                <td class="mono" th:text="${r.filename}">statement.pdf</td>
+                <td>
+                    <a th:href="@{/portal/statements/{id}/download(id=${r.id})}" class="btn-download">📥 Download</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <div th:if="${receipts.isEmpty()}" class="empty">No statements generated yet.</div>
+    </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Reminders · PayFlow</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { font-family: 'Lexend Deca', -apple-system, sans-serif; font-weight: 300;
+            letter-spacing: -0.011em; -webkit-font-smoothing: antialiased; }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px; padding: 28px 32px; margin-bottom: 24px; color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2); position: relative; overflow: hidden; }
+        .page-header h1 { font-size: 1.5rem; font-weight: 500; color: white;
+            display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; }
+        .back-link { display: inline-flex; align-items: center; gap: 6px;
+            color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.8125rem;
+            padding: 6px 14px; border-radius: 9999px; background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2); margin-bottom: 12px;
+            position: relative; z-index: 1; }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+        .flash-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46;
+            padding: 14px 20px; border-radius: 12px; margin-bottom: 16px;
+            font-size: 0.875rem; display: flex; align-items: center; gap: 10px; }
+        .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+            padding: 14px 20px; border-radius: 12px; margin-bottom: 16px;
+            font-size: 0.875rem; display: flex; align-items: center; gap: 10px; }
+        .card { background: white; border-radius: 16px; padding: 24px 28px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6); margin-bottom: 20px; }
+        .card-header { display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 18px; flex-wrap: wrap; gap: 12px; }
+        .card-header h2 { font-size: 1.125rem; font-weight: 500;
+            display: flex; align-items: center; gap: 8px; }
+        .btn-run { background: linear-gradient(135deg, #10b981, #059669); color: white;
+            padding: 10px 20px; border-radius: 12px; border: none; cursor: pointer;
+            font-family: inherit; font-size: 0.8125rem; font-weight: 400; }
+        .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .data-table th { text-align: left; font-size: 0.7rem; font-weight: 500;
+            color: #64748b; text-transform: uppercase; letter-spacing: 0.06em;
+            padding: 12px 16px; border-bottom: 1px solid #f1f5f9; background: #fafbfc; }
+        .data-table td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem; color: #334155; }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table td.mono { font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.8125rem; font-weight: 500; color: #0f172a; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 9999px;
+            font-size: 0.65rem; font-weight: 500; text-transform: uppercase;
+            letter-spacing: 0.05em; }
+        .badge-first  { background: #dbeafe; color: #1e40af; }
+        .badge-second { background: #fef3c7; color: #92400e; }
+        .badge-final  { background: #fee2e2; color: #991b1b; }
+        .badge-pending { background: #f1f5f9; color: #64748b; }
+        .badge-sent    { background: #d1fae5; color: #065f46; }
+        .badge-failed  { background: #fee2e2; color: #991b1b; }
+        .badge-skipped { background: #f1f5f9; color: #94a3b8; }
+        .empty { text-align: center; padding: 40px 20px; color: #94a3b8; font-size: 0.875rem; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="page-header">
+        <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        <h1><span style="font-size:1.5rem;">🔔</span> Invoice Reminders</h1>
+    </div>
+
+    <div th:if="${success}" class="flash-success"><span>✅</span><span th:text="${success}">Success</span></div>
+    <div th:if="${error}" class="flash-error"><span>❌</span><span th:text="${error}">Error</span></div>
+
+    <!-- Pending reminders -->
+    <div class="card">
+        <div class="card-header">
+            <h2>⏳ Pending Reminders</h2>
+            <form method="post" th:action="@{/admin/reminders/run-now}" style="display:inline;">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <button type="submit" class="btn-run">▶ Send Now</button>
+            </form>
+        </div>
+        <table class="data-table" th:unless="${pending.isEmpty()}">
+            <thead>
+            <tr><th>Invoice</th><th>Type</th><th>Days Overdue</th><th>Scheduled</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${pending}">
+                <td class="mono" th:text="'#' + ${r.invoiceId}">#1</td>
+                <td>
+                    <span th:if="${r.reminderType.name() == 'FIRST'}"  class="badge badge-first">First</span>
+                    <span th:if="${r.reminderType.name() == 'SECOND'}" class="badge badge-second">Second</span>
+                    <span th:if="${r.reminderType.name() == 'FINAL'}"  class="badge badge-final">Final</span>
+                </td>
+                <td th:text="${r.daysOverdue} + ' days'">7 days</td>
+                <td th:text="${#temporals.format(r.scheduledFor, 'dd MMM yyyy')}">01 Jan 2026</td>
+            </tr>
+            </tbody>
+        </table>
+        <div th:if="${pending.isEmpty()}" class="empty">No pending reminders.</div>
+    </div>
+
+    <!-- All reminders history -->
+    <div class="card">
+        <div class="card-header">
+            <h2>📜 Reminder History</h2>
+        </div>
+        <table class="data-table" th:unless="${all.isEmpty()}">
+            <thead>
+            <tr><th>Invoice</th><th>Type</th><th>Status</th><th>Sent</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${all}">
+                <td class="mono" th:text="'#' + ${r.invoiceId}">#1</td>
+                <td th:text="${r.reminderType.displayName}">First Reminder</td>
+                <td>
+                    <span th:if="${r.status == 'PENDING'}" class="badge badge-pending">Pending</span>
+                    <span th:if="${r.status == 'SENT'}"    class="badge badge-sent">Sent</span>
+                    <span th:if="${r.status == 'FAILED'}"  class="badge badge-failed">Failed</span>
+                    <span th:if="${r.status == 'SKIPPED'}" class="badge badge-skipped">Skipped</span>
+                </td>
+                <td th:text="${r.sentAt != null ? #temporals.format(r.sentAt, 'dd MMM yyyy · HH:mm') : '—'}">—</td>
+            </tr>
+            </tbody>
+        </table>
+        <div th:if="${all.isEmpty()}" class="empty">No reminder history yet.</div>
+    </div>
+
+</div>
+</body>
+</html>

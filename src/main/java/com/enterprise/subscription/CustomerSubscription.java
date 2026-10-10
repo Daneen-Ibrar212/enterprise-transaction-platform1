@@ -66,6 +66,23 @@ public class CustomerSubscription {
         ACTIVE, PAUSED, CANCELLED, EXPIRED, TRIALING
     }
 
+       @Column(name = "paused_at")
+    private LocalDateTime pausedAt;
+
+    @Column(name = "pause_reason", columnDefinition = "TEXT")
+    private String pauseReason;
+
+    @Column(name = "usage_based", nullable = false)
+    private boolean usageBased = false;
+
+    // Getters and setters
+    public LocalDateTime getPausedAt() { return pausedAt; }
+    public void setPausedAt(LocalDateTime pausedAt) { this.pausedAt = pausedAt; }
+    public String getPauseReason() { return pauseReason; }
+    public void setPauseReason(String pauseReason) { this.pauseReason = pauseReason; }
+    public boolean isUsageBased() { return usageBased; }
+    public void setUsageBased(boolean usageBased) { this.usageBased = usageBased; }
+
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

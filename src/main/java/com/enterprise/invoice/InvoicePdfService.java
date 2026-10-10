@@ -355,6 +355,8 @@ public class InvoicePdfService {
         return out.toByteArray();
     }
 
+
+
     // ============================================================
     // STATUS PILL — soft bg + dark text, matches web badges
     // ============================================================
@@ -481,7 +483,196 @@ public class InvoicePdfService {
         }
         return rate.stripTrailingZeros().toPlainString();
     }
+    // ============================================================
+    // RECEIPT PDF — same layout, "RECEIPT" title, paid info
+    // ============================================================
+    public byte[] generateReceiptPdf(Invoice invoice, com.enterprise.transaction.Transaction tx) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
 
+        try {
+            Document document = new Document(PageSize.A4, 40, 40, 40, 40);
+            PdfWriter writer = PdfWriter.getInstance(document, out);
+            document.open();
+
+            Font brandFont    = makeFont(22, Font.BOLD,   NAVY);
+            Font taglineFont  = makeFont(8,  Font.NORMAL, new Color(200, 214, 235));
+            Font receiptTitle = makeFont(30, Font.BOLD,   Color.WHITE);
+            Font labelFont    = makeFont(8,  Font.BOLD,   SLATE_MUTED);
+            Font valueFont    = makeFont(10, Font.NORMAL, INK);
+            Font boldValue    = makeFont(10, Font.BOLD,   INK);
+            Font largeBold    = makeFont(13, Font.BOLD,   INK);
+            Font totalFont    = makeFont(18, Font.BOLD,   NAVY);
+
+            // Hero band
+            PdfPTable heroTable = new PdfPTable(2);
+            heroTable.setWidthPercentage(100);
+            heroTable.setWidths(new float[]{3, 2});
+
+            PdfPCell brandCell = new PdfPCell();
+            brandCell.setBorder(Rectangle.NO_BORDER);
+            brandCell.setPadding(24);
+            brandCell.setBackgroundColor(NAVY);
+            brandCell.addElement(new Paragraph("PayFlow", brandFont));
+            Paragraph tagline = new Paragraph("Enterprise Transaction Platform", taglineFont);
+            tagline.setSpacingBefore(4);
+            brandCell.addElement(tagline);
+            heroTable.addCell(brandCell);
+
+            PdfPCell badgeCell = new PdfPCell();
+            badgeCell.setBorder(Rectangle.NO_BORDER);
+            badgeCell.setPadding(24);
+            badgeCell.setBackgroundColor(NAVY);
+            badgeCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            badgeCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            Paragraph titleP = new Paragraph("RECEIPT", receiptTitle);
+            titleP.setAlignment(Element.ALIGN_RIGHT);
+            badgeCell.addElement(titleP);
+            heroTable.addCell(badgeCell);
+
+            PdfPTable heroWrap = new PdfPTable(1);
+            heroWrap.setWidthPercentage(100);
+            PdfPCell heroWrapperCell = new PdfPCell(heroTable);
+            heroWrapperCell.setBorder(Rectangle.NO_BORDER);
+            heroWrapperCell.setPadding(0);
+            heroWrap.addCell(heroWrapperCell);
+            document.add(heroWrap);
+
+            document.add(Chunk.NEWLINE);
+            document.add(Chunk.NEWLINE);
+
+            // Info
+            PdfPTable infoTable = new PdfPTable(2);
+            infoTable.setWidthPercentage(100);
+            infoTable.setWidths(new float[]{1, 1});
+
+            PdfPCell invoiceInfoCell = new PdfPCell();
+            invoiceInfoCell.setBorder(Rectangle.NO_BORDER);
+            invoiceInfoCell.setPaddingRight(15);
+
+            invoiceInfoCell.addElement(new Paragraph("INVOICE NUMBER", labelFont));
+            Paragraph numVal = new Paragraph("#" + invoice.getId(), largeBold);
+            numVal.setSpacingBefore(3);
+            invoiceInfoCell.addElement(numVal);
+            invoiceInfoCell.addElement(Chunk.NEWLINE);
+
+            invoiceInfoCell.addElement(new Paragraph("ISSUE DATE", labelFont));
+            Paragraph issueVal = new Paragraph(
+                    invoice.getCreatedAt().format(DateTimeFormatter.ofPattern("dd MMMM yyyy")),
+                    valueFont);
+            issueVal.setSpacingBefore(3);
+            invoiceInfoCell.addElement(issueVal);
+            invoiceInfoCell.addElement(Chunk.NEWLINE);
+
+            if (tx != null) {
+                invoiceInfoCell.addElement(new Paragraph("PAID ON", labelFont));
+                Paragraph paidVal = new Paragraph(
+                        tx.getUpdatedAt().format(DateTimeFormatter.ofPattern("dd MMMM yyyy")),
+                        valueFont);
+                paidVal.setSpacingBefore(3);
+                invoiceInfoCell.addElement(paidVal);
+                invoiceInfoCell.addElement(Chunk.NEWLINE);
+
+                invoiceInfoCell.addElement(new Paragraph("TRANSACTION", labelFont));
+                Paragraph txVal = new Paragraph("#" + tx.getId(), valueFont);
+                txVal.setSpacingBefore(3);
+                invoiceInfoCell.addElement(txVal);
+            }
+
+            infoTable.addCell(invoiceInfoCell);
+
+            PdfPCell cardCell = new PdfPCell();
+            cardCell.setBorder(Rectangle.NO_BORDER);
+            cardCell.setBackgroundColor(CARD_BG);
+            cardCell.setPadding(18);
+
+            Paragraph fromLabel = new Paragraph("FROM", labelFont);
+            cardCell.addElement(fromLabel);
+            String merchantEmail = getUserEmail(invoice.getMerchantId()).orElse("Merchant");
+            Paragraph merchantName = new Paragraph(merchantEmail, boldValue);
+            merchantName.setSpacingBefore(3);
+            cardCell.addElement(merchantName);
+            cardCell.addElement(Chunk.NEWLINE);
+
+            Paragraph billToLabel = new Paragraph("BILLED TO", labelFont);
+            cardCell.addElement(billToLabel);
+            Paragraph customerName = new Paragraph(invoice.getCustomerEmail(), boldValue);
+            customerName.setSpacingBefore(3);
+            cardCell.addElement(customerName);
+
+            infoTable.addCell(cardCell);
+            document.add(infoTable);
+            document.add(Chunk.NEWLINE);
+            document.add(Chunk.NEWLINE);
+
+            // Description
+            document.add(new Paragraph("DESCRIPTION", labelFont));
+            document.add(Chunk.NEWLINE);
+
+            PdfPTable descTable = new PdfPTable(1);
+            descTable.setWidthPercentage(100);
+            PdfPCell descCell = new PdfPCell();
+            descCell.setBorder(Rectangle.BOX);
+            descCell.setBorderColor(BORDER);
+            descCell.setBorderWidth(1);
+            descCell.setBackgroundColor(LIGHT_BG);
+            descCell.setPadding(14);
+            String description = invoice.getDescription() != null ? invoice.getDescription() : "Invoice items";
+            descCell.addElement(new Paragraph(description, valueFont));
+            descTable.addCell(descCell);
+            document.add(descTable);
+
+            document.add(Chunk.NEWLINE);
+            document.add(Chunk.NEWLINE);
+
+            // Totals
+            PdfPTable amountTable = new PdfPTable(2);
+            amountTable.setWidthPercentage(55);
+            amountTable.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            amountTable.setWidths(new float[]{2, 1});
+            addTotalRow(amountTable, "Amount Paid",
+                    formatCurrency(invoice.getAmount(), invoice.getCurrency()),
+                    totalFont);
+            document.add(amountTable);
+
+            document.add(Chunk.NEWLINE);
+            document.add(Chunk.NEWLINE);
+            document.add(Chunk.NEWLINE);
+
+            // Footer
+            PdfPTable footerTable = new PdfPTable(1);
+            footerTable.setWidthPercentage(100);
+            PdfPCell footerCell = new PdfPCell();
+            footerCell.setBorder(Rectangle.TOP);
+            footerCell.setBorderColor(BORDER);
+            footerCell.setBorderWidth(1);
+            footerCell.setPadding(20);
+            footerCell.setBackgroundColor(LIGHT_BG);
+
+            Paragraph thankYou = new Paragraph("Payment received — thank you!",
+                    makeFont(12, Font.BOLD, NAVY));
+            thankYou.setAlignment(Element.ALIGN_CENTER);
+            footerCell.addElement(thankYou);
+            footerCell.addElement(Chunk.NEWLINE);
+
+            Paragraph footerText = new Paragraph(
+                    "This receipt was generated automatically by PayFlow.\n" +
+                    "For any questions regarding this payment, please contact the merchant directly.",
+                    makeFont(8, Font.NORMAL, SLATE_MUTED));
+            footerText.setAlignment(Element.ALIGN_CENTER);
+            footerText.setLeading(12);
+            footerCell.addElement(footerText);
+
+            footerTable.addCell(footerCell);
+            document.add(footerTable);
+
+            document.close();
+
+        } catch (Exception e) {
+            log.error("Failed to generate receipt PDF for invoice {}", invoice.getId(), e);
+            throw new RuntimeException("Receipt PDF generation failed", e);
+        }
+        return out.toByteArray();
+    }
     private Optional<String> getUserEmail(Long userId) {
         return userRepository.findById(userId).map(AppUser::getEmail);
     }

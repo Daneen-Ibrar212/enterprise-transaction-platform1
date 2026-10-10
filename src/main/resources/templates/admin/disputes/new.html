@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Dispute · PayFlow</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { font-family: 'Lexend Deca', -apple-system, sans-serif; font-weight: 300;
+            letter-spacing: -0.011em; -webkit-font-smoothing: antialiased; }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 640px; margin: 0 auto; }
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px; padding: 28px 32px; margin-bottom: 24px; color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2); position: relative; overflow: hidden; }
+        .page-header h1 { font-size: 1.5rem; font-weight: 500; color: white;
+            display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; }
+        .back-link { display: inline-flex; align-items: center; gap: 6px;
+            color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.8125rem;
+            padding: 6px 14px; border-radius: 9999px; background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2); margin-bottom: 12px;
+            position: relative; z-index: 1; }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+        .card { background: white; border-radius: 16px; padding: 28px 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6); }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 0.7rem; font-weight: 500;
+            color: #475569; text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: 6px; }
+        .form-group input,
+        .form-group select { width: 100%; padding: 12px 16px;
+            border: 1px solid #e2e8f0; border-radius: 12px;
+            font-family: inherit; font-size: 0.9375rem; background: white; }
+        .form-group input:focus,
+        .form-group select:focus { outline: none; border-color: #2d6bb8;
+            box-shadow: 0 0 0 4px rgba(45,107,184,0.12); }
+        .help-text { font-size: 0.75rem; color: #94a3b8; margin-top: 6px; }
+        .actions { display: flex; gap: 10px; margin-top: 24px;
+            padding-top: 20px; border-top: 1px solid #f1f5f9; }
+        .btn { display: inline-flex; align-items: center; gap: 8px;
+            padding: 12px 24px; border: none; border-radius: 12px; cursor: pointer;
+            font-size: 0.875rem; font-family: inherit; text-decoration: none; }
+        .btn-primary { background: linear-gradient(135deg, #0b1a33, #1a3a6e);
+            color: white; box-shadow: 0 8px 20px rgba(11,26,51,0.25); }
+        .btn-outline { background: white; color: #475569; border: 1px solid #e2e8f0; }
+        .btn-outline:hover { border-color: #2d6bb8; color: #2d6bb8; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="page-header">
+        <a href="/admin/disputes" class="back-link">← Back to Disputes</a>
+        <h1><span style="font-size:1.5rem;">⚖️</span> Open New Dispute</h1>
+    </div>
+
+    <div class="card">
+        <form method="post" th:action="@{/admin/disputes/new}">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+            <div class="form-group">
+                <label for="transactionId">Transaction ID</label>
+                <input type="number" id="transactionId" name="transactionId"
+                       th:value="${transactionId}" required>
+                <div class="help-text">The transaction this dispute relates to.</div>
+            </div>
+
+            <div class="form-group">
+                <label for="reason">Reason</label>
+                <select id="reason" name="reason" required>
+                    <option th:each="r : ${reasons}" th:value="${r}" th:text="${r.displayName}">Reason</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="source">Source</label>
+                <select id="source" name="source">
+                    <option value="MANUAL">Manual</option>
+                    <option value="STRIPE">Stripe</option>
+                    <option value="BANK">Bank</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="respondDays">Days to respond</label>
+                <input type="number" id="respondDays" name="respondDays"
+                       value="7" min="1" max="60">
+                <div class="help-text">Standard is 7–21 days, depending on the card network.</div>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="btn btn-primary">⚖️ Open Dispute</button>
+                <a href="/admin/disputes" class="btn btn-outline">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+</div>
+</body>
+</html>

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -71,6 +72,50 @@
             transition: all 0.15s ease;
         }
         .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .run-now-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 22px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.95);
+            color: #0b1a33;
+            font-weight: 400;
+            font-size: 0.875rem;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            transition: all 0.15s ease;
+            position: relative;
+            z-index: 1;
+        }
+        .run-now-btn:hover { background: white; transform: translateY(-1px); }
+
+        .flash-success {
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            color: #065f46;
+            padding: 14px 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .flash-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 14px 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
         .card {
             background: white;
@@ -180,8 +225,28 @@
     <div class="page-header">
         <div class="page-header-top">
             <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+
+            <form method="get"
+                  th:action="@{/admin/reconciliation/run-now}"
+                  sec:authorize="hasRole('SUPER_ADMIN')"
+                  style="display:inline;"
+                  onsubmit="return confirm('Run a full reconciliation now? This scans all transactions.');">
+                <button type="submit" class="run-now-btn">
+                    ▶ Run Reconciliation Now
+                </button>
+            </form>
         </div>
         <h1><span style="font-size:1.5rem;">📈</span> Reconciliation Reports</h1>
+    </div>
+
+    <!-- Flash -->
+    <div th:if="${success}" class="flash-success">
+        <span style="font-size:1.125rem;">✅</span>
+        <span th:text="${success}">Success</span>
+    </div>
+    <div th:if="${error}" class="flash-error">
+        <span style="font-size:1.125rem;">❌</span>
+        <span th:text="${error}">Error</span>
     </div>
 
     <!-- Table -->

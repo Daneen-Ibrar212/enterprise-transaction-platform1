@@ -150,7 +150,6 @@
             letter-spacing: 0.05em;
             margin-top: 8px;
         }
-        /* Highlighted card for suspicious */
         .stat-card.alert {
             background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
             border-color: #fcd34d;
@@ -304,6 +303,7 @@
             <a href="/admin/invoices/pending">⏳ Pending Approvals</a>
             <a href="/admin/invoices/suspicious" class="danger">🚨 Suspicious Invoices</a>
             <a href="/admin/invoices/rejected" class="danger">🚫 Rejected Invoices</a>
+            <a href="/admin/disputes" class="danger">⚖️ Disputes</a>
             <a href="/admin/users">👥 User Management</a>
             <a href="/admin/users/restore">🔓 Restore User Access</a>
             <a href="/admin/audit">🔍 Audit Log</a>
@@ -311,6 +311,7 @@
             <a href="/admin/approval-rules">⚙️ Approval Rules</a>
             <a href="/admin/refund-rules">⚙️ Refund Rules</a>
             <a href="/admin/refunds">💸 Refund Transactions</a>
+            <a href="/admin/reminders">🔔 Invoice Reminders</a>
             <a href="/admin/bulk">⚡ Bulk Actions</a>
             <a href="/admin/api-keys">🔑 API Keys</a>
             <a href="/admin/webhooks">🌐 Webhooks</a>
@@ -323,6 +324,7 @@
             <a href="/admin/locks">🔒 Locked Users</a>
             <a href="/admin/suspicion-rules">⚠️ Suspicion Rules</a>
             <a href="/admin/tenants" th:if="${isSuperAdmin}">🏢 Manage Tenants</a>
+            <a sec:authorize="hasRole('SUPER_ADMIN')" href="/admin/roles">🔐 Roles &amp; Permissions</a>
             <a href="/admin/xero/setup">📊 Xero Setup</a>
             <a href="/admin/xero">📊 Xero Dashboard</a>
         </div>
