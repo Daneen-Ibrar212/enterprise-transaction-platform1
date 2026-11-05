@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpecificationExecutor<Invoice> {
+
     List<Invoice> findByMerchantId(Long merchantId);
     List<Invoice> findByCustomerEmail(String customerEmail);
     List<Invoice> findByStatusAndRequiresApproval(String status, boolean requiresApproval);
@@ -21,11 +22,31 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpec
     List<Invoice> findByStatusAndCustomerEmailContainingIgnoreCase(String status, String customerEmail);
     List<Invoice> findAllByIdIn(List<Long> ids);
 
-    // Ordered methods
+    // ===== Ordered methods (tenant-less; legacy — prefer the *AndTenantId* variants) =====
     List<Invoice> findByMerchantIdOrderByCreatedAtDesc(Long merchantId);
     List<Invoice> findByCustomerEmailOrderByCreatedAtDesc(String customerEmail);
 
     List<Invoice> findByMerchantIdAndStatus(Long merchantId, String status);
+
+    // ===== TENANT-AWARE VARIANTS =====
+    // Preferred over the tenant-less versions whenever tenantId is available.
+    // Prevents cross-tenant leakage when merchant IDs or customer emails collide.
+    List<Invoice> findByMerchantIdAndTenantIdOrderByCreatedAtDesc(Long merchantId, Long tenantId);
+    List<Invoice> findByCustomerEmailAndTenantIdOrderByCreatedAtDesc(String customerEmail, Long tenantId);
+    long countByMerchantIdAndTenantIdAndStatus(Long merchantId, Long tenantId, String status);
+
+    /**
+     * Count of non-GREEN invoices for a tenant — the tenant-scoped replacement
+     * for the "Suspicious Invoices" admin dashboard card. Replaces the old
+     * invoiceService.findAll().stream().filter(...).count() pattern.
+     */
+    @Query("""
+        SELECT COUNT(i) FROM Invoice i
+         WHERE i.tenantId = :tenantId
+           AND i.riskLevel IS NOT NULL
+           AND i.riskLevel <> 'GREEN'
+    """)
+    long countSuspiciousByTenantId(@Param("tenantId") Long tenantId);
 
     // ===== OPTIMISTIC LOCKING WITH RETRY - find with lock =====
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -42,7 +63,6 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpec
     List<Invoice> findAllByTenantIdForReevaluation(@Param("tenantId") Long tenantId);
 
     // ===== NATIVE UPDATE TO BYPASS TENANT FILTER =====
-    // ✅ ADD THIS METHOD - this is what's missing!
     @Modifying
     @Query(value = "UPDATE invoice SET risk_level = :riskLevel, suspicion_reason = :reason, updated_at = CURRENT_TIMESTAMP WHERE id = :id", nativeQuery = true)
     void updateRiskLevel(@Param("id") Long id, @Param("riskLevel") String riskLevel, @Param("reason") String reason);

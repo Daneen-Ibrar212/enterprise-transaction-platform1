@@ -6,6 +6,7 @@ import com.enterprise.security.ApiKeyAuthenticationFilter;
 import com.enterprise.security.AuthenticationFailureHandler;
 import com.enterprise.security.CustomAuthenticationSuccessHandler;
 import com.enterprise.security.CustomPermissionEvaluator;
+import com.enterprise.security.EarlySessionSecurityFilter;
 import com.enterprise.security.LogoutSuccessHandler;
 import com.enterprise.security.RateLimitingFilter;
 import com.enterprise.security.TwoFactorAuthenticationFilter;
@@ -23,6 +24,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;   // ★ NEW
+import org.springframework.security.web.context.SecurityContextRepository;            // ★ NEW
+import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.header.writers.StaticHeadersWriter;
 
 import java.util.Arrays;
@@ -62,6 +67,9 @@ public class SecurityConfig {
         this.environment = environment;
     }
 
+    /**
+     * API chain — JSON-only, stateless, CSRF disabled (correct for token/auth-header clients).
+     */
     @Bean
     @Order(1)
     public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
@@ -80,10 +88,24 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * UI chain — server-rendered Thymeleaf pages.
+     *
+     * IMPORTANT: CSRF MUST remain enabled for all HTML form pages that render
+     * `th:action` or reference `${_csrf}`. Disabling CSRF for a path while the
+     * template still tries to resolve the CSRF token causes Spring Security's
+     * deferred CSRF loading to attempt session creation mid-render, i.e.
+     * "Cannot create a session after the response has been committed".
+     */
     @Bean
     @Order(2)
     public SecurityFilterChain uiFilterChain(HttpSecurity http) throws Exception {
         boolean isDev = Arrays.asList(environment.getActiveProfiles()).contains("dev");
+
+        // Use the eager (non-deferred) CSRF token handler so the token is
+        // materialized as soon as CsrfFilter runs — before Thymeleaf renders.
+        CsrfTokenRequestAttributeHandler csrfRequestHandler = new CsrfTokenRequestAttributeHandler();
+        csrfRequestHandler.setCsrfRequestAttributeName("_csrf");
 
         http
             .securityMatcher("/**")
@@ -120,10 +142,10 @@ public class SecurityConfig {
                 .addHeaderWriter(new StaticHeadersWriter("Referrer-Policy", "strict-origin-when-cross-origin"))
             )
             .csrf(csrf -> csrf
+                .csrfTokenRequestHandler(csrfRequestHandler)
                 .ignoringRequestMatchers(
                     "/api/**",
                     "/admin/**",
-                    "/login",
                     "/invoices/**",
                     "/pay/**",
                     "/webhooks/**"
@@ -132,9 +154,12 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/",
+                    "/pricing",
+                    "/signup",
+                    "/signup/**",
                     "/login",
-                    "/forgot-password",   // ← NEW
-                    "/reset-password",    // ← NEW
+                    "/forgot-password",
+                    "/reset-password",
                     "/css/**",
                     "/js/**",
                     "/images/**",
@@ -171,7 +196,18 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 .maximumSessions(1)
-                .maxSessionsPreventsLogin(false)  // evict oldest, don't block new login
+                .maxSessionsPreventsLogin(false)
+            )
+            // ★ NEW — persist SecurityContext in the HTTP session (which is
+            //   backed by Spring Session JDBC). Required for:
+            //   • ImpersonationController to save the swapped auth across requests
+            //   • Normal login to survive across requests
+            .securityContext(sc -> sc
+                .securityContextRepository(securityContextRepository())
+            )
+            .addFilterBefore(
+                new EarlySessionSecurityFilter(),
+                CsrfFilter.class
             )
             .addFilterAfter(
                 new TwoFactorAuthenticationFilter(featureFlagService, userRepository),
@@ -184,6 +220,12 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    // ★ NEW — bean for ImpersonationController + filter chain
+    @Bean
+    public SecurityContextRepository securityContextRepository() {
+        return new HttpSessionSecurityContextRepository();
     }
 
     @Bean

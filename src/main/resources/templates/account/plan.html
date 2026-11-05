@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Plan · PayFlow</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 300; letter-spacing: -0.011em; -webkit-font-smoothing: antialiased; }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        .page-header { background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px; padding: 28px 32px; margin-bottom: 24px; color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2); position: relative; overflow: hidden; }
+        .page-header::after { content: ''; position: absolute; top: -60px; right: -60px; width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%; }
+        .page-header h1 { font-size: 1.5rem; font-weight: 500; letter-spacing: -0.02em; color: white;
+            display: flex; align-items: center; gap: 10px; margin-top: 12px; position: relative; z-index: 1; }
+        .back-link { display: inline-flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.85);
+            text-decoration: none; font-size: 0.8125rem; font-weight: 400; padding: 6px 14px;
+            border-radius: 9999px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease; position: relative; z-index: 1; }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .flash { padding: 14px 20px; border-radius: 12px; margin-bottom: 16px; font-size: 0.875rem;
+            display: flex; align-items: center; gap: 10px; }
+        .flash-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+        .card { background: white; border-radius: 16px; padding: 24px 28px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6); margin-bottom: 20px; }
+        .card h2 { font-size: 1.125rem; font-weight: 500; color: #0f172a; margin-bottom: 16px;
+            display: flex; align-items: center; gap: 8px; }
+
+        .current-plan-box { display: flex; flex-wrap: wrap; justify-content: space-between;
+            gap: 20px; align-items: center; }
+        .current-plan-info h3 { font-size: 1.75rem; font-weight: 500; letter-spacing: -0.02em; color: #0f172a;
+            margin-bottom: 6px; }
+        .current-plan-info p { font-size: 0.875rem; color: #64748b; font-weight: 300; }
+        .status-badge { display: inline-block; padding: 6px 16px; border-radius: 9999px;
+            font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;
+            margin-left: 10px; vertical-align: middle; }
+        .badge-active { background: #d1fae5; color: #065f46; }
+        .badge-trial { background: #fef3c7; color: #92400e; }
+        .badge-cancelling { background: #fee2e2; color: #991b1b; }
+        .badge-pastdue { background: #fed7aa; color: #9a3412; }
+
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px; margin-top: 20px; }
+        .info-block { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; }
+        .info-block .label { font-size: 0.7rem; font-weight: 500; color: #64748b;
+            text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+        .info-block .value { font-size: 1rem; font-weight: 500; color: #0f172a; }
+
+        .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+        .plan-card-sm { background: white; border-radius: 16px; padding: 22px 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid rgba(226,232,240,0.6);
+            display: flex; flex-direction: column; }
+        .plan-card-sm.current { border: 2px solid #2d6bb8; background: #f8faff; }
+        .plan-card-sm h3 { font-size: 1.125rem; font-weight: 500; color: #0f172a; margin-bottom: 4px; }
+        .plan-card-sm .price { font-size: 1.75rem; font-weight: 500; color: #0f172a;
+            letter-spacing: -0.02em; margin-bottom: 4px; }
+        .plan-card-sm .price small { font-size: 0.875rem; color: #94a3b8; font-weight: 300; }
+        .plan-card-sm .tagline { font-size: 0.8125rem; color: #64748b; margin-bottom: 16px;
+            font-weight: 300; line-height: 1.5; min-height: 36px; }
+        .plan-card-sm .cta-row { margin-top: auto; }
+        .plan-card-sm button, .plan-card-sm .current-tag {
+            display: inline-flex; align-items: center; justify-content: center; width: 100%;
+            padding: 12px 20px; border-radius: 10px; border: none; cursor: pointer;
+            font-family: inherit; font-size: 0.8125rem; font-weight: 400;
+            transition: all 0.2s ease; }
+        .plan-card-sm .btn-change { background: linear-gradient(135deg, #0b1a33, #1a3a6e); color: white;
+            box-shadow: 0 6px 16px rgba(11,26,51,0.2); }
+        .plan-card-sm .btn-change:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(11,26,51,0.3); }
+        .plan-card-sm .current-tag { background: #d1fae5; color: #065f46; cursor: default; }
+
+        .actions-row { display: flex; flex-wrap: wrap; gap: 10px; }
+        .btn-danger { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px;
+            border-radius: 10px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;
+            font-size: 0.8125rem; font-weight: 400; cursor: pointer; font-family: inherit;
+            transition: all 0.15s ease; }
+        .btn-danger:hover { background: #fee2e2; border-color: #ef4444; }
+        .btn-success { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px;
+            border-radius: 10px; background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0;
+            font-size: 0.8125rem; font-weight: 400; cursor: pointer; font-family: inherit;
+            transition: all 0.15s ease; }
+        .btn-success:hover { background: #a7f3d0; }
+
+        .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .data-table th { text-align: left; font-size: 0.7rem; font-weight: 500; color: #64748b;
+            text-transform: uppercase; letter-spacing: 0.06em; padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9; background: #fafbfc; }
+        .data-table td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem; font-weight: 300; color: #334155; }
+        .data-table td.mono { font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem; font-weight: 500; color: #0f172a; }
+        .empty { text-align: center; padding: 30px 20px; color: #94a3b8; font-size: 0.875rem; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="page-header">
+        <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        <h1><span style="font-size:1.5rem;">💳</span> My Plan & Subscription</h1>
+    </div>
+
+    <div th:if="${success}" class="flash flash-success">
+        <span style="font-size:1.125rem;">✅</span>
+        <span th:text="${success}">Success</span>
+    </div>
+    <div th:if="${error}" class="flash flash-error">
+        <span style="font-size:1.125rem;">❌</span>
+        <span th:text="${error}">Error</span>
+    </div>
+
+    <!-- ============ CURRENT PLAN ============ -->
+    <div class="card">
+        <h2>📌 Current Plan</h2>
+        <div class="current-plan-box">
+            <div class="current-plan-info">
+                <h3>
+                    <span th:text="${currentPlan != null ? currentPlan.name : 'No plan'}">Starter</span>
+                    <span th:if="${tenant.cancelAtPeriodEnd}" class="status-badge badge-cancelling">Cancelling</span>
+                    <span th:unless="${tenant.cancelAtPeriodEnd}"
+                          th:classappend="${tenant.subscriptionStatus == 'ACTIVE'} ? ' badge-active' :
+                                          (${tenant.subscriptionStatus == 'TRIAL'} ? ' badge-trial' :
+                                          (${tenant.subscriptionStatus == 'PAST_DUE'} ? ' badge-pastdue' : ' badge-trial'))"
+                          class="status-badge"
+                          th:text="${tenant.subscriptionStatus}">ACTIVE</span>
+                </h3>
+                <p th:if="${currentPlan != null}">
+                    <span th:text="${currentPlan.formattedMonthlyPrice}">£100</span> / month ·
+                    renews
+                    <span th:if="${tenant.subscriptionRenewsAt != null}"
+                          th:text="${#temporals.format(tenant.subscriptionRenewsAt, 'dd MMM yyyy')}">01 Jan 2026</span>
+                    <span th:unless="${tenant.subscriptionRenewsAt != null}">—</span>
+                </p>
+            </div>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-block">
+                <div class="label">Billing period</div>
+                <div class="value" th:text="${tenant.billingPeriod != null ? tenant.billingPeriod : 'MONTHLY'}">MONTHLY</div>
+            </div>
+            <div class="info-block">
+                <div class="label">Next renewal</div>
+                <div class="value" th:if="${tenant.subscriptionRenewsAt != null}"
+                     th:text="${#temporals.format(tenant.subscriptionRenewsAt, 'dd MMM yyyy')}">01 Jan 2026</div>
+                <div class="value" th:unless="${tenant.subscriptionRenewsAt != null}">—</div>
+            </div>
+            <div class="info-block">
+                <div class="label">Trial ends</div>
+                <div class="value" th:if="${tenant.trialEndsAt != null}"
+                     th:text="${#temporals.format(tenant.trialEndsAt, 'dd MMM yyyy')}">01 Jan 2026</div>
+                <div class="value" th:unless="${tenant.trialEndsAt != null}">—</div>
+            </div>
+            <div class="info-block">
+                <div class="label">Tenant ID</div>
+                <div class="value" th:text="${tenant.id}">1</div>
+            </div>
+        </div>
+
+        <div class="actions-row" style="margin-top:20px;">
+            <form th:if="${!tenant.cancelAtPeriodEnd and currentPlan != null}"
+                  th:action="@{/account/plan/cancel}" method="post" style="display:inline;">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                <button type="submit" class="btn-danger"
+                        onclick="return confirm('Cancel your subscription at the end of the current period?');">
+                    🚫 Cancel subscription
+                </button>
+            </form>
+            <form th:if="${tenant.cancelAtPeriodEnd}"
+                  th:action="@{/account/plan/resume}" method="post" style="display:inline;">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                <button type="submit" class="btn-success">✅ Resume subscription</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============ AVAILABLE PLANS ============ -->
+    <div class="card">
+        <h2>🚀 Change Plan</h2>
+        <p style="font-size:0.875rem; color:#64748b; margin-bottom:18px; font-weight:300;">
+            Upgrades take effect immediately. Downgrades bill on your next cycle.
+        </p>
+        <div class="plan-grid">
+            <div th:each="p : ${plans}" class="plan-card-sm"
+                 th:classappend="${currentPlan != null and p.id == currentPlan.id} ? ' current' : ''">
+                <h3 th:text="${p.name}">Starter</h3>
+                <div class="price">
+                    <span th:text="${p.formattedMonthlyPrice}">£100</span>
+                    <small>/mo</small>
+                </div>
+                <div class="tagline" th:text="${p.tagline}">For solo merchants</div>
+                <div class="cta-row">
+                    <div th:if="${currentPlan != null and p.id == currentPlan.id}" class="current-tag">
+                        ✅ Current plan
+                    </div>
+                    <form th:unless="${currentPlan != null and p.id == currentPlan.id}"
+                          th:action="@{/account/plan/change}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                        <input type="hidden" name="planCode" th:value="${p.code}" />
+
+                        <!--
+                            Thymeleaf 3.1+ forbids String variables inside th:onX attributes.
+                            Instead we put the plan name into a data-* attribute and read
+                            it from a shared JS click handler.
+                        -->
+                        <button type="submit" class="btn-change"
+                                data-plan-name=""
+                                th:attr="data-plan-name=${p.name}, data-action='upgrade'"
+                                th:if="${currentPlan == null or p.monthlyPricePence > currentPlan.monthlyPricePence}">
+                            ⬆️ Upgrade
+                        </button>
+                        <button type="submit" class="btn-change"
+                                data-plan-name=""
+                                th:attr="data-plan-name=${p.name}, data-action='downgrade'"
+                                th:if="${currentPlan != null and p.monthlyPricePence < currentPlan.monthlyPricePence}">
+                            ⬇️ Downgrade
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ PAYMENT HISTORY ============ -->
+    <div class="card">
+        <h2>💰 Payment History</h2>
+        <div th:if="${payments != null and !payments.isEmpty()}">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Reference</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="pay : ${payments}">
+                        <td th:text="${#temporals.format(pay.createdAt, 'dd MMM yyyy · HH:mm')}">01 Jan 2026</td>
+                        <td class="mono" th:text="${currencyHelper.getFormattedAmount(pay.amount, pay.currency)}">£100</td>
+                        <td>
+                            <span th:if="${pay.status.name() == 'SETTLED'}"
+                                  style="display:inline-block; padding:3px 12px; border-radius:9999px; font-size:0.65rem; font-weight:500; text-transform:uppercase; background:#d1fae5; color:#065f46;">Succeeded</span>
+                            <span th:if="${pay.status.name() == 'FAILED'}"
+                                  style="display:inline-block; padding:3px 12px; border-radius:9999px; font-size:0.65rem; font-weight:500; text-transform:uppercase; background:#fee2e2; color:#991b1b;">Failed</span>
+                            <span th:if="${pay.status.name() == 'REFUNDED'}"
+                                  style="display:inline-block; padding:3px 12px; border-radius:9999px; font-size:0.65rem; font-weight:500; text-transform:uppercase; background:#ede9fe; color:#5b21b6;">Refunded</span>
+                        </td>
+                        <td class="mono" th:text="'#' + ${pay.id}">#42</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div th:unless="${payments != null and !payments.isEmpty()}" class="empty">
+            No payments yet.
+        </div>
+    </div>
+
+    <!-- ============ ACTIVITY LOG ============ -->
+    <div class="card" th:if="${events != null and !events.isEmpty()}">
+        <h2>📜 Subscription Activity</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Event</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="e : ${events}">
+                    <td th:text="${#temporals.format(e.createdAt, 'dd MMM yyyy · HH:mm')}">01 Jan 2026</td>
+                    <td>
+                        <span style="display:inline-block; padding:3px 12px; border-radius:9999px;
+                                     font-size:0.65rem; font-weight:500; text-transform:uppercase;
+                                     background:#dbeafe; color:#1e40af;"
+                              th:text="${e.eventType}">SUBSCRIBED</span>
+                    </td>
+                    <td th:text="${e.notes}">—</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<!--
+    Shared confirmation handler for plan change buttons.
+    The plan name and action are read from data-* attributes on the clicked button,
+    so no String values need to be interpolated into event handlers by Thymeleaf.
+-->
+<script>
+    document.querySelectorAll('.btn-change').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            var name = this.dataset.planName || 'this plan';
+            var action = this.dataset.action || 'change';
+            var msg = action === 'upgrade'
+                ? 'Upgrade to ' + name + '? You will be charged immediately.'
+                : 'Downgrade to ' + name + '? Change takes effect on next billing cycle.';
+            if (!confirm(msg)) {
+                e.preventDefault();
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

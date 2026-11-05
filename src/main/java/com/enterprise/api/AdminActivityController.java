@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -22,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 @Controller
 @RequestMapping("/admin/activity")
@@ -51,28 +52,41 @@ public class AdminActivityController {
             Model model,
             Authentication authentication) {
 
-        log.info("Filtering activity logs: userId={}, action={}, start={}, end={}", userId, action, startDate, endDate);
+        log.info("Filtering activity logs: userId={}, action={}, start={}, end={}",
+                userId, action, startDate, endDate);
 
         AppUser admin = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        LocalDateTime start = startDate != null ? startDate.atStartOfDay() : null;
-        LocalDateTime end = endDate != null ? endDate.atTime(23, 59, 59) : null;
+        boolean isSuperAdmin = admin.getRoles().stream()
+                .anyMatch(r -> r.getName().equals("SUPER_ADMIN"));
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Long tenantId = admin.getTenantId();
 
-        Page<UserActivityLog> logs = activityLogService.search(userId, action, start, end, pageable);
-
-        // Get all users for dropdown (tenant-scoped unless Super Admin)
-        boolean isSuperAdmin = admin.getRoles().stream().anyMatch(r -> r.getName().equals("SUPER_ADMIN"));
-        List<AppUser> users;
-        if (isSuperAdmin) {
-            users = userRepository.findAll();
-        } else {
-            users = userRepository.findAll().stream()
-                    .filter(u -> u.getTenantId().equals(admin.getTenantId()))
-                    .collect(Collectors.toList());
+        // ─── Guard: a requested userId must be within the caller's tenant ───
+        if (userId != null && !isSuperAdmin) {
+            AppUser target = userRepository.findById(userId).orElse(null);
+            if (target == null || !Objects.equals(target.getTenantId(), tenantId)) {
+                throw new AccessDeniedException(
+                        "You cannot view activity for users outside your tenant");
+            }
         }
+
+        LocalDateTime start = startDate != null ? startDate.atStartOfDay() : null;
+        LocalDateTime end   = endDate   != null ? endDate.atTime(23, 59, 59) : null;
+
+        Pageable pageable = PageRequest.of(page, size,
+                Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        // ★ Changed: drop the tenantId argument. The service scopes the query itself
+        //   using TenantContext + a SUPER_ADMIN check.
+        Page<UserActivityLog> logs = activityLogService.search(
+                userId, action, start, end, pageable);
+
+        // Users for the dropdown — tenant-scoped unless super-admin
+        List<AppUser> users = isSuperAdmin
+                ? userRepository.findAll()
+                : userRepository.findByTenantIdOrderByIdAsc(tenantId);
 
         List<String> actions = activityLogService.getDistinctActions();
 

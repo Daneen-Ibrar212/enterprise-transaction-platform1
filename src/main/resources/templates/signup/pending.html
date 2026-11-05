@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Awaiting Approval · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body {
+            min-height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            padding: 24px;
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        body::before {
+            content: ''; position: absolute; top: -120px; right: -120px;
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%; pointer-events: none;
+        }
+        body::after {
+            content: ''; position: absolute; bottom: -150px; left: -100px;
+            width: 350px; height: 350px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%; pointer-events: none;
+        }
+
+        .pending-card {
+            position: relative; z-index: 1;
+            background: white;
+            border-radius: 20px;
+            padding: 44px 40px;
+            max-width: 520px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .status-icon {
+            width: 80px; height: 80px;
+            margin: 0 auto 24px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2.25rem;
+            transition: all 0.3s ease;
+        }
+        .status-pending {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            color: #92400e;
+            box-shadow: 0 8px 24px rgba(245,158,11,0.25);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .status-approved {
+            background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+            color: #065f46;
+            box-shadow: 0 8px 24px rgba(16,185,129,0.25);
+        }
+        .status-rejected {
+            background: linear-gradient(135deg, #fee2e2, #fecaca);
+            color: #991b1b;
+            box-shadow: 0 8px 24px rgba(239,68,68,0.25);
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50%      { transform: scale(1.05); opacity: 0.9; }
+        }
+
+        h1 {
+            font-size: 1.5rem; font-weight: 500;
+            letter-spacing: -0.02em;
+            color: #0f172a;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            font-size: 0.9375rem; color: #64748b;
+            font-weight: 300;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        .subtitle strong { color: #0f172a; font-weight: 500; }
+
+        .info-box {
+            text-align: left;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 18px 22px;
+            margin-bottom: 20px;
+        }
+        .info-box h3 {
+            font-size: 0.7rem; font-weight: 500;
+            color: #64748b; text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 12px;
+        }
+        .info-row {
+            display: flex; justify-content: space-between;
+            font-size: 0.875rem; padding: 6px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #64748b; font-weight: 300; }
+        .info-value { color: #0f172a; font-weight: 500; font-family: 'SF Mono', Monaco, Consolas, monospace; }
+
+        .poll-status {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-size: 0.75rem; color: #94a3b8;
+            font-weight: 300;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+        .poll-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #94a3b8;
+        }
+        .poll-dot.active {
+            background: #10b981;
+            animation: blink 1.5s ease-in-out infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50%      { opacity: 0.3; }
+        }
+
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 13px 28px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.9375rem;
+            font-weight: 400;
+            font-family: inherit;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(11,26,51,0.25);
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 28px rgba(11,26,51,0.35);
+        }
+        .btn-outline {
+            background: white; color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-outline:hover { border-color: #94a3b8; background: #f8fafc; }
+
+        .hint {
+            font-size: 0.75rem; color: #94a3b8;
+            margin-top: 16px; font-weight: 300;
+            line-height: 1.5;
+        }
+
+        .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    </style>
+</head>
+<body>
+
+<div class="pending-card" id="pendingCard">
+
+    <div class="status-icon status-pending" id="statusIcon">⏳</div>
+
+    <h1 id="statusTitle">Awaiting approval</h1>
+    <p class="subtitle" id="statusSubtitle">
+        Thanks, <strong th:text="${email}">you@example.com</strong>.<br/>
+        Your account is being reviewed by our team.
+    </p>
+
+    <div class="info-box" th:if="${email != null}">
+        <h3>Signup summary</h3>
+        <div class="info-row" th:if="${planCode != null}">
+            <span class="info-label">Plan</span>
+            <span class="info-value" th:text="${planCode}">STARTER</span>
+        </div>
+        <div class="info-row" th:if="${roles != null}">
+            <span class="info-label">Roles</span>
+            <span class="info-value" th:text="${roles}">MERCHANT</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Status</span>
+            <span class="info-value" id="infoStatus">PENDING</span>
+        </div>
+    </div>
+
+    <div class="poll-status">
+        <span class="poll-dot active" id="pollDot"></span>
+        <span id="pollText">Checking for approval…</span>
+    </div>
+
+    <div class="actions" id="actions" style="display:none;">
+        <a href="#" class="btn btn-primary" id="continueBtn" style="display:none;">
+            Continue to payment →
+        </a>
+        <a href="/login" class="btn btn-outline" id="loginBtn">Sign in</a>
+    </div>
+
+    <p class="hint">
+        This page updates automatically. You can safely close it and check back later.
+        Your email <strong th:text="${email}">you@example.com</strong> will work for
+        <a href="/login" style="color:#2d6bb8;">sign in</a> once approved.
+    </p>
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    (function() {
+        var email = /*[[${email}]]*/ '';
+        if (!email) return;
+
+        var statusIcon = document.getElementById('statusIcon');
+        var statusTitle = document.getElementById('statusTitle');
+        var statusSubtitle = document.getElementById('statusSubtitle');
+        var infoStatus = document.getElementById('infoStatus');
+        var pollText = document.getElementById('pollText');
+        var pollDot = document.getElementById('pollDot');
+        var actions = document.getElementById('actions');
+        var continueBtn = document.getElementById('continueBtn');
+
+        var done = false;
+
+        function poll() {
+            if (done) return;
+            fetch('/signup/status?email=' + encodeURIComponent(email))
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data.found) return;
+
+                    infoStatus.textContent = data.status;
+
+                    if (data.rejected) {
+                        done = true;
+                        statusIcon.className = 'status-icon status-rejected';
+                        statusIcon.textContent = '❌';
+                        statusTitle.textContent = 'Signup rejected';
+                        statusSubtitle.innerHTML =
+                            'Unfortunately your signup was not approved.<br/>' +
+                            'Please contact support if you think this is a mistake.';
+                        pollText.textContent = 'Stopped polling';
+                        pollDot.classList.remove('active');
+                        actions.style.display = 'flex';
+                        return;
+                    }
+
+                    if (data.paid) {
+                        done = true;
+                        statusIcon.className = 'status-icon status-approved';
+                        statusIcon.textContent = '✅';
+                        statusTitle.textContent = 'All set!';
+                        statusSubtitle.innerHTML = 'Your account is active.';
+                        pollText.textContent = 'Ready';
+                        pollDot.classList.remove('active');
+                        actions.style.display = 'flex';
+                        window.location.href = '/dashboard';
+                        return;
+                    }
+
+                    if (data.approved) {
+                        done = true;
+                        statusIcon.className = 'status-icon status-approved';
+                        statusIcon.textContent = '✅';
+                        statusTitle.textContent = 'Approved!';
+                        statusSubtitle.innerHTML =
+                            'Great news — your account has been approved.<br/>' +
+                            'Redirecting you to payment…';
+                        pollText.textContent = 'Awaiting payment';
+                        pollDot.classList.remove('active');
+                        actions.style.display = 'flex';
+
+                        // ★ Carry the signupId in the URL — otherwise
+                        //   /signup/payment has no way to know which signup to charge.
+                        var paymentUrl = '/signup/payment?signupId=' + data.signupId;
+                        continueBtn.href = paymentUrl;
+                        continueBtn.style.display = 'inline-flex';
+
+                        // Auto-redirect after a short beat so the user sees the message.
+                        setTimeout(function() {
+                            window.location.href = paymentUrl;
+                        }, 1200);
+                        return;
+                    }
+
+                    setTimeout(poll, 5000);
+                })
+                .catch(function() {
+                    setTimeout(poll, 8000);
+                });
+        }
+
+        setTimeout(poll, 3000);
+    })();
+    /*]]>*/
+</script>
+
+</body>
+</html>

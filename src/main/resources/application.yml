@@ -1,0 +1,169 @@
+# ============================================================
+# PayFlow — Application Configuration
+# ============================================================
+
+spring:
+  application:
+    name: transaction-platform
+
+  # ---------- JPA / Hibernate ----------
+  jpa:
+    hibernate:
+      ddl-auto: none              # Flyway owns the schema; do NOT let Hibernate touch it
+    open-in-view: false           # silences the "open-in-view" warning
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+    show-sql: false
+
+  # ---------- Flyway ----------
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+    locations: classpath:db/migration
+    validate-on-migrate: true
+
+  # ---------- DataSource ----------
+  # Values come from env vars set in docker-compose.yml.
+  # Defaults below are safe fallbacks for local dev.
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/transaction_platform}
+    username: ${SPRING_DATASOURCE_USERNAME:platform_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:dev_password}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # ---------- Redis ----------
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      timeout: 5000ms
+      repositories:
+        enabled: false              # ← suppress "could not identify store" spam
+
+  # ---------- Spring Session (JDBC) ----------
+  session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: never      # ← tables already exist; don't recreate on every boot
+      table-name: SPRING_SESSION
+
+  # ---------- Mail (SMTP) ----------
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_STARTTLS:true}
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+  # ---------- Thymeleaf ----------
+  thymeleaf:
+    cache: false                    # keep OFF in dev so template edits show up immediately
+    check-template-location: true
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+
+  # ---------- Jackson ----------
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: UTC
+
+# ============================================================
+# Server
+# ============================================================
+server:
+  port: 8080
+  forward-headers-strategy: native
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on_param
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        http-only: true
+        same-site: lax
+
+# ============================================================
+# Actuator
+# ============================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# ============================================================
+# Application-specific
+# ============================================================
+
+# Base URL — used in password-reset emails and welcome emails
+app:
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+  email:
+    mode: ${APP_EMAIL_MODE:stub}    # stub | smtp
+
+  # Rate limit defaults (if you have the feature enabled)
+  rate-limit:
+    payment-requests: 100
+    payment-requests-window: 60
+    read-requests: 200
+    read-requests-window: 60
+
+  # Security defaults
+  security:
+    max-failed-attempts: 5
+    lock-duration-minutes: 30
+
+  # Reliability / DLQ
+  dlq:
+    max-retry-attempts: 3
+    batch-size: 10
+    scheduler:
+      cron: "0 */5 * * * *"
+
+  # Webhook signing
+  webhook:
+    hmac-secret: ${WEBHOOK_HMAC_SECRET:change-me-in-production}
+
+  # Hibernate dialect for OpenAPI / SQL logging etc.
+  # (kept here so tests and CI have a default)
+
+# ============================================================
+# Logging
+# ============================================================
+logging:
+  level:
+    root: INFO
+    com.enterprise: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.connections.pooling: WARN
+    org.springframework.data.redis.repository.configuration: WARN   # suppress "no Redis repo" noise
+    org.flywaydb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p %pid --- [%15.15t] %-40.40logger{39} : %m%n"
+  file:
+    name: logs/payflow.log

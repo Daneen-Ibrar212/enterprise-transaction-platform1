@@ -31,7 +31,8 @@
             font-size: 0.875rem; display: flex; align-items: center; gap: 10px; }
         .deadline-banner { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
             padding: 16px 20px; border-radius: 12px; margin-bottom: 20px;
-            font-size: 0.9375rem; display: flex; align-items: center; gap: 12px; }
+            font-size: 0.9375rem; display: flex; align-items: center; gap: 12px;
+            line-height: 1.55; }
         .card { background: white; border-radius: 16px; padding: 24px 28px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.06);
             border: 1px solid rgba(226,232,240,0.6); margin-bottom: 20px; }
@@ -101,17 +102,51 @@
     <div th:if="${success}" class="flash-success"><span>✅</span><span th:text="${success}">Success</span></div>
     <div th:if="${error}" class="flash-error"><span>❌</span><span th:text="${error}">Error</span></div>
 
-    <div th:if="${dispute.status.isOpen() and dispute.daysUntilDeadline() <= 3}"
-         class="deadline-banner">
+    <!-- ============================================================ -->
+    <!-- DEADLINE BANNERS                                              -->
+    <!-- ============================================================ -->
+
+    <!-- APPROACHING: deadline in the future, within 3 days -->
+    <div th:if="${dispute.isDeadlineApproaching()}"
+         class="deadline-banner"
+         style="background:#fffbeb; border-color:#fcd34d; color:#92400e;">
         <span style="font-size:1.5rem;">⏰</span>
         <div>
-            <strong>Deadline approaching</strong><br/>
-            You have <span th:text="${dispute.daysUntilDeadline()}">0</span> day(s) to respond.
-            Submit evidence by <span th:text="${#temporals.format(dispute.respondBy, 'dd MMM yyyy · HH:mm')}">—</span>.
+            <strong th:text="${dispute.daysUntilDeadline() == 0
+                                ? 'Deadline today'
+                                : 'Deadline approaching'}">
+                Deadline approaching
+            </strong><br/>
+
+            <span th:if="${dispute.daysUntilDeadline() > 0}">
+                You have <strong th:text="${dispute.daysUntilDeadline()}">3</strong> day(s) to respond.
+            </span>
+            <span th:if="${dispute.daysUntilDeadline() == 0}">
+                You need to respond by end of day.
+            </span>
+
+            Submit evidence by
+            <strong th:text="${#temporals.format(dispute.respondBy, 'dd MMM yyyy · HH:mm')}">—</strong>.
         </div>
     </div>
 
-    <!-- DETAILS -->
+    <!-- OVERDUE: deadline has passed, dispute still open -->
+    <div th:if="${dispute.isOverdue()}"
+         class="deadline-banner"
+         style="background:#fef2f2; border-color:#ef4444; color:#991b1b;">
+        <span style="font-size:1.5rem;">🚨</span>
+        <div>
+            <strong>Overdue</strong><br/>
+            Deadline passed
+            <strong th:text="${dispute.daysOverdue()}">0</strong> day(s) ago
+            (<span th:text="${#temporals.format(dispute.respondBy, 'dd MMM yyyy · HH:mm')}">—</span>).
+            Submit evidence immediately to avoid an automatic loss.
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- DETAILS                                                       -->
+    <!-- ============================================================ -->
     <div class="card">
         <h2>📋 Details</h2>
         <div class="detail-row">
@@ -166,7 +201,9 @@
         </div>
     </div>
 
-    <!-- STATUS UPDATE -->
+    <!-- ============================================================ -->
+    <!-- STATUS UPDATE                                                 -->
+    <!-- ============================================================ -->
     <div class="card" th:unless="${dispute.status.isTerminal()}">
         <h2>🔄 Update Status</h2>
         <form method="post" th:action="@{/admin/disputes/{id}/status(id=${dispute.id})}">
@@ -175,7 +212,7 @@
                 <label for="status">New Status</label>
                 <select id="status" name="status" required>
                     <option th:each="s : ${statuses}"
-                            th:if="${!s.isTerminal() or s.isTerminal()}"
+                            th:if="${!s.isTerminal()}"
                             th:value="${s}"
                             th:text="${s}">OPENED</option>
                 </select>
@@ -190,7 +227,9 @@
         </form>
     </div>
 
-    <!-- EVIDENCE -->
+    <!-- ============================================================ -->
+    <!-- EVIDENCE                                                      -->
+    <!-- ============================================================ -->
     <div class="card">
         <h2>📎 Evidence</h2>
 

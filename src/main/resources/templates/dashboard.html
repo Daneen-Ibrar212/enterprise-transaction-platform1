@@ -60,12 +60,11 @@
 
     <!-- ====== HERO HEADER ====== -->
     <div style="background:linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%); border-radius:16px; padding:32px 40px; margin-bottom:24px; color:white; position:relative; box-shadow:0 20px 48px rgba(11,26,51,0.25);">
-        <!-- Decorative background layer (clipped separately so dropdown isn't cut off) -->
         <div style="position:absolute; inset:0; overflow:hidden; border-radius:16px; pointer-events:none;">
             <div style="position:absolute; top:-80px; right:-80px; width:256px; height:256px; background:rgba(255,255,255,0.05); border-radius:50%;"></div>
             <div style="position:absolute; bottom:-80px; left:-80px; width:192px; height:192px; background:rgba(255,255,255,0.05); border-radius:50%;"></div>
         </div>
-        
+
         <div style="position:relative; z-index:10; display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:16px;">
             <div>
                 <div style="display:flex; align-items:center; gap:12px; margin-bottom:4px;">
@@ -85,12 +84,11 @@
                     <a th:if="${isMerchantAdmin and viewType == 'admin'}" href="/dashboard" style="background:rgba(255,255,255,0.2); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,0.2); padding:6px 18px; border-radius:9999px; font-size:0.8125rem; font-weight:400; color:white; text-decoration:none;">🔄 Merchant View</a>
                 </div>
             </div>
-            
-            <!-- Notification Bell -->
+
             <div id="notificationBellWrap" style="position:relative;">
                 <span onclick="toggleNotifications(event)" style="font-size:1.5rem; display:inline-block; cursor:pointer;">🔔</span>
                 <span id="notification-badge" style="position:absolute; top:-4px; right:-4px; background:#ef4444; color:white; font-size:0.6rem; font-weight:500; padding:2px 8px; border-radius:9999px; border:2px solid #0b1a33;" th:text="${unreadCount}" th:if="${unreadCount > 0}">0</span>
-                
+
                 <div id="notificationDropdown" style="display:none; position:absolute; right:0; top:44px; background:white; border-radius:16px; border:1px solid #e2e8f0; box-shadow:0 20px 40px rgba(0,0,0,0.15); padding:16px 20px; min-width:340px; max-height:420px; overflow-y:auto; z-index:9999; color:#0f172a; text-align:left;">
                     <h4 style="font-weight:500; color:#0f172a; font-size:0.875rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;">🔔 Notifications</h4>
                     <div th:if="${notifications.empty}" style="font-size:0.875rem; color:#64748b; padding:8px 0; text-align:center; font-weight:300;">No new notifications</div>
@@ -291,24 +289,25 @@
         </div>
     </div>
 
-  
-
     <!-- ====== QUICK ACTIONS ====== -->
     <div style="background:white; border-radius:16px; padding:24px 28px; margin-bottom:24px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border:1px solid rgba(226,232,240,0.6);">
         <h2 style="font-size:1.125rem; font-weight:500; color:#0f172a; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
             <span>⚡</span> Quick Actions
         </h2>
         <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr)); gap:8px;">
+            <!-- FIXED: hasAnyRole instead of hasRole with two args -->
+             <a href="/account/plan" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">💳 My Plan & Subscription</a>
+            <a sec:authorize="hasAnyRole('SUPER_ADMIN', 'ADMIN')" href="/admin/signups" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">📬 Signup Queue</a>
             <a href="/account/password" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">🔐 Change Password</a>
             <a sec:authorize="hasRole('MERCHANT')" href="#" onclick="alert('Payment link: '+window.location.origin+'/pay/1')" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">🔗 Share Payment Link</a>
             <a sec:authorize="hasRole('ADMIN')" href="/admin/exchange-rates" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">💱 Exchange Rates</a>
-           <a sec:authorize="hasAnyRole('ADMIN')" href="/admin/disputes" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">⚖️ Disputes</a>
+            <a sec:authorize="hasRole('ADMIN')" href="/admin/disputes" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">⚖️ Disputes</a>
             <a sec:authorize="hasRole('SUPER_ADMIN')" href="/admin/roles" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">🔐 Roles & Permissions</a>
             <a sec:authorize="hasRole('MERCHANT')" href="/invoices/create" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">📄 Create Invoice</a>
-           <a sec:authorize="hasAnyRole('SUPER_ADMIN','MERCHANT_ADMIN')" href="/admin/reminders" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">🔔 Invoice Reminders</a>
+            <a sec:authorize="hasAnyRole('SUPER_ADMIN','MERCHANT_ADMIN')" href="/admin/reminders" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">🔔 Invoice Reminders</a>
             <a sec:authorize="hasRole('MERCHANT')" href="/invoices/merchant" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">📋 My Invoices</a>
             <a sec:authorize="hasRole('CUSTOMER')" href="/invoices/customer" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">💳 My Invoices</a>
-             <a sec:authorize="hasRole('CUSTOMER')" href="/portal" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">🏠 My Portal →</a>
+            <a sec:authorize="hasRole('CUSTOMER')" href="/portal" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">🏠 My Portal →</a>
             <a href="/2fa/setup" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">🔐 2FA Setup</a>
             <a sec:authorize="hasRole('ADMIN')" href="/admin/activity" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">📋 User Activity</a>
             <a sec:authorize="hasRole('ADMIN')" href="/admin/suspicion-rules" style="padding:10px 16px; border:1px solid #e2e8f0; background:white; color:#1e293b; border-radius:12px; font-weight:300; font-size:0.8125rem; text-decoration:none; display:flex; align-items:center; gap:6px;">⚠️ Suspicion Rules</a>
@@ -360,7 +359,6 @@
 
 <!-- ====== SCRIPTS ====== -->
 <script>
-    // Notification toggle
     function toggleNotifications(event) {
         if (event) event.stopPropagation();
         var dropdown = document.getElementById('notificationDropdown');
@@ -375,7 +373,6 @@
         }
     });
 
-    // Custom email toggle
     document.addEventListener('DOMContentLoaded', function() {
         var select = document.querySelector('select[name="customerEmail"]');
         var custom = document.getElementById('customEmailInput');
@@ -406,7 +403,6 @@
         }
     });
 
-    // Copy link
     document.querySelectorAll('.copy-link-btn').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -425,7 +421,6 @@
         });
     });
 
-    // SSE
     (function() {
         if (typeof EventSource !== 'undefined') {
             var src = new EventSource('/api/notifications/stream');
@@ -441,7 +436,6 @@
         }
     })();
 
-    // Charts
     document.addEventListener('DOMContentLoaded', function() {
         var labels = /*[[${dashboardLabels}]]*/ [];
         var volumeData = /*[[${dashboardVolumeData}]]*/ [];

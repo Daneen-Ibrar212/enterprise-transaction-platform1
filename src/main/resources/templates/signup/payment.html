@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete payment · PayFlow</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 300; letter-spacing: -0.011em; -webkit-font-smoothing: antialiased; }
+        body {
+            min-height: 100vh; display: flex; justify-content: center; align-items: flex-start;
+            padding: 40px 24px;
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            position: relative; overflow-x: hidden;
+        }
+        body::before { content: ''; position: absolute; top: -140px; right: -140px; width: 460px; height: 460px;
+            background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%; pointer-events: none; }
+        body::after { content: ''; position: absolute; bottom: -180px; left: -120px; width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%; pointer-events: none; }
+
+        .payment-card {
+            position: relative; z-index: 1;
+            background: white; border-radius: 20px; padding: 40px 44px;
+            width: 100%; max-width: 520px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .payment-head { text-align: center; margin-bottom: 26px; }
+        .payment-head .logo { width: 56px; height: 56px; margin: 0 auto 16px;
+            background: linear-gradient(135deg, #0b1a33 0%, #2d6bb8 100%);
+            border-radius: 16px; display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; box-shadow: 0 12px 28px rgba(11,26,51,0.3); }
+        .payment-head h1 { font-size: 1.5rem; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 6px; }
+        .payment-head p { font-size: 0.875rem; color: #64748b; font-weight: 300; }
+
+        .error-box { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+            padding: 14px 18px; border-radius: 12px; font-size: 0.8125rem; font-weight: 400;
+            margin-bottom: 20px; display: flex; align-items: flex-start; gap: 10px; line-height: 1.5; }
+
+        .order-summary { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px;
+            padding: 18px 22px; margin-bottom: 22px; }
+        .order-row { display: flex; justify-content: space-between; font-size: 0.875rem; padding: 6px 0; }
+        .order-row.total { border-top: 1px solid #e2e8f0; margin-top: 8px; padding-top: 12px;
+            font-weight: 500; color: #0f172a; font-size: 1rem; }
+        .order-label { color: #64748b; font-weight: 300; }
+        .order-value { color: #0f172a; font-weight: 500; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 0.7rem; font-weight: 500; color: #475569;
+            text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+        .form-group input { width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px;
+            font-size: 0.9375rem; font-family: inherit; font-weight: 300; color: #0f172a; background: white;
+            transition: all 0.15s ease; }
+        .form-group input:focus { outline: none; border-color: #2d6bb8; box-shadow: 0 0 0 4px rgba(45,107,184,0.12); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        .test-hint { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px;
+            padding: 12px 16px; font-size: 0.75rem; color: #1e40af; line-height: 1.55;
+            margin-bottom: 20px; }
+
+        .btn-pay { width: 100%; padding: 15px 20px; background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white; border: none; border-radius: 12px; cursor: pointer; font-size: 1rem;
+            font-weight: 400; font-family: inherit; box-shadow: 0 8px 20px rgba(11,26,51,0.25);
+            transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
+        .btn-pay:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(11,26,51,0.35); }
+        .btn-pay:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .secure-note { text-align: center; margin-top: 18px; font-size: 0.75rem; color: #64748b; font-weight: 300;
+            display: flex; align-items: center; justify-content: center; gap: 6px; }
+
+        @media (max-width: 640px) {
+            .payment-card { padding: 32px 24px; }
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="payment-card">
+    <div class="payment-head">
+        <div class="logo">💳</div>
+        <h1>Complete your payment</h1>
+        <p th:if="${plan != null}">
+            Activate your <strong th:text="${plan.name}">Starter</strong> subscription
+        </p>
+    </div>
+
+    <div th:if="${error}" class="error-box">
+        <span style="font-size:1.125rem;">⚠️</span>
+        <span th:text="${error}">Something went wrong</span>
+    </div>
+
+    <div class="order-summary" th:if="${plan != null}">
+        <div class="order-row">
+            <span class="order-label">Plan</span>
+            <span class="order-value" th:text="${plan.name}">Starter</span>
+        </div>
+        <div class="order-row">
+            <span class="order-label">Billing period</span>
+            <span class="order-value">Monthly</span>
+        </div>
+        <div class="order-row total">
+            <span>Amount</span>
+            <span th:text="${plan.formattedMonthlyPrice} + ' / month'">£100 / month</span>
+        </div>
+    </div>
+
+    <div class="test-hint">
+        <strong>Simulator mode:</strong> any card ending in an <strong>even digit</strong> (0,2,4,6,8) succeeds.
+        Cards ending in an odd digit are declined. No real charges.
+    </div>
+
+    <form th:action="@{/signup/payment}" method="post">
+        <!-- CSRF hidden input is injected automatically by th:action. -->
+        <input type="hidden" name="signupId" th:value="${signup != null ? signup.id : ''}" />
+        <input type="hidden" name="idempotencyKey" th:value="${idempotencyKey}" />
+
+        <div class="form-group">
+            <label for="cardNumber">Card number</label>
+            <input type="text" id="cardNumber" name="cardNumber" required
+                   placeholder="4242 4242 4242 4242" maxlength="19" autocomplete="cc-number" />
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="expiry">Expiry</label>
+                <input type="text" id="expiry" name="expiry" required placeholder="MM/YY" maxlength="5" />
+            </div>
+            <div class="form-group">
+                <label for="cvv">CVV</label>
+                <input type="text" id="cvv" name="cvv" required placeholder="123" maxlength="4" />
+            </div>
+        </div>
+
+        <button type="submit" class="btn-pay" id="payBtn">
+            <span id="btnText">Pay &amp; activate subscription</span>
+        </button>
+    </form>
+
+    <div class="secure-note">
+        <span>🔐</span> <span>Simulated payment — no real card is charged</span>
+    </div>
+</div>
+
+<script>
+    document.getElementById('cardNumber').addEventListener('input', function() {
+        let v = this.value.replace(/\D/g, '').substring(0, 16);
+        let out = '';
+        for (let i = 0; i < v.length; i++) {
+            if (i > 0 && i % 4 === 0) out += ' ';
+            out += v[i];
+        }
+        this.value = out;
+    });
+    document.getElementById('expiry').addEventListener('input', function() {
+        let v = this.value.replace(/\D/g, '').substring(0, 4);
+        if (v.length >= 2) v = v.substring(0, 2) + '/' + v.substring(2);
+        this.value = v;
+    });
+    document.querySelector('form').addEventListener('submit', function() {
+        const btn = document.getElementById('payBtn');
+        btn.disabled = true;
+        document.getElementById('btnText').textContent = 'Processing…';
+    });
+</script>
+
+</body>
+</html>

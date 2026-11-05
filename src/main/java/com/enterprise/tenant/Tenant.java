@@ -27,7 +27,7 @@ public class Tenant {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-       @Column(name = "reminder_first_days", nullable = false)
+    @Column(name = "reminder_first_days", nullable = false)
     private int reminderFirstDays = 7;
 
     @Column(name = "reminder_second_days", nullable = false)
@@ -38,6 +38,44 @@ public class Tenant {
 
     @Column(name = "reminder_email_from")
     private String reminderEmailFrom;
+
+    @Column(name = "plan_code", length = 50)
+    private String planCode;
+
+    @Column(name = "signup_at")
+    private LocalDateTime signupAt;
+
+    @Column(name = "current_plan_id")
+    private Long currentPlanId;
+
+    @Column(name = "billing_period", length = 20)
+    private String billingPeriod = "MONTHLY";
+
+    @Column(name = "current_period_started_at")
+    private LocalDateTime currentPeriodStartedAt;
+
+    @Column(name = "cancel_at_period_end", nullable = false)
+    private boolean cancelAtPeriodEnd = false;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    // ===== NEW FIELDS REQUIRED BY SubscriptionChargeService / SignupService =====
+    @Column(name = "subscription_status", length = 20)
+    private String subscriptionStatus;
+
+    @Column(name = "subscription_renews_at")
+    private LocalDateTime subscriptionRenewsAt;
+
+    @Column(name = "trial_ends_at")
+    private LocalDateTime trialEndsAt;
+    // ============================================================================
+
+    public String getPlanCode() { return planCode; }
+    public void setPlanCode(String planCode) { this.planCode = planCode; }
+
+    public LocalDateTime getSignupAt() { return signupAt; }
+    public void setSignupAt(LocalDateTime signupAt) { this.signupAt = signupAt; }
 
     public int getReminderFirstDays() { return reminderFirstDays; }
     public void setReminderFirstDays(int reminderFirstDays) { this.reminderFirstDays = reminderFirstDays; }
@@ -69,4 +107,29 @@ public class Tenant {
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Long getCurrentPlanId() { return currentPlanId; }
+    public void setCurrentPlanId(Long currentPlanId) { this.currentPlanId = currentPlanId; }
+
+    public String getBillingPeriod() { return billingPeriod; }
+    public void setBillingPeriod(String billingPeriod) { this.billingPeriod = billingPeriod; }
+
+    public LocalDateTime getCurrentPeriodStartedAt() { return currentPeriodStartedAt; }
+    public void setCurrentPeriodStartedAt(LocalDateTime currentPeriodStartedAt) { this.currentPeriodStartedAt = currentPeriodStartedAt; }
+
+    public boolean isCancelAtPeriodEnd() { return cancelAtPeriodEnd; }
+    public void setCancelAtPeriodEnd(boolean cancelAtPeriodEnd) { this.cancelAtPeriodEnd = cancelAtPeriodEnd; }
+
+    public LocalDateTime getCancelledAt() { return cancelledAt; }
+    public void setCancelledAt(LocalDateTime cancelledAt) { this.cancelledAt = cancelledAt; }
+
+    // ===== NEW GETTERS/SETTERS =====
+    public String getSubscriptionStatus() { return subscriptionStatus; }
+    public void setSubscriptionStatus(String subscriptionStatus) { this.subscriptionStatus = subscriptionStatus; }
+
+    public LocalDateTime getSubscriptionRenewsAt() { return subscriptionRenewsAt; }
+    public void setSubscriptionRenewsAt(LocalDateTime subscriptionRenewsAt) { this.subscriptionRenewsAt = subscriptionRenewsAt; }
+
+    public LocalDateTime getTrialEndsAt() { return trialEndsAt; }
+    public void setTrialEndsAt(LocalDateTime trialEndsAt) { this.trialEndsAt = trialEndsAt; }
 }

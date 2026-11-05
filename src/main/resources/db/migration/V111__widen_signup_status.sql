@@ -1,0 +1,5 @@
+ALTER TABLE signup_request
+    ALTER COLUMN status TYPE VARCHAR(50);
+
+ALTER TABLE signup_request
+    ALTER COLUMN status SET DEFAULT 'PENDING_APPROVAL';

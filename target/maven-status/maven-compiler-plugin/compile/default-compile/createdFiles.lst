@@ -41,6 +41,7 @@ com/enterprise/api/AdminApprovalController.class
 com/enterprise/invoice/SuspicionRule.class
 com/enterprise/reliability/FailureClassificationRuleRepository.class
 com/enterprise/reliability/FailureClassificationRule.class
+com/enterprise/signup/SignupRequest$Status.class
 com/enterprise/invoice/ApprovalRule.class
 com/enterprise/subscription/SubscriptionService.class
 com/enterprise/reminder/ReminderScheduler.class
@@ -56,6 +57,7 @@ com/enterprise/reconciliation/ReconciliationService.class
 com/enterprise/notification/Notification.class
 com/enterprise/identity/PermissionService.class
 com/enterprise/api/AdminReminderController.class
+com/enterprise/signup/SignupRequest.class
 com/enterprise/api/AdminRefundRuleController$1.class
 com/enterprise/invoice/RecurringScheduleRepository.class
 com/enterprise/api/TransactionViewController.class
@@ -96,6 +98,7 @@ com/enterprise/reminder/ReminderService.class
 com/enterprise/security/UnlockExpiredLocksScheduler.class
 com/enterprise/api/RequestSizeFilter.class
 com/enterprise/currency/ExchangeRateService.class
+com/enterprise/api/SubscriptionController.class
 com/enterprise/invoice/PrivateMessageRepository.class
 com/enterprise/audit/AuditDiffService$DiffEntry.class
 com/enterprise/invoice/PrivateMessage.class
@@ -154,6 +157,8 @@ com/enterprise/identity/TestUserInitializer.class
 com/enterprise/api/AdminApiKeyController.class
 com/enterprise/validation/ValidIdempotencyKey.class
 com/enterprise/security/ActiveUserFilter.class
+com/enterprise/api/SignupController$1.class
+com/enterprise/security/EarlySessionSecurityFilter.class
 com/enterprise/api/TestEmailController.class
 com/enterprise/webhook/WebhookConfig.class
 com/enterprise/config/AsyncExecutorConfig.class
@@ -168,6 +173,7 @@ com/enterprise/xero/service/XeroOAuthService.class
 com/enterprise/config/SecurityConfig.class
 com/enterprise/ledger/LedgerService.class
 com/enterprise/database/SequenceSyncService.class
+com/enterprise/signup/SignupService.class
 com/enterprise/api/GlobalExceptionHandler.class
 com/enterprise/job/Job.class
 com/enterprise/api/ExecutiveReportController.class
@@ -203,6 +209,7 @@ com/enterprise/tax/TaxService$TaxCalculation.class
 com/enterprise/apikey/ApiKey.class
 com/enterprise/subscription/PaymentRetry.class
 com/enterprise/subscription/SubscriptionRequest$RequestStatus.class
+com/enterprise/plan/PlatformPlanRepository.class
 com/enterprise/subscription/CustomerSubscription$SubscriptionStatus.class
 com/enterprise/audit/UserActivityLogSpecifications.class
 com/enterprise/config/I18nConfig.class
@@ -220,6 +227,7 @@ com/enterprise/config/OpenApiConfig.class
 com/enterprise/ledger/EntryType.class
 com/enterprise/invoice/InvoiceService.class
 com/enterprise/security/TwoFactorAuthenticationFilter.class
+com/enterprise/api/LandingController.class
 com/enterprise/security/TOTPService.class
 com/enterprise/reminder/ReminderType.class
 com/enterprise/invoice/RecurringSchedule.class
@@ -228,10 +236,13 @@ com/enterprise/security/CustomAuthenticationSuccessHandler.class
 com/enterprise/api/TwoFactorController.class
 com/enterprise/api/NotificationSSEController.class
 com/enterprise/reporting/ExcelExportService.class
+com/enterprise/subscription/SubscriptionEvent.class
 com/enterprise/notification/NotificationService.class
 com/enterprise/notification/RealEmailService.class
+com/enterprise/plan/PlatformPlan.class
 com/enterprise/events/TransactionSettledEvent.class
 com/enterprise/reliability/CircuitBreakerPolicyRepository.class
+com/enterprise/api/AdminSignupController.class
 com/enterprise/reliability/DlqEntry.class
 com/enterprise/invoice/InvoiceMessageService.class
 com/enterprise/config/AppConfig.class
@@ -246,7 +257,6 @@ com/enterprise/security/RateLimitingFilter.class
 com/enterprise/aop/TenantFilterAspect.class
 com/enterprise/api/AdminTenantController.class
 com/enterprise/api/GlobalControllerAdvice.class
-com/enterprise/api/HomeController.class
 com/enterprise/security/PasswordService.class
 com/enterprise/subscription/SubscriptionUsageService.class
 com/enterprise/currency/ExchangeRateRepository.class
@@ -261,6 +271,7 @@ com/enterprise/notification/StubEmailService.class
 com/enterprise/reporting/CustomerStatementService.class
 com/enterprise/reminder/ReminderService$1.class
 com/enterprise/invoice/SuspicionService$SuspicionResult.class
+com/enterprise/signup/SignupService$SignupForm.class
 com/enterprise/api/LocaleController.class
 com/enterprise/tenant/TenantContext.class
 com/enterprise/audit/UserActivityLogService.class
@@ -268,11 +279,13 @@ com/enterprise/invoice/InvoiceMessageRepository.class
 com/enterprise/api/AdminBulkViewController.class
 com/enterprise/reliability/CircuitBreakerStateRepository.class
 com/enterprise/tenant/TenantRepository.class
+com/enterprise/api/SignupController.class
 com/enterprise/api/ExportController.class
 com/enterprise/tax/TaxRule.class
 com/enterprise/api/v1/PaymentErrorCodes.class
 com/enterprise/security/LogoutSuccessHandler.class
 com/enterprise/dispute/DisputeService.class
+com/enterprise/subscription/SubscriptionEventRepository.class
 com/enterprise/security/RateLimitService.class
 com/enterprise/transaction/PaymentResponse.class
 com/enterprise/reporting/GeneratedReportRepository.class
@@ -292,6 +305,7 @@ com/enterprise/notification/EmailLog.class
 com/enterprise/api/MerchantSubscriptionController.class
 com/enterprise/feature/FeatureFlagService.class
 com/enterprise/reliability/DlqScheduler.class
+com/enterprise/signup/SignupService$SignupResult.class
 com/enterprise/ledger/LedgerEntry.class
 com/enterprise/customer/CustomerProfile.class
 com/enterprise/ledger/LedgerRepository.class
@@ -324,11 +338,14 @@ com/enterprise/transaction/TransactionSpecifications.class
 com/enterprise/audit/AuditRepository.class
 com/enterprise/tenant/TenantSeeder.class
 com/enterprise/api/PortalController.class
+com/enterprise/plan/PlatformPlan$1.class
 com/enterprise/simulator/SimulatorToken.class
+com/enterprise/signup/SignupRequestRepository.class
 com/enterprise/subscription/SubscriptionBillingService.class
 com/enterprise/reporting/CustomerReceiptRepository.class
 com/enterprise/config/AsyncConfig.class
 com/enterprise/api/AdminReliabilityPolicyController.class
+com/enterprise/subscription/SubscriptionChargeService.class
 com/enterprise/api/WooCommerceController$WooCommerceResponse.class
 com/enterprise/reconciliation/ReconciliationRecord.class
 com/enterprise/reliability/ReliabilityPolicyService.class

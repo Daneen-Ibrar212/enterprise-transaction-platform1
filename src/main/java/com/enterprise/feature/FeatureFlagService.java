@@ -9,6 +9,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -61,8 +62,13 @@ public class FeatureFlagService {
                 .orElse(false);
     }
 
+    /**
+     * Toggle a flag for the current request's tenant.
+     * REQUIRES_NEW so a failure here can't mark the caller's transaction
+     * as rollback-only.
+     */
     @CacheEvict(value = "featureFlags", key = "#name + '_' + #tenantId")
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void setEnabled(String name, boolean enabled) {
         Long tenantId = TenantContext.getRequiredTenantId();
         FeatureFlag flag = repository.findByNameAndTenantId(name, tenantId)
@@ -77,6 +83,41 @@ public class FeatureFlagService {
             log.info("Suspicion detection enabled for tenant {} – publishing re-evaluation event", tenantId);
             eventPublisher.publishEvent(new SuspicionEnabledEvent());
         }
+    }
+
+    /**
+     * Set a feature flag for an explicit tenant.
+     * Used during signup when no HTTP context / TenantContext is available.
+     *
+     * REQUIRES_NEW: runs in its own transaction so that if the flag doesn't
+     * exist (or any other error occurs), the outer signup transaction is
+     * NOT marked rollback-only.
+     *
+     * Silent no-op if the flag doesn't exist — this is a best-effort
+     * side-effect during signup, not a critical operation.
+     */
+    @CacheEvict(value = "featureFlags", allEntries = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void setEnabledForTenant(String name, boolean enabled, Long tenantId) {
+        if (tenantId == null) {
+            throw new IllegalArgumentException("tenantId is required");
+        }
+
+        repository.findByNameAndTenantId(name, tenantId).ifPresentOrElse(
+            flag -> {
+                flag.setEnabled(enabled);
+                flag.setUpdatedAt(LocalDateTime.now());
+                repository.save(flag);
+                log.info("Feature flag {} set to {} for tenant {}", name, enabled, tenantId);
+
+                if ("SUSPICION_DETECTION".equals(name) && enabled) {
+                    log.info("Suspicion detection enabled for tenant {} – publishing re-evaluation event", tenantId);
+                    eventPublisher.publishEvent(new SuspicionEnabledEvent());
+                }
+            },
+            () -> log.debug("Feature flag {} not found for tenant {} — skipping (best-effort)",
+                    name, tenantId)
+        );
     }
 
     @CacheEvict(value = "featureFlags", key = "#name + '_' + #tenantId")
@@ -97,7 +138,11 @@ public class FeatureFlagService {
         repository.deleteById(id);
     }
 
-    @Transactional
+    /**
+     * Provision default feature flags for a new tenant.
+     * REQUIRES_NEW so signup isn't poisoned by a partial failure.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void provisionDefaultsForTenant(Long tenantId) {
         log.info("🔧 Provisioning default feature flags for tenant {}", tenantId);
 

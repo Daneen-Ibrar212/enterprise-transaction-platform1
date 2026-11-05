@@ -17,12 +17,16 @@ public class SequenceSyncService {
 
     private static final Logger log = LoggerFactory.getLogger(SequenceSyncService.class);
 
-    // ✅ Skip tables that don't have a serial `id` column
+    // ✅ Fast-path skip: tables that don't follow the `id BIGSERIAL` convention.
+    // The defensive check inside syncOneTable() also handles these, but
+    // skipping here saves two DB round-trips per boot.
     private static final Set<String> SKIP_TABLES = Set.of(
-            "flyway_schema_history",   // Uses installed_rank
-            "user_role",               // Composite PK (user_id, role_id)
-            "role_permission",         // Composite PK (role_id, permission_id)
-            "idempotency_key"          // ✅ Uses `key` (String UUID) as PK, not `id`
+            "flyway_schema_history",        // Uses installed_rank
+            "user_role",                    // Composite PK (user_id, role_id)
+            "role_permission",              // Composite PK (role_id, permission_id)
+            "idempotency_key",              // Uses `key` (String UUID) as PK, not `id`
+            "spring_session",               // PK is primary_id (CHAR(36)), no `id`
+            "spring_session_attributes"     // Composite PK (session_primary_id, attribute_name)
     );
 
     @PersistenceContext
@@ -65,6 +69,18 @@ public class SequenceSyncService {
     }
 
     private void syncOneTable(String table) {
+        // ── 1. Does this table even have an `id` column? ──
+        Object hasIdResult = entityManager.createNativeQuery(
+                "SELECT EXISTS (SELECT 1 FROM information_schema.columns " +
+                "WHERE table_schema = 'public' AND table_name = :table AND column_name = 'id')"
+        ).setParameter("table", table).getSingleResult();
+
+        boolean hasId = Boolean.TRUE.equals(hasIdResult);
+        if (!hasId) {
+            return;   // silently skip — no `id` column, nothing to sync
+        }
+
+        // ── 2. Get the sequence name (null if not a SERIAL/IDENTITY column) ──
         Object seqNameResult = entityManager.createNativeQuery(
                 "SELECT pg_get_serial_sequence(:table, 'id')"
         ).setParameter("table", table).getSingleResult();
@@ -75,6 +91,7 @@ public class SequenceSyncService {
 
         String seqName = seqNameResult.toString();
 
+        // ── 3. Sync the sequence to MAX(id) ──
         Object maxIdResult = entityManager.createNativeQuery(
                 "SELECT COALESCE(MAX(id), 0) FROM " + quote(table)
         ).getSingleResult();

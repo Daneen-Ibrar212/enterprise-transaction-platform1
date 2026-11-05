@@ -34,4 +34,12 @@ public class UserActivityLogSpecifications {
             return cb.lessThanOrEqualTo(root.get("createdAt"), endDate);
         };
     }
+
+    // ★ New — used to scope the activity list to a single tenant
+    public static Specification<UserActivityLog> hasTenantId(Long tenantId) {
+        return (root, query, cb) -> {
+            if (tenantId == null) return null;
+            return cb.equal(root.get("tenantId"), tenantId);
+        };
+    }
 }

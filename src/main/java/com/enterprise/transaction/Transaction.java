@@ -50,6 +50,12 @@ public class Transaction {
     @Column(name = "version", nullable = false)
     private Long version = 0L;
 
+        @Column(name = "transaction_type", nullable = false, length = 30)
+    private String transactionType = "INVOICE_PAYMENT";
+
+    @Column(name = "subscription_plan_id")
+    private Long subscriptionPlanId;
+
     // Constructors
     public Transaction() {}
 
@@ -78,7 +84,11 @@ public class Transaction {
         this.status = newStatus;
         this.updatedAt = LocalDateTime.now();
     }
+    public String getTransactionType() { return transactionType; }
+    public void setTransactionType(String transactionType) { this.transactionType = transactionType; }
 
+    public Long getSubscriptionPlanId() { return subscriptionPlanId; }
+    public void setSubscriptionPlanId(Long subscriptionPlanId) { this.subscriptionPlanId = subscriptionPlanId; }
     // Getters and setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

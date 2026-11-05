@@ -5,6 +5,7 @@ import org.hibernate.annotations.Filter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Table(name = "dispute")
@@ -72,7 +73,9 @@ public class Dispute {
     @Column(nullable = false)
     private Long version = 0L;
 
-    // Getters and setters
+    // ============================================================
+    // Getters / setters
+    // ============================================================
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Long getTransactionId() { return transactionId; }
@@ -112,9 +115,38 @@ public class Dispute {
     public Long getVersion() { return version; }
     public void setVersion(Long version) { this.version = version; }
 
-    // Helper
+    // ============================================================
+    // Deadline helpers
+    // ============================================================
+
+    /**
+     * Days until the deadline.
+     * Positive = deadline in the future.
+     * Zero     = deadline is today.
+     * Negative = deadline has passed (use {@link #daysOverdue()} for a positive value).
+     */
     public long daysUntilDeadline() {
         if (respondBy == null || status.isTerminal()) return 0;
-        return java.time.temporal.ChronoUnit.DAYS.between(LocalDateTime.now(), respondBy);
+        return ChronoUnit.DAYS.between(LocalDateTime.now(), respondBy);
+    }
+
+    /** True if the deadline has passed and the dispute is still open. */
+    public boolean isOverdue() {
+        return status.isOpen()
+                && respondBy != null
+                && respondBy.isBefore(LocalDateTime.now());
+    }
+
+    /** Positive day count since the deadline. Returns 0 if not overdue. */
+    public long daysOverdue() {
+        if (!isOverdue()) return 0;
+        return ChronoUnit.DAYS.between(respondBy, LocalDateTime.now());
+    }
+
+    /** True if deadline is in the future and within the 3-day warning window. */
+    public boolean isDeadlineApproaching() {
+        if (!status.isOpen() || respondBy == null) return false;
+        long days = daysUntilDeadline();
+        return days >= 0 && days <= 3;
     }
 }

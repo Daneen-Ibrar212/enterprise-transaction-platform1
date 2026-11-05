@@ -9,10 +9,9 @@ import com.enterprise.notification.NotificationService;
 import com.enterprise.security.TwoFactorOverrideService;
 import com.enterprise.tenant.TenantRepository;
 
-import jakarta.servlet.http.HttpServletRequest;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -62,6 +61,21 @@ public class AdminUserController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
+    /**
+     * Loads a user by id and asserts the current actor is allowed to manage them.
+     * A SUPER_ADMIN can manage anyone; any other admin can only manage users within
+     * their own tenant. Throws AccessDeniedException on violation.
+     */
+    private AppUser loadManageableUser(Long id, AppUser admin) {
+        AppUser user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (!admin.isSuperAdmin() && !user.getTenantId().equals(admin.getTenantId())) {
+            throw new AccessDeniedException(
+                    "You cannot manage users outside your tenant");
+        }
+        return user;
+    }
+
     // ============================================================
     // LIST USERS
     // ============================================================
@@ -74,29 +88,38 @@ public class AdminUserController {
         AppUser admin = getCurrentAdmin(authentication);
         boolean isSuperAdmin = admin.isSuperAdmin();
 
+        boolean hasSearch = search != null && !search.isBlank();
+        boolean hasRole = role != null && !role.isBlank();
+
+        // ★ Tenant-scoped query for non-super-admins. No Java-side filtering.
         List<AppUser> users;
         if (isSuperAdmin) {
-            users = userRepository.findAllWithoutTenantFilter();
+            if (hasSearch && hasRole) {
+                users = userRepository.findByEmailContainingIgnoreCaseAndRoleName(search, role);
+            } else if (hasSearch) {
+                users = userRepository.findByEmailContainingIgnoreCase(search);
+            } else if (hasRole) {
+                users = userRepository.findByRoleName(role);
+            } else {
+                users = userRepository.findAll();
+            }
         } else {
-            users = userRepository.findAll();
-        }
-
-        if (search != null && !search.isEmpty()) {
-            String lowerSearch = search.toLowerCase();
-            users = users.stream()
-                    .filter(u -> u.getEmail().toLowerCase().contains(lowerSearch))
-                    .collect(Collectors.toList());
-        }
-        if (role != null && !role.isEmpty()) {
-            users = users.stream()
-                    .filter(u -> u.getRoles().stream().anyMatch(r -> r.getName().equals(role)))
-                    .collect(Collectors.toList());
+            Long tenantId = admin.getTenantId();
+            if (hasSearch && hasRole) {
+                users = userRepository.findByTenantIdAndEmailContainingIgnoreCaseAndRoleName(tenantId, search, role);
+            } else if (hasSearch) {
+                users = userRepository.findByTenantIdAndEmailContainingIgnoreCase(tenantId, search);
+            } else if (hasRole) {
+                users = userRepository.findByTenantIdAndRoleName(tenantId, role);
+            } else {
+                users = userRepository.findByTenantIdOrderByIdAsc(tenantId);
+            }
         }
 
         for (AppUser user : users) {
             if (user.getTenantId() != null) {
                 tenantRepository.findById(user.getTenantId())
-                        .ifPresent(tenant -> user.setTenantName(tenant.getName()));
+                        .ifPresent(t -> user.setTenantName(t.getName()));
             } else {
                 user.setTenantName("N/A");
             }
@@ -114,11 +137,14 @@ public class AdminUserController {
     // IMPERSONATE
     // ============================================================
     @PostMapping("/{id}/impersonate")
-    public String impersonateUser(@PathVariable Long id, HttpServletRequest request) throws Exception {
-        AppUser user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        String switchUrl = "/admin/users/impersonate?username=" + user.getEmail();
-        return "redirect:" + switchUrl;
+    public String impersonateUser(@PathVariable Long id, Authentication authentication) {
+        AppUser admin = getCurrentAdmin(authentication);
+
+        // Guard: cross-tenant impersonation is only allowed for SUPER_ADMIN
+        AppUser user = loadManageableUser(id, admin);
+
+        // Redirect to the actual impersonation endpoint (which handles context persistence)
+        return "redirect:/admin/users/impersonate?username=" + user.getEmail();
     }
 
     // ============================================================
@@ -132,7 +158,8 @@ public class AdminUserController {
         model.addAttribute("user", new AppUser());
         model.addAttribute("allRoles", roleRepository.findAll());
         model.addAttribute("allTenants", isSuperAdmin ? tenantRepository.findAll() : List.of());
-        model.addAttribute("currentTenant", isSuperAdmin ? null : tenantRepository.findById(admin.getTenantId()).orElse(null));
+        model.addAttribute("currentTenant",
+                isSuperAdmin ? null : tenantRepository.findById(admin.getTenantId()).orElse(null));
         model.addAttribute("isSuperAdmin", isSuperAdmin);
         return "admin/users/create";
     }
@@ -158,8 +185,9 @@ public class AdminUserController {
         user.setPasswordHash(passwordEncoder.encode(password));
         user.setActive(true);
 
+        // Force the tenant unless the actor is a super-admin
         if (isSuperAdmin) {
-            if (tenantId == null) tenantId = 1L;
+            if (tenantId == null) tenantId = admin.getTenantId();
             user.setTenantId(tenantId);
         } else {
             user.setTenantId(admin.getTenantId());
@@ -203,16 +231,12 @@ public class AdminUserController {
         AppUser admin = getCurrentAdmin(authentication);
         boolean isSuperAdmin = admin.isSuperAdmin();
 
-        AppUser user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (!isSuperAdmin && !user.getTenantId().equals(admin.getTenantId())) {
-            throw new RuntimeException("You cannot edit users from other tenants.");
-        }
+        AppUser user = loadManageableUser(id, admin);
 
         model.addAttribute("user", user);
         model.addAttribute("allRoles", roleRepository.findAll());
-        model.addAttribute("userRoleIds", user.getRoles().stream().map(Role::getId).collect(Collectors.toList()));
+        model.addAttribute("userRoleIds",
+                user.getRoles().stream().map(Role::getId).collect(Collectors.toList()));
         model.addAttribute("allTenants", isSuperAdmin ? tenantRepository.findAll() : List.of());
         model.addAttribute("isSuperAdmin", isSuperAdmin);
         return "admin/users/edit";
@@ -229,15 +253,11 @@ public class AdminUserController {
         AppUser admin = getCurrentAdmin(authentication);
         boolean isSuperAdmin = admin.isSuperAdmin();
 
-        AppUser user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (!isSuperAdmin && !user.getTenantId().equals(admin.getTenantId())) {
-            throw new RuntimeException("You cannot edit users from other tenants.");
-        }
+        AppUser user = loadManageableUser(id, admin);
 
         Set<Role> oldRoles = new HashSet<>(user.getRoles());
 
+        // Only super-admins can change the tenant
         if (isSuperAdmin && tenantId != null) {
             user.setTenantId(tenantId);
         }
@@ -289,8 +309,10 @@ public class AdminUserController {
             activityLogService.logActivity(
                     user.getId(),
                     "ROLE_CHANGED",
-                    "Roles changed from " + oldRoles.stream().map(Role::getName).collect(Collectors.joining(", ")) +
-                    " to " + user.getRoles().stream().map(Role::getName).collect(Collectors.joining(", ")),
+                    "Roles changed from " +
+                            oldRoles.stream().map(Role::getName).collect(Collectors.joining(", ")) +
+                            " to " +
+                            user.getRoles().stream().map(Role::getName).collect(Collectors.joining(", ")),
                     null
             );
         }
@@ -308,13 +330,13 @@ public class AdminUserController {
                                  Authentication authentication,
                                  RedirectAttributes redirectAttributes) {
         AppUser admin = getCurrentAdmin(authentication);
-        boolean isSuperAdmin = admin.isSuperAdmin();
 
-        AppUser user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (!isSuperAdmin && !user.getTenantId().equals(admin.getTenantId())) {
-            redirectAttributes.addFlashAttribute("error", "You cannot revoke users from other tenants.");
+        AppUser user;
+        try {
+            user = loadManageableUser(userId, admin);
+        } catch (AccessDeniedException e) {
+            redirectAttributes.addFlashAttribute("error",
+                    "You cannot revoke users from other tenants.");
             return "redirect:/admin/users";
         }
 
@@ -349,22 +371,29 @@ public class AdminUserController {
         AppUser admin = getCurrentAdmin(authentication);
         boolean isSuperAdmin = admin.isSuperAdmin();
 
+        boolean hasSearch = search != null && !search.isBlank();
+
+        // Tenant-scoped: super-admins see all inactive users, others only their tenant's
         List<AppUser> inactiveUsers;
         if (isSuperAdmin) {
-            inactiveUsers = userRepository.findAllWithoutTenantFilter().stream()
+            inactiveUsers = userRepository.findAll().stream()
                     .filter(u -> !u.isActive())
                     .collect(Collectors.toList());
         } else {
-            inactiveUsers = userRepository.findAll().stream()
-                    .filter(u -> !u.isActive() && u.getTenantId().equals(admin.getTenantId()))
+            inactiveUsers = userRepository.findByTenantIdOrderByIdAsc(admin.getTenantId())
+                    .stream()
+                    .filter(u -> !u.isActive())
                     .collect(Collectors.toList());
         }
 
-        if (search != null && !search.isEmpty()) {
+        if (hasSearch) {
+            String lower = search.toLowerCase();
             inactiveUsers = inactiveUsers.stream()
-                    .filter(u -> u.getEmail().toLowerCase().contains(search.toLowerCase()))
+                    .filter(u -> u.getEmail() != null
+                            && u.getEmail().toLowerCase().contains(lower))
                     .collect(Collectors.toList());
         }
+
         model.addAttribute("users", inactiveUsers);
         model.addAttribute("search", search);
         model.addAttribute("isSuperAdmin", isSuperAdmin);
@@ -376,14 +405,8 @@ public class AdminUserController {
                               @RequestParam(required = false) String search,
                               Authentication authentication) {
         AppUser admin = getCurrentAdmin(authentication);
-        boolean isSuperAdmin = admin.isSuperAdmin();
 
-        AppUser user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (!isSuperAdmin && !user.getTenantId().equals(admin.getTenantId())) {
-            throw new RuntimeException("You cannot restore users from other tenants.");
-        }
+        AppUser user = loadManageableUser(id, admin);
 
         user.setActive(true);
         userRepository.save(user);
@@ -418,11 +441,14 @@ public class AdminUserController {
             AppUser admin = getCurrentAdmin(authentication);
             twoFactorOverrideService.disableTwoFactorForUser(id, admin.getId(), reason, hoursValid);
             redirectAttributes.addFlashAttribute("success",
-                "✅ 2FA temporarily disabled. " +
-                (hoursValid != null ? "Override expires in " + hoursValid + " hours." : "Override is indefinite."));
+                    "✅ 2FA temporarily disabled. " +
+                    (hoursValid != null
+                        ? "Override expires in " + hoursValid + " hours."
+                        : "Override is indefinite."));
         } catch (Exception e) {
             log.error("Error disabling 2FA for user {}", id, e);
-            redirectAttributes.addFlashAttribute("error", "Failed to disable 2FA: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Failed to disable 2FA: " + e.getMessage());
         }
         return "redirect:/admin/users";
     }
@@ -438,7 +464,8 @@ public class AdminUserController {
             redirectAttributes.addFlashAttribute("success", "✅ 2FA re-enabled for user.");
         } catch (Exception e) {
             log.error("Error re-enabling 2FA for user {}", id, e);
-            redirectAttributes.addFlashAttribute("error", "Failed to re-enable 2FA: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Failed to re-enable 2FA: " + e.getMessage());
         }
         return "redirect:/admin/users";
     }

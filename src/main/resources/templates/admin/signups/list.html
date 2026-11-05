@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signup Review Queue · PayFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.011em;
+            -webkit-font-smoothing: antialiased;
+        }
+        body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
+        .container { max-width: 1300px; margin: 0 auto; }
+
+        .page-header {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 12px 32px rgba(11,26,51,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::after {
+            content: ''; position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+        }
+        .page-header-top {
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 12px;
+            position: relative; z-index: 1;
+        }
+        .page-header h1 {
+            font-size: 1.5rem; font-weight: 500;
+            letter-spacing: -0.02em;
+            color: white;
+            display: flex; align-items: center; gap: 10px;
+            margin-top: 12px;
+        }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 0.8125rem; font-weight: 400;
+            padding: 6px 14px; border-radius: 9999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.15s ease;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        .tabs {
+            display: flex; gap: 6px; margin-bottom: 20px;
+            flex-wrap: wrap;
+            background: white;
+            padding: 6px;
+            border-radius: 14px;
+            border: 1px solid rgba(226,232,240,0.6);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .tabs a {
+            padding: 10px 18px;
+            text-decoration: none;
+            color: #475569;
+            font-size: 0.875rem; font-weight: 400;
+            border-radius: 10px;
+            transition: all 0.15s ease;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .tabs a:hover { background: #f1f5f9; color: #0f172a; }
+        .tabs a.active {
+            background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(11,26,51,0.2);
+        }
+
+        .flash {
+            padding: 14px 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .flash-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 8px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
+            overflow: hidden;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.7rem; font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .data-table td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover td { background: #fafbfc; }
+        .data-table td.mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem; font-weight: 500;
+            color: #0f172a;
+        }
+        .data-table td.email-cell { font-weight: 400; color: #0f172a; }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.65rem; font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-reviewed { background: #d1fae5; color: #065f46; }
+        .badge-rejected { background: #fee2e2; color: #991b1b; }
+
+        .plan-chip {
+            display: inline-block;
+            padding: 3px 10px;
+            background: #eff6ff;
+            color: #1e40af;
+            border-radius: 6px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.7rem; font-weight: 500;
+            letter-spacing: 0.02em;
+        }
+        .role-chip {
+            display: inline-block;
+            padding: 3px 10px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.7rem; font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.75rem; font-weight: 400;
+            font-family: inherit;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+        .btn-review {
+            background: #10b981;
+            color: white;
+            box-shadow: 0 4px 12px rgba(16,185,129,0.2);
+        }
+        .btn-review:hover { background: #059669; transform: translateY(-1px); }
+        .btn-reject {
+            background: #f1f5f9;
+            color: #dc2626;
+        }
+        .btn-reject:hover { background: #fee2e2; }
+        .btn-view {
+            background: #3b82f6;
+            color: white;
+            box-shadow: 0 4px 12px rgba(59,130,246,0.2);
+        }
+        .btn-view:hover { background: #2563eb; transform: translateY(-1px); }
+
+        .action-cell { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+        /* ====== MODAL ====== */
+        .modal-overlay {
+            display: none;
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(11,26,51,0.55);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            justify-content: center; align-items: center;
+            padding: 24px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 20px;
+            padding: 32px 36px;
+            max-width: 520px;
+            width: 100%;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+        }
+        .modal h3 {
+            margin: 0 0 12px 0;
+            color: #0f172a;
+            font-weight: 500;
+            font-size: 1.25rem;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .modal .modal-sub {
+            color: #64748b; font-size: 0.875rem;
+            line-height: 1.5; margin-bottom: 20px;
+        }
+        .modal .modal-sub strong { color: #0f172a; font-weight: 500; }
+        .modal .field-group { margin-bottom: 16px; }
+        .modal .field-group label {
+            display: block;
+            font-size: 0.7rem; font-weight: 500;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .modal .field-group input,
+        .modal .field-group textarea {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            font-weight: 300;
+            color: #0f172a;
+        }
+        .modal .field-group textarea { min-height: 80px; resize: vertical; }
+        .modal .field-group input:focus,
+        .modal .field-group textarea:focus {
+            outline: none;
+            border-color: #2d6bb8;
+            box-shadow: 0 0 0 3px rgba(45,107,184,0.12);
+        }
+        .modal-actions {
+            display: flex; gap: 10px; justify-content: flex-end;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #f1f5f9;
+        }
+        .modal-actions button {
+            padding: 10px 20px; border-radius: 10px;
+            border: none; cursor: pointer;
+            font-family: inherit; font-size: 0.8125rem;
+            font-weight: 400;
+        }
+        .btn-cancel {
+            background: white; color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-cancel:hover { background: #f8fafc; }
+        .btn-confirm-reject {
+            background: #ef4444; color: white;
+            box-shadow: 0 4px 12px rgba(239,68,68,0.2);
+        }
+        .btn-confirm-reject:hover { background: #dc2626; }
+
+        @media (max-width: 900px) {
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { white-space: nowrap; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- ====== HEADER ====== -->
+    <div class="page-header">
+        <div class="page-header-top">
+            <a href="/admin" class="back-link">← Back to Admin</a>
+        </div>
+        <h1><span style="font-size:1.5rem;">📬</span> Signup Review Queue</h1>
+    </div>
+
+    <!-- ====== FLASH ====== -->
+    <div th:if="${success}" class="flash flash-success">
+        <span style="font-size:1.125rem;">✅</span>
+        <span th:text="${success}">Success</span>
+    </div>
+    <div th:if="${error}" class="flash flash-error">
+        <span style="font-size:1.125rem;">❌</span>
+        <span th:text="${error}">Error</span>
+    </div>
+
+    <!-- ====== TABS ====== -->
+    <div class="tabs">
+        <a th:href="@{/admin/signups(filter='pending')}"
+           th:classappend="${filter == 'pending'} ? ' active' : ''">
+            ⏳ Pending Review
+        </a>
+        <a th:href="@{/admin/signups(filter='all')}"
+           th:classappend="${filter == 'all'} ? ' active' : ''">
+            📋 All Signups
+        </a>
+    </div>
+
+    <!-- ====== TABLE ====== -->
+    <div class="card">
+        <table class="data-table" th:unless="${signups.empty}">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Company</th>
+                    <th>Plan</th>
+                    <th>Role</th>
+                    <th>Country</th>
+                    <th>Signed up</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="s : ${signups}">
+                    <td class="mono" th:text="${s.id}">1</td>
+                    <td th:text="${s.fullName}">Jane Smith</td>
+                    <td class="email-cell" th:text="${s.email}">jane@acme.com</td>
+                    <td th:text="${s.companyName != null ? s.companyName : '—'}">Acme Ltd</td>
+                    <td>
+                        <span class="plan-chip" th:text="${s.planCode}">STARTER</span>
+                    </td>
+                    <td>
+                        <span class="role-chip" th:text="${s.roleIntent}">MERCHANT</span>
+                    </td>
+                    <td th:text="${s.countryCode != null ? s.countryCode : '—'}">GB</td>
+                    <td th:text="${#temporals.format(s.createdAt, 'dd MMM yyyy · HH:mm')}">01 Jan 2026 · 12:00</td>
+
+                    <!-- ====== STATUS ====== -->
+                    <td>
+                        <span th:switch="${s.status.name()}">
+                            <span th:case="'PENDING_APPROVAL'"          class="badge badge-pending">Pending approval</span>
+                            <span th:case="'APPROVED'"                  class="badge badge-reviewed">Approved</span>
+                            <span th:case="'APPROVED_AWAITING_PAYMENT'" class="badge badge-reviewed">Awaiting payment</span>
+                            <span th:case="'PAID'"                      class="badge badge-reviewed">Paid</span>
+                            <span th:case="'REJECTED'"                  class="badge badge-rejected">Rejected</span>
+                            <span th:case="*"                           class="badge"
+                                  th:text="${s.status.name()}">UNKNOWN</span>
+                        </span>
+                    </td>
+
+                    <!-- ====== ACTIONS ====== -->
+                    <td>
+                        <div class="action-cell">
+
+                       <form th:if="${s.status.name() == 'PENDING_APPROVAL'}"
+      th:action="@{/admin/signups/{id}/approve(id=${s.id})}"
+      method="post" style="display:inline;">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+    <input type="hidden" name="notes" value="Reviewed by admin" />
+    <button type="submit" class="btn btn-review"
+            th:onclick="|return confirm('Approve signup #${s.id}?');|">
+        ✅ Mark approved
+    </button>
+</form>
+
+                            <button type="button"
+                                    class="btn btn-reject"
+                                    th:if="${s.status.name() == 'PENDING_APPROVAL'}"
+                                    th:attr="data-id=${s.id}, data-email=${s.email}"
+                                    onclick="openRejectModal(this)">
+                                🚫 Reject
+                            </button>
+
+                            <!-- APPROVED_AWAITING_PAYMENT → Reject only -->
+                            <button type="button"
+                                    class="btn btn-reject"
+                                    th:if="${s.status.name() == 'APPROVED_AWAITING_PAYMENT'}"
+                                    th:attr="data-id=${s.id}, data-email=${s.email}"
+                                    onclick="openRejectModal(this)">
+                                🚫 Reject
+                            </button>
+
+                            <!-- Terminal states → show timestamp, no action -->
+                            <span th:if="${s.status.name() != 'PENDING_APPROVAL'
+                                        and s.status.name() != 'APPROVED_AWAITING_PAYMENT'}"
+                                  style="color:#cbd5e1; font-size:0.75rem;">
+                                <span th:if="${s.reviewedAt != null}"
+                                      th:text="'Reviewed ' + ${#temporals.format(s.reviewedAt, 'dd MMM')}">Reviewed</span>
+                            </span>
+
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div th:if="${signups.empty}" class="empty">
+            <span class="emoji">🎉</span>
+            <p>No signups to review — everything is caught up!</p>
+        </div>
+    </div>
+
+</div>
+
+<!-- ====== REJECT MODAL ====== -->
+<div id="rejectModal" class="modal-overlay">
+    <div class="modal">
+        <h3>🚫 Reject Signup</h3>
+        <p class="modal-sub">
+            This will <strong>deactivate</strong> the user and tenant immediately.
+            The user will be unable to sign in. Use this for spam, suspicious, or
+            fraudulent signups.
+        </p>
+
+        <form id="rejectForm" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+
+            <div class="field-group">
+                <label for="rejectEmailDisplay">Signup</label>
+                <input type="text" id="rejectEmailDisplay" disabled
+                       style="background:#f8fafc; color:#64748b;" />
+            </div>
+
+            <div class="field-group">
+                <label for="rejectReason">Reason <span style="color:#ef4444;">*</span></label>
+                <textarea id="rejectReason" name="reason" required
+                          placeholder="e.g. Suspicious company details, duplicate account, spam"></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" onclick="closeRejectModal()">Cancel</button>
+                <button type="submit" class="btn-confirm-reject">🚫 Reject and deactivate</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openRejectModal(btn) {
+        var id = btn.getAttribute('data-id');
+        var email = btn.getAttribute('data-email');
+        document.getElementById('rejectEmailDisplay').value = email + ' (#' + id + ')';
+        document.getElementById('rejectForm').action = '/admin/signups/' + id + '/reject';
+        document.getElementById('rejectModal').classList.add('show');
+    }
+    function closeRejectModal() {
+        document.getElementById('rejectModal').classList.remove('show');
+    }
+    document.getElementById('rejectModal').addEventListener('click', function(e) {
+        if (e.target === this) closeRejectModal();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeRejectModal();
+    });
+</script>
+
+</body>
+</html>

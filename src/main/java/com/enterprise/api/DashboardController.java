@@ -110,7 +110,7 @@ public class DashboardController {
                 : "User";
         model.addAttribute("roleBadge", roleBadge);
 
-        // ===== COMMON STATS (tenant‑aware) =====
+        // ===== COMMON STATS (tenant-aware) =====
         long totalTransactions = transactionRepository.countByTenantId(tenantId);
         long totalAuditEvents = auditRepository.countByTenantId(tenantId);
         long pendingDlq = dlqEntryRepository.countByTenantIdAndStatus(tenantId, "PENDING");
@@ -128,11 +128,9 @@ public class DashboardController {
         model.addAttribute("unreadCount", unreadCount);
         model.addAttribute("notifications", recentNotifications);
 
-        // ===== SUSPICIOUS INVOICES (Super Admin + Merchant Admin only) =====
+        // ===== SUSPICIOUS INVOICES (Super Admin + Merchant Admin only) — TENANT-AWARE =====
         if (isSuperAdmin || isMerchantAdmin) {
-            long suspiciousCount = invoiceService.findAll().stream()
-                    .filter(inv -> inv.getRiskLevel() != null && !"GREEN".equals(inv.getRiskLevel()))
-                    .count();
+            long suspiciousCount = invoiceRepository.countSuspiciousByTenantId(tenantId);
             model.addAttribute("suspiciousCount", suspiciousCount);
         }
 
@@ -154,17 +152,20 @@ public class DashboardController {
             }
         }
 
-        // ===== MERCHANT & MERCHANT_ADMIN SPECIFIC DATA =====
+        // ===== MERCHANT & MERCHANT_ADMIN SPECIFIC DATA — TENANT-AWARE =====
         if (isMerchant || isMerchantAdmin) {
-            List<Invoice> recentInvoices = invoiceRepository.findByMerchantIdOrderByCreatedAtDesc(userId)
+            List<Invoice> recentInvoices = invoiceRepository
+                    .findByMerchantIdAndTenantIdOrderByCreatedAtDesc(userId, tenantId)
                     .stream().limit(5).collect(Collectors.toList());
             model.addAttribute("recentInvoices", recentInvoices);
 
-            List<Transaction> recentTransactions = transactionRepository.findByMerchantIdOrderByCreatedAtDesc(userId)
+            List<Transaction> recentTransactions = transactionRepository
+                    .findByMerchantIdOrderByCreatedAtDesc(userId)
                     .stream().limit(5).collect(Collectors.toList());
             model.addAttribute("recentTransactions", recentTransactions);
 
-            List<Invoice> recentInvoicesForEmails = invoiceRepository.findByMerchantIdOrderByCreatedAtDesc(userId)
+            List<Invoice> recentInvoicesForEmails = invoiceRepository
+                    .findByMerchantIdAndTenantIdOrderByCreatedAtDesc(userId, tenantId)
                     .stream().limit(20).collect(Collectors.toList());
             List<String> recentEmails = recentInvoicesForEmails.stream()
                     .map(Invoice::getCustomerEmail)
@@ -173,17 +174,20 @@ public class DashboardController {
                     .collect(Collectors.toList());
             model.addAttribute("recentEmails", recentEmails);
 
-            long pendingApprovalCount = invoiceRepository.findByMerchantIdAndStatus(userId, "PENDING_APPROVAL").size();
+            long pendingApprovalCount = invoiceRepository
+                    .countByMerchantIdAndTenantIdAndStatus(userId, tenantId, "PENDING_APPROVAL");
             model.addAttribute("pendingApprovalCount", pendingApprovalCount);
         }
 
-        // ===== CUSTOMER SPECIFIC DATA =====
+        // ===== CUSTOMER SPECIFIC DATA — TENANT-AWARE =====
         if (isCustomer) {
-            List<Invoice> recentInvoices = invoiceRepository.findByCustomerEmailOrderByCreatedAtDesc(user.getEmail())
+            List<Invoice> recentInvoices = invoiceRepository
+                    .findByCustomerEmailAndTenantIdOrderByCreatedAtDesc(user.getEmail(), tenantId)
                     .stream().limit(5).collect(Collectors.toList());
             model.addAttribute("recentInvoices", recentInvoices);
 
-            List<Transaction> recentTransactions = transactionRepository.findByCustomerIdOrderByCreatedAtDesc(userId)
+            List<Transaction> recentTransactions = transactionRepository
+                    .findByCustomerIdOrderByCreatedAtDesc(userId)
                     .stream().limit(5).collect(Collectors.toList());
             model.addAttribute("recentTransactions", recentTransactions);
         }
@@ -192,10 +196,11 @@ public class DashboardController {
         // MULTI-CURRENCY DASHBOARD
         // ============================================================
         Tenant tenant = tenantRepository.findById(tenantId).orElse(null);
-        String baseCurrency = (tenant != null && tenant.getBaseCurrency() != null) ? tenant.getBaseCurrency() : "GBP";
+        String baseCurrency = (tenant != null && tenant.getBaseCurrency() != null)
+                ? tenant.getBaseCurrency() : "GBP";
         model.addAttribute("baseCurrency", baseCurrency);
 
-        // ✅ Fetch tenant transactions ONCE (fixes N+1 query)
+        // Fetch tenant transactions ONCE (single query, no N+1)
         List<Transaction> tenantTransactions = transactionRepository.findAllByTenantId(tenantId);
 
         BigDecimal totalVolume = tenantTransactions.stream()
@@ -204,14 +209,13 @@ public class DashboardController {
         model.addAttribute("totalVolume", totalVolume);
 
         // ============================================================
-        // ✅ 7-DAY OVERVIEW CHARTS (TENANT-AWARE, ZERO-FILLED)
+        // 7-DAY OVERVIEW CHARTS (TENANT-AWARE, ZERO-FILLED)
         // ============================================================
         LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusDays(6); // 7 days inclusive
+        LocalDate startDate = endDate.minusDays(6);
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-        // ✅ Build 7-day window with zeros (ensures every day is present)
         Map<LocalDate, BigDecimal> dailyVolumeMap = new LinkedHashMap<>();
         LocalDate cursor = startDate;
         while (!cursor.isAfter(endDate)) {
@@ -219,7 +223,6 @@ public class DashboardController {
             cursor = cursor.plusDays(1);
         }
 
-        // ✅ Fill in real values from tenant transactions
         for (Transaction tx : tenantTransactions) {
             LocalDate txDate = tx.getCreatedAt().toLocalDate();
             if (txDate.isBefore(startDate) || txDate.isAfter(endDate)) continue;
@@ -235,7 +238,7 @@ public class DashboardController {
             volumeData.add(entry.getValue());
         }
 
-        // ✅ Status distribution — tenant-aware
+        // Status distribution — tenant-aware
         Map<String, Long> statusDist = tenantTransactions.stream()
                 .filter(tx -> {
                     LocalDate txDate = tx.getCreatedAt().toLocalDate();
@@ -286,9 +289,11 @@ public class DashboardController {
                     false,
                     currency
             );
-            redirectAttributes.addFlashAttribute("success", "Invoice #" + invoice.getId() + " created successfully!");
+            redirectAttributes.addFlashAttribute("success",
+                    "Invoice #" + invoice.getId() + " created successfully!");
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "Failed to create invoice: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error",
+                    "Failed to create invoice: " + e.getMessage());
         }
 
         return "redirect:/dashboard";

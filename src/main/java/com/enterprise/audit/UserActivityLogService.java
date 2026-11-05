@@ -60,10 +60,24 @@ public class UserActivityLogService {
         return repository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
     }
 
-    public Page<UserActivityLog> search(Long userId, String action, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
-        log.info("Searching activity logs: userId={}, action={}, start={}, end={}", userId, action, startDate, endDate);
+    /**
+     * Search activity logs with optional filters.
+     *
+     * Tenant scoping rules:
+     *   - SUPER_ADMIN     → no tenant filter; sees every tenant's logs
+     *   - MERCHANT_ADMIN  → automatically scoped to their own tenant
+     *
+     * All optional filters (userId, action, startDate, endDate) apply in both cases.
+     */
+    public Page<UserActivityLog> search(Long userId,
+                                        String action,
+                                        LocalDateTime startDate,
+                                        LocalDateTime endDate,
+                                        Pageable pageable) {
 
-        // 👇 Get current user to check if they are Super Admin
+        log.info("Searching activity logs: userId={}, action={}, start={}, end={}",
+                userId, action, startDate, endDate);
+
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         AppUser currentUser = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -71,31 +85,31 @@ public class UserActivityLogService {
         boolean isSuperAdmin = currentUser.getRoles().stream()
                 .anyMatch(r -> r.getName().equals("SUPER_ADMIN"));
 
-        if (isSuperAdmin) {
-            // Super Admin sees ALL logs (no tenant filter)
-            Specification<UserActivityLog> spec = Specification.where(null);
-            if (userId != null) {
-                spec = spec.and(UserActivityLogSpecifications.hasUserId(userId));
-            }
-            if (action != null && !action.isEmpty()) {
-                spec = spec.and(UserActivityLogSpecifications.hasAction(action));
-            }
-            if (startDate != null) {
-                spec = spec.and(UserActivityLogSpecifications.createdAtAfter(startDate));
-            }
-            if (endDate != null) {
-                spec = spec.and(UserActivityLogSpecifications.createdAtBefore(endDate));
-            }
-            Page<UserActivityLog> result = repository.findAll(spec, pageable);
-            log.info("Found {} logs (total pages {})", result.getTotalElements(), result.getTotalPages());
-            return result;
-        } else {
-            // Merchant Admin – only their own tenant
-            Long tenantId = TenantContext.getRequiredTenantId();
-            Page<UserActivityLog> result = repository.findAllByTenantId(tenantId, pageable);
-            log.info("Found {} logs (total pages {})", result.getTotalElements(), result.getTotalPages());
-            return result;
+        // Common filters (applied for everyone)
+        Specification<UserActivityLog> spec = Specification.where(null);
+        if (userId != null) {
+            spec = spec.and(UserActivityLogSpecifications.hasUserId(userId));
         }
+        if (action != null && !action.isEmpty()) {
+            spec = spec.and(UserActivityLogSpecifications.hasAction(action));
+        }
+        if (startDate != null) {
+            spec = spec.and(UserActivityLogSpecifications.createdAtAfter(startDate));
+        }
+        if (endDate != null) {
+            spec = spec.and(UserActivityLogSpecifications.createdAtBefore(endDate));
+        }
+
+        // Tenant scope — skipped for super-admins only
+        if (!isSuperAdmin) {
+            Long tenantId = TenantContext.getRequiredTenantId();
+            spec = spec.and(UserActivityLogSpecifications.hasTenantId(tenantId));
+        }
+
+        Page<UserActivityLog> result = repository.findAll(spec, pageable);
+        log.info("Found {} logs (total pages {})",
+                result.getTotalElements(), result.getTotalPages());
+        return result;
     }
 
     public List<String> getDistinctActions() {

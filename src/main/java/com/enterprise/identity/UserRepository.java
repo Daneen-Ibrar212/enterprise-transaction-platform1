@@ -14,29 +14,27 @@ public interface UserRepository extends JpaRepository<AppUser, Long> {
 
     Optional<AppUser> findByEmail(String email);
 
-    // ✅ Case‑insensitive (respects tenant filter)
     @Query("SELECT u FROM AppUser u WHERE LOWER(u.email) = LOWER(:email)")
     Optional<AppUser> findByEmailIgnoreCase(@Param("email") String email);
 
-    // ✅ Bypass tenant filter for impersonation (native query)
     @Query(value = "SELECT * FROM app_user WHERE LOWER(email) = LOWER(:email)", nativeQuery = true)
     Optional<AppUser> findByEmailIgnoreCaseGlobal(@Param("email") String email);
 
     List<AppUser> findByRolesName(String roleName);
 
-    // ✅ ADD THIS METHOD - Find users by tenant ID and role name
     @Query("SELECT u FROM AppUser u JOIN u.roles r WHERE u.tenantId = :tenantId AND r.name = :roleName")
     List<AppUser> findByTenantIdAndRoleName(@Param("tenantId") Long tenantId, @Param("roleName") String roleName);
 
-    // ✅ ADD THIS METHOD - Find users by tenant ID only
     List<AppUser> findByTenantId(Long tenantId);
+
+    // Used by the admin user list to scope to the current tenant
+    List<AppUser> findByTenantIdOrderByIdAsc(Long tenantId);
 
     @Query(value = "SELECT * FROM app_user", nativeQuery = true)
     List<AppUser> findAllWithoutTenantFilter();
 
     Optional<AppUser> findByEmailAndSuperAdminTrue(String email);
 
-    // ----- LOGIN LOCK METHODS -----
     List<AppUser> findByAccountLockedTrueAndLockExpiryBefore(LocalDateTime now);
 
     @Modifying
@@ -48,4 +46,51 @@ public interface UserRepository extends JpaRepository<AppUser, Long> {
     @Transactional
     @Query("UPDATE AppUser u SET u.failedLoginAttempts = :count WHERE u.id = :userId")
     void updateFailedAttempts(@Param("userId") Long userId, @Param("count") int count);
+
+    // ============================================================
+    // Tenant-scoped + filter combinations used by AdminUserController
+    // ============================================================
+
+    @Query("""
+        SELECT u FROM AppUser u
+         WHERE LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%'))
+         ORDER BY u.id
+    """)
+    List<AppUser> findByEmailContainingIgnoreCase(@Param("search") String search);
+
+    @Query("""
+        SELECT u FROM AppUser u JOIN u.roles r
+         WHERE r.name = :roleName
+         ORDER BY u.id
+    """)
+    List<AppUser> findByRoleName(@Param("roleName") String roleName);
+
+    @Query("""
+        SELECT DISTINCT u FROM AppUser u JOIN u.roles r
+         WHERE LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%'))
+           AND r.name = :roleName
+         ORDER BY u.id
+    """)
+    List<AppUser> findByEmailContainingIgnoreCaseAndRoleName(@Param("search") String search,
+                                                             @Param("roleName") String roleName);
+
+    @Query("""
+        SELECT u FROM AppUser u
+         WHERE u.tenantId = :tenantId
+           AND LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%'))
+         ORDER BY u.id
+    """)
+    List<AppUser> findByTenantIdAndEmailContainingIgnoreCase(@Param("tenantId") Long tenantId,
+                                                             @Param("search") String search);
+
+    @Query("""
+        SELECT DISTINCT u FROM AppUser u JOIN u.roles r
+         WHERE u.tenantId = :tenantId
+           AND LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%'))
+           AND r.name = :roleName
+         ORDER BY u.id
+    """)
+    List<AppUser> findByTenantIdAndEmailContainingIgnoreCaseAndRoleName(@Param("tenantId") Long tenantId,
+                                                                        @Param("search") String search,
+                                                                        @Param("roleName") String roleName);
 }

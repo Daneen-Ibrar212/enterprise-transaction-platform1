@@ -1,7 +1,9 @@
 package com.enterprise.api;
 
 import com.enterprise.audit.AuditRepository;
-import com.enterprise.invoice.InvoiceService;
+import com.enterprise.identity.AppUser;
+import com.enterprise.identity.UserRepository;
+import com.enterprise.invoice.InvoiceRepository;
 import com.enterprise.reconciliation.ReconciliationRecordRepository;
 import com.enterprise.reliability.DlqEntryRepository;
 import com.enterprise.transaction.TransactionRepository;
@@ -21,51 +23,57 @@ public class AdminRootController {
     private final AuditRepository auditRepository;
     private final DlqEntryRepository dlqEntryRepository;
     private final ReconciliationRecordRepository reconciliationRecordRepository;
-    private final InvoiceService invoiceService;
+    private final InvoiceRepository invoiceRepository;
+    private final UserRepository userRepository;
 
     public AdminRootController(TransactionRepository transactionRepository,
                                AuditRepository auditRepository,
                                DlqEntryRepository dlqEntryRepository,
                                ReconciliationRecordRepository reconciliationRecordRepository,
-                               InvoiceService invoiceService) {
+                               InvoiceRepository invoiceRepository,
+                               UserRepository userRepository) {
         this.transactionRepository = transactionRepository;
         this.auditRepository = auditRepository;
         this.dlqEntryRepository = dlqEntryRepository;
         this.reconciliationRecordRepository = reconciliationRecordRepository;
-        this.invoiceService = invoiceService;
+        this.invoiceRepository = invoiceRepository;
+        this.userRepository = userRepository;
     }
 
     @GetMapping
     public String adminRoot(Model model, Authentication authentication) {
-        // Common stats
-        long totalTransactions = transactionRepository.count();
-        long totalAuditEvents = auditRepository.count();
-        long pendingDlq = dlqEntryRepository.countByStatus("PENDING");
-        long reconciled = reconciliationRecordRepository.count();
+        // ===== Resolve current tenant =====
+        AppUser user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new IllegalStateException("Authenticated user not found"));
+        Long tenantId = user.getTenantId();
 
-        model.addAttribute("totalTransactions", totalTransactions);
-        model.addAttribute("totalAuditEvents", totalAuditEvents);
-        model.addAttribute("pendingDlq", pendingDlq);
-        model.addAttribute("reconciled", reconciled);
-
-        // Suspicious invoices
         boolean isSuperAdmin = authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_SUPER_ADMIN"));
         boolean isMerchantAdmin = authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_MERCHANT_ADMIN"));
 
+        // ===== Tenant-scoped stats =====
+        long totalTransactions = transactionRepository.countByTenantId(tenantId);
+        long totalAuditEvents  = auditRepository.countByTenantId(tenantId);
+        long pendingDlq        = dlqEntryRepository.countByTenantIdAndStatus(tenantId, "PENDING");
+        long reconciled        = reconciliationRecordRepository.countByTenantId(tenantId);
+
+        model.addAttribute("totalTransactions", totalTransactions);
+        model.addAttribute("totalAuditEvents",  totalAuditEvents);
+        model.addAttribute("pendingDlq",        pendingDlq);
+        model.addAttribute("reconciled",        reconciled);
+
+        // ===== Tenant-scoped suspicious invoices =====
         if (isSuperAdmin || isMerchantAdmin) {
-            long suspiciousCount = invoiceService.findAll().stream()
-                    .filter(inv -> inv.getRiskLevel() != null && !"GREEN".equals(inv.getRiskLevel()))
-                    .count();
-            model.addAttribute("suspiciousCount", suspiciousCount);
+            model.addAttribute("suspiciousCount",
+                    invoiceRepository.countSuspiciousByTenantId(tenantId));
         }
 
         model.addAttribute("isSuperAdmin", isSuperAdmin);
         model.addAttribute("isMerchantAdmin", isMerchantAdmin);
         model.addAttribute("roleBadge", isSuperAdmin ? "Super Admin" : "Merchant Admin");
-
-         model.addAttribute("viewType", "admin");
+        model.addAttribute("viewType", "admin");
+        model.addAttribute("tenantId", tenantId);
 
         return "admin/dashboard";
     }

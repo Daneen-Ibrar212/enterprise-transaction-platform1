@@ -80,6 +80,20 @@
             font-weight: 500;
             font-size: 0.8125rem;
         }
+        .tenant-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 18px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 9999px;
+            color: white;
+            font-weight: 400;
+            font-size: 0.8125rem;
+        }
+        .tenant-badge strong { font-weight: 500; color: #93c5fd; }
         .switch-btn {
             display: inline-flex;
             align-items: center;
@@ -150,12 +164,22 @@
             letter-spacing: 0.05em;
             margin-top: 8px;
         }
+        .stat-scope {
+            display: block;
+            font-size: 0.65rem;
+            color: #94a3b8;
+            font-weight: 400;
+            text-transform: none;
+            letter-spacing: 0;
+            margin-top: 2px;
+        }
         .stat-card.alert {
             background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
             border-color: #fcd34d;
         }
         .stat-card.alert .stat-number { color: #92400e; }
         .stat-card.alert .stat-label { color: #78350f; }
+        .stat-card.alert .stat-scope { color: #92400e; opacity: 0.75; }
 
         /* ===== Admin actions grid ===== */
         .card {
@@ -258,6 +282,11 @@
         <div class="header-badges">
             <span class="role-badge">👤 <span th:text="${roleBadge}">Merchant Admin</span></span>
 
+            <!-- Tenant scope is explicit so an admin always knows which tenant's numbers they're seeing -->
+            <span class="tenant-badge" th:if="${tenantId != null}">
+                🏢 Tenant <strong th:text="${tenantId}">1</strong>
+            </span>
+
             <a th:if="${isMerchantAdmin and viewType == 'admin'}"
                href="/dashboard"
                class="switch-btn">
@@ -266,32 +295,37 @@
         </div>
     </div>
 
-    <!-- ===== Stats ===== -->
+    <!-- ===== Stats (all cards are tenant-scoped) ===== -->
     <div class="stat-grid">
         <div class="stat-card">
             <span class="stat-icon">💰</span>
             <div class="stat-number" th:text="${totalTransactions}">0</div>
             <div class="stat-label">Total Transactions</div>
+            <span class="stat-scope">for this tenant</span>
         </div>
         <div class="stat-card">
             <span class="stat-icon">📋</span>
             <div class="stat-number" th:text="${totalAuditEvents}">0</div>
             <div class="stat-label">Audit Events</div>
+            <span class="stat-scope">for this tenant</span>
         </div>
         <div class="stat-card">
             <span class="stat-icon">⏳</span>
             <div class="stat-number" th:text="${pendingDlq}">0</div>
             <div class="stat-label">Pending DLQ</div>
+            <span class="stat-scope">for this tenant</span>
         </div>
         <div class="stat-card">
             <span class="stat-icon">✅</span>
             <div class="stat-number" th:text="${reconciled}">0</div>
             <div class="stat-label">Reconciliations</div>
+            <span class="stat-scope">for this tenant</span>
         </div>
         <div th:if="${suspiciousCount != null}" class="stat-card alert">
             <span class="stat-icon">🚨</span>
             <div class="stat-number" th:text="${suspiciousCount}">0</div>
             <div class="stat-label">Suspicious Invoices</div>
+            <span class="stat-scope">for this tenant</span>
         </div>
     </div>
 

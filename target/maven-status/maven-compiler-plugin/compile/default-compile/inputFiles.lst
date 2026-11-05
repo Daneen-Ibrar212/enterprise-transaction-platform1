@@ -25,6 +25,7 @@
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/AdminRoleController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/AdminRootController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/AdminRuleAuditController.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/AdminSignupController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/AdminSuspicionController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/AdminTaxController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/AdminTenantController.java
@@ -46,9 +47,9 @@
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/GlobalControllerAdvice.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/GlobalExceptionHandler.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/HealthController.java
-/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/HomeController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/ImpersonationController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/InvoiceController.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/LandingController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/LocaleController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/MerchantSubscriptionController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/NotificationController.java
@@ -64,6 +65,8 @@
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/ReportHistoryController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/ReportingController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/RequestSizeFilter.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/SignupController.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/SubscriptionController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/TestEmailController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/TransactionTimelineController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/TransactionViewController.java
@@ -181,6 +184,8 @@
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/notification/NotificationService.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/notification/RealEmailService.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/notification/StubEmailService.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/plan/PlatformPlan.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/plan/PlatformPlanRepository.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/ratelimit/RateLimitConfig.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/ratelimit/RateLimitConfigRepository.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/ratelimit/RateLimitViolation.java
@@ -250,6 +255,7 @@
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/security/BackupCodeService.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/security/CustomAuthenticationSuccessHandler.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/security/CustomPermissionEvaluator.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/security/EarlySessionSecurityFilter.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/security/LoginAttemptService.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/security/LogoutSuccessHandler.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/security/PasswordResetService.java
@@ -263,6 +269,9 @@
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/security/TwoFactorOverrideService.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/security/UnlockExpiredLocksScheduler.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/service/BulkJobService.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/signup/SignupRequest.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/signup/SignupRequestRepository.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/signup/SignupService.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/simulator/SimulatorService.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/simulator/SimulatorToken.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/subscription/CustomerSubscription.java
@@ -270,6 +279,9 @@
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/subscription/PaymentRetry.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/subscription/PaymentRetryRepository.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/subscription/SubscriptionBillingService.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/subscription/SubscriptionChargeService.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/subscription/SubscriptionEvent.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/subscription/SubscriptionEventRepository.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/subscription/SubscriptionPlan.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/subscription/SubscriptionPlanRepository.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/subscription/SubscriptionRequest.java
