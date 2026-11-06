@@ -72,6 +72,7 @@
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/TransactionViewController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/TwoFactorController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/WebhookSimulatorController.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/WooCommerceController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/v1/ErrorResponse.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/v1/PaymentErrorCodes.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/api/v1/PaymentRequest.java
@@ -97,12 +98,13 @@
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/config/AppConfig.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/config/AsyncConfig.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/config/AsyncExecutorConfig.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/config/CacheConfig.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/config/I18nConfig.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/config/MetricsConfig.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/config/OpenApiConfig.java
+/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/config/PasswordEncoderConfig.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/config/SecurityConfig.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/config/WebMvcConfig.java
-/workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/config/WooCommerceController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/controller/xero/XeroController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/controller/xero/XeroSetupController.java
 /workspaces/enterprise-transaction-platform1/src/main/java/com/enterprise/currency/CurrencyCodes.java

@@ -3,8 +3,6 @@ package com.enterprise.config;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
@@ -20,14 +18,13 @@ public class AppConfig {
             .build();
     }
 
-    // ===== DUMMY JavaMailSender – allows app to start without real email config =====
-    @Bean
-    public JavaMailSender javaMailSender() {
-        JavaMailSenderImpl sender = new JavaMailSenderImpl();
-        sender.setHost("smtp.example.com");
-        sender.setPort(587);
-        sender.setUsername("dummy");
-        sender.setPassword("dummy");
-        return sender;
-    }
+    // ✅ The hardcoded dummy JavaMailSender bean has been REMOVED.
+    //    It shadowed Spring Boot's auto-configured bean, so every real
+    //    send failed silently against smtp.example.com with dummy creds.
+    //
+    //    Configure email via application.yml:
+    //      spring.mail.host, spring.mail.port, spring.mail.username,
+    //      spring.mail.password
+    //
+    //    In dev, use spring.mail.host=localhost and run MailHog / Mailpit.
 }

@@ -19,9 +19,16 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
 
+/**
+ * Platform-subscription self-service (change plan, cancel, resume).
+ *
+ * ✅ SECURITY: previously @PreAuthorize("isAuthenticated()") — any tenant user
+ * could cancel or change the tenant's platform plan. Now restricted to
+ * MERCHANT_ADMIN / SUPER_ADMIN.
+ */
 @Controller
 @RequestMapping("/account/plan")
-@PreAuthorize("isAuthenticated()")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MERCHANT_ADMIN')")
 public class SubscriptionController {
 
     private static final Logger log = LoggerFactory.getLogger(SubscriptionController.class);
@@ -52,7 +59,6 @@ public class SubscriptionController {
     public String viewPlan(Model model, Authentication auth) {
         AppUser user = currentUser(auth);
         Tenant tenant = currentTenant(user);
-
         PlatformPlan current = chargeService.getCurrentPlan(tenant.getId());
         List<PlatformPlan> allPlans = chargeService.allActivePlans();
         List<Transaction> payments = chargeService.getPaymentHistory(tenant.getId());

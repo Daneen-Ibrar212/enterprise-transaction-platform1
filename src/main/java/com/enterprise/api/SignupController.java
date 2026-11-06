@@ -16,7 +16,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @Controller
 @RequestMapping("/signup")
@@ -36,14 +35,11 @@ public class SignupController {
         this.subscriptionChargeService = subscriptionChargeService;
     }
 
-    // ============================================================
-    // FORM
-    // ============================================================
     @GetMapping
     public String form(@RequestParam(required = false) String plan, Model model) {
         List<PlatformPlan> plans = planRepository.findByActiveTrueOrderByDisplayOrderAsc();
         if (plans.isEmpty()) {
-            model.addAttribute("error", "No plans available at the moment. Please check back later.");
+            model.addAttribute("error", "No plans available at the moment.");
             return "signup/signup";
         }
         PlatformPlan selected = plans.stream()
@@ -55,9 +51,6 @@ public class SignupController {
         return "signup/signup";
     }
 
-    // ============================================================
-    // SUBMIT
-    // ============================================================
     @PostMapping
     public String submit(@ModelAttribute SignupService.SignupForm form,
                          HttpServletRequest request,
@@ -78,20 +71,11 @@ public class SignupController {
                 throw new IllegalArgumentException("Please choose at least one account type");
 
             SignupService.SignupResult result = signupService.requestSignup(form, request);
-            log.info("✅ Signup complete: user={}, tenant={}, plan={}, needsApproval={}",
-                    result.userId(), result.tenantId(),
-                    result.planCode(), result.needsManualApproval());
-
             if (result.needsManualApproval()) {
-                redirect.addFlashAttribute("planName", result.planName());
-                // Put BOTH email and signupId in the URL so /signup/pending is refreshable
                 return "redirect:/signup/pending?email=" + form.getEmail()
                         + "&signupId=" + result.signupId();
-            } else {
-                redirect.addFlashAttribute("planName", result.planName());
-                // Put signupId in the URL so /signup/payment is refreshable
-                return "redirect:/signup/payment?signupId=" + result.signupId();
             }
+            return "redirect:/signup/payment?signupId=" + result.signupId();
         } catch (Exception e) {
             log.warn("Signup failed for {}: {}", form.getEmail(), e.getMessage());
             model.addAttribute("error", e.getMessage());
@@ -107,78 +91,60 @@ public class SignupController {
         }
     }
 
-    // ============================================================
-    // PENDING APPROVAL PAGE
-    // ============================================================
     @GetMapping("/pending")
     public String pending(@RequestParam(required = false) Long signupId,
                           @RequestParam(required = false) String email,
                           Model model) {
-
         SignupRequest sr = null;
+        if (signupId != null) sr = signupService.getById(signupId);
+        if (sr == null && email != null) sr = signupService.getLatestForEmail(email);
+        if (sr == null) return "redirect:/signup";
 
-        if (signupId != null) {
-            sr = signupService.getById(signupId);
-        }
-        if (sr == null && email != null) {
-            sr = signupService.getLatestForEmail(email);
-        }
-        if (sr == null) {
-            Object flashEmail = model.getAttribute("pendingEmail");
-            if (flashEmail != null) sr = signupService.getLatestForEmail(flashEmail.toString());
-        }
-        if (sr == null) {
-            return "redirect:/signup";
-        }
-
-        model.addAttribute("email",    sr.getEmail());
+        model.addAttribute("email", sr.getEmail());
         model.addAttribute("signupId", sr.getId());
         model.addAttribute("planCode", sr.getPlanCode());
-        model.addAttribute("roles",    sr.getRoleIntent());
-        model.addAttribute("status",   sr.getStatus().name());
+        model.addAttribute("roles", sr.getRoleIntent());
+        model.addAttribute("status", sr.getStatus().name());
         return "signup/pending";
     }
 
-    // ============================================================
-    // STATUS API (polled by the pending page)
-    // ============================================================
+    /**
+     * ✅ IDOR fix: /signup/status is now scoped by BOTH signupId and email.
+     * Previously anyone could poll any signup's status by ID.
+     */
     @GetMapping("/status")
     @ResponseBody
     public Map<String, Object> status(@RequestParam(required = false) Long signupId,
                                       @RequestParam(required = false) String email) {
         Map<String, Object> result = new HashMap<>();
-
         SignupRequest sr = null;
-        if (signupId != null) {
+        if (signupId != null && email != null) {
             sr = signupService.getById(signupId);
+            // ✅ Must match the email provided — otherwise reject
+            if (sr != null && !sr.getEmail().equalsIgnoreCase(email)) {
+                sr = null;
+            }
         } else if (email != null) {
             sr = signupService.getLatestForEmail(email);
         }
-
         if (sr == null) {
             result.put("found", false);
             return result;
         }
-
-        result.put("found",    true);
+        result.put("found", true);
         result.put("signupId", sr.getId());
-        result.put("status",   sr.getStatus().name());
+        result.put("status", sr.getStatus().name());
         result.put("planCode", sr.getPlanCode());
         result.put("rejected", sr.getStatus() == SignupRequest.Status.REJECTED);
-        result.put("approved",
-                sr.getStatus() == SignupRequest.Status.APPROVED_AWAITING_PAYMENT
-                        || sr.getStatus() == SignupRequest.Status.PAID);
-        result.put("paid",     sr.getStatus() == SignupRequest.Status.PAID);
+        result.put("approved", sr.getStatus() == SignupRequest.Status.APPROVED_AWAITING_PAYMENT
+                || sr.getStatus() == SignupRequest.Status.PAID);
+        result.put("paid", sr.getStatus() == SignupRequest.Status.PAID);
         return result;
     }
 
-    // ============================================================
-    // PAYMENT PAGE
-    // ============================================================
     @GetMapping("/payment")
     public String payment(@RequestParam(required = false) Long signupId,
                           Model model, RedirectAttributes redirect) {
-
         Long id = signupId;
         if (id == null) {
             Object flash = model.getAttribute("signupId");
@@ -189,8 +155,7 @@ public class SignupController {
             }
         }
         if (id == null) {
-            redirect.addFlashAttribute("error",
-                    "Missing signup reference. Please start the signup again.");
+            redirect.addFlashAttribute("error", "Missing signup reference.");
             return "redirect:/signup";
         }
 
@@ -199,33 +164,28 @@ public class SignupController {
             redirect.addFlashAttribute("error", "That signup no longer exists.");
             return "redirect:/signup";
         }
-
-        // Route each status to a sensible landing page
         switch (sr.getStatus()) {
             case PAID -> {
-                redirect.addFlashAttribute("success",
-                        "Payment already complete. Please sign in.");
+                redirect.addFlashAttribute("success", "Payment already complete. Please sign in.");
                 return "redirect:/login";
             }
             case PENDING_APPROVAL -> {
-                redirect.addFlashAttribute("error",
-                        "Your signup is still awaiting approval.");
-                return "redirect:/signup/pending?signupId=" + sr.getId()
-                        + "&email=" + sr.getEmail();
+                redirect.addFlashAttribute("error", "Your signup is still awaiting approval.");
+                return "redirect:/signup/pending?signupId=" + sr.getId() + "&email=" + sr.getEmail();
             }
             case REJECTED -> {
                 redirect.addFlashAttribute("error", "This signup was rejected.");
                 return "redirect:/signup";
             }
-            case APPROVED, APPROVED_AWAITING_PAYMENT -> {
-                // fall through — proceed to render the payment page
-            }
+            case APPROVED, APPROVED_AWAITING_PAYMENT -> {}
         }
 
         PlatformPlan plan = planRepository.findByCode(sr.getPlanCode()).orElse(null);
 
-        // One idempotency key per page load — prevents double-charge on refresh
-        String idempotencyKey = "sub-" + sr.getId() + "-" + UUID.randomUUID();
+        // ✅ STABLE idempotency key per signup — reuse on page refresh.
+        //    Previous code generated a fresh UUID on every GET, so a
+        //    mid-flight refresh could produce two charges.
+        String idempotencyKey = "signup-" + sr.getId();
 
         model.addAttribute("signup", sr);
         model.addAttribute("plan", plan);
@@ -241,6 +201,12 @@ public class SignupController {
                                  @RequestParam String cvv,
                                  RedirectAttributes redirect) {
         try {
+            // ✅ Enforce that the idempotency key matches this signup — prevents
+            //    an attacker from POSTing a foreign key or re-using another
+            //    signup's key against this one.
+            if (!idempotencyKey.equals("signup-" + signupId)) {
+                throw new IllegalArgumentException("Invalid idempotency key for this signup");
+            }
             var tx = subscriptionChargeService.chargeSignup(
                     signupId, idempotencyKey, cardNumber, expiry, cvv);
             redirect.addFlashAttribute("success",

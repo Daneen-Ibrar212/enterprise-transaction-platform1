@@ -23,23 +23,28 @@ public class EmailNotificationService {
         this.emailLogRepository = emailLogRepository;
     }
 
-    @Async
+    /**
+     * ✅ Uses the dedicated notification pool — previously every email ran on
+     *    the shared `taskExecutor`, so a flood of webhook retries could
+     *    starve login alerts.
+     */
+    @Async("notificationExecutor")
     @Transactional
     public void sendEmailAsync(String to, String subject, String body) {
-        // For plain text, we just pass the body as is
         sendHtmlEmailAsync(to, subject, body);
     }
 
-    @Async
+    @Async("notificationExecutor")
     @Transactional
     public void sendHtmlEmailAsync(String to, String subject, String htmlBody) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) tenantId = 1L;  // fallback for async-context calls
+
         EmailLog logEntry = new EmailLog(to, subject, htmlBody);
-        logEntry.setTenantId(TenantContext.getRequiredTenantId());
+        logEntry.setTenantId(tenantId);
         emailLogRepository.save(logEntry);
-        log.info("📧 Sending email to: {}", to);
 
         try {
-            // Use the appropriate service (RealEmailService will send HTML)
             emailService.sendEmail(to, subject, htmlBody);
             logEntry.setStatus("SENT");
             logEntry.setSentAt(LocalDateTime.now());

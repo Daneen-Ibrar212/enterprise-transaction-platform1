@@ -43,6 +43,7 @@ public class DlqProcessorService {
         } catch (Exception e) {
             log.error("Failed to deserialize payload", e);
             entry.setStatus("FAILED");
+            entry.setFailureReason("Corrupted payload: " + e.getMessage());
             dlqEntryRepository.save(entry);
             throw new RuntimeException("Corrupted DLQ entry", e);
         }
@@ -50,12 +51,13 @@ public class DlqProcessorService {
         Function<Map<String, Object>, Object> operation = operationRegistry.get(entry.getOperationType());
         if (operation == null) {
             entry.setStatus("FAILED");
+            entry.setFailureReason("No handler for operation: " + entry.getOperationType());
             dlqEntryRepository.save(entry);
             throw new RuntimeException("No handler for operation: " + entry.getOperationType());
         }
 
         try {
-            Object result = operation.apply(context);
+            operation.apply(context);
             entry.setStatus("RESOLVED");
             dlqEntryRepository.save(entry);
             log.info("DLQ entry {} resolved successfully", entryId);
@@ -63,8 +65,9 @@ public class DlqProcessorService {
             entry.setFailureCount(entry.getFailureCount() + 1);
             entry.setFailureReason(e.getMessage());
             entry.setStatus("PENDING");
+            entry.setUpdatedAt(java.time.LocalDateTime.now());
             dlqEntryRepository.save(entry);
-            log.error("Retry failed for DLQ entry {}", entryId, e);
+            log.error("Retry failed for DLQ entry {} (attempt {})", entryId, entry.getFailureCount(), e);
             throw new RuntimeException("Retry failed", e);
         }
     }

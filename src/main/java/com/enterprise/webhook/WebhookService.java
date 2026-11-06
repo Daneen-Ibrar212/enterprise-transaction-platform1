@@ -76,13 +76,15 @@ public class WebhookService {
         );
     }
 
-    @Async
+    // ✅ Explicit webhook executor — previously fell through to the shared
+    //    `taskExecutor`, letting slow webhook deliveries starve notifications.
+    @Async("webhookExecutor")
     @EventListener
     public void onTransactionSettled(TransactionSettledEvent event) {
         sendWebhooks("TRANSACTION_SETTLED", event.getTransaction());
     }
 
-    @Async
+    @Async("webhookExecutor")
     @EventListener
     public void onRefundProcessed(RefundProcessedEvent event) {
         sendWebhooks("REFUND_PROCESSED", event.getRefundTransaction(), event.getOriginalTransaction());
@@ -90,34 +92,28 @@ public class WebhookService {
 
     public void sendWebhooks(String eventType, Object... payloadObjects) {
         if (!featureFlagService.isEnabled("WEBHOOKS")) {
-            log.info("Webhooks are disabled – skipping delivery for event: {}", eventType);
+            log.info("Webhooks disabled – skipping event: {}", eventType);
             return;
         }
-
         List<WebhookConfig> configs = webhookRepository.findByEventTypeAndActiveTrue(eventType);
         if (configs.isEmpty()) {
-            log.debug("No active webhooks for event type: {}", eventType);
             return;
         }
-
         Map<String, Object> payload = buildPayload(eventType, payloadObjects);
 
         for (WebhookConfig config : configs) {
             Map<String, Object> context = new HashMap<>();
             context.put("configId", config.getId());
             context.put("payload", payload);
-
             try {
                 recoveryService.executeWithRetry(
                     "WebhookService.sendWebhook",
-                    () -> {
-                        sendWebhook(config, payload);
-                        return null;
-                    },
+                    () -> { sendWebhook(config, payload); return null; },
                     context
                 );
             } catch (Exception e) {
-                log.error("Webhook delivery to {} failed after retries: {}", config.getUrl(), e.getMessage());
+                log.error("Webhook delivery to {} failed after retries: {}",
+                        config.getUrl(), e.getMessage());
             }
         }
     }
@@ -126,28 +122,23 @@ public class WebhookService {
     public void sendWebhook(WebhookConfig config, Map<String, Object> payload) {
         WebhookDelivery delivery = new WebhookDelivery();
         delivery.setWebhookConfigId(config.getId());
+        delivery.setTenantId(config.getTenantId());
         delivery.setEventType(config.getEventType());
         delivery.setUrl(config.getUrl());
         delivery.setAttemptNumber(1);
 
         long startTime = System.currentTimeMillis();
-
         try {
             String payloadJson = objectMapper.writeValueAsString(payload);
             delivery.setPayload(payloadJson);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            String signature = computeHmac(payloadJson);
-            headers.set("X-Webhook-Signature", signature);
+            headers.set("X-Webhook-Signature", computeHmac(payloadJson));
 
             HttpEntity<String> request = new HttpEntity<>(payloadJson, headers);
-
             ResponseEntity<String> response = restTemplate.postForEntity(
-                config.getUrl(),
-                request,
-                String.class
-            );
+                    config.getUrl(), request, String.class);
 
             delivery.setStatusCode(response.getStatusCode().value());
             delivery.setResponseBody(response.getBody());
@@ -156,10 +147,7 @@ public class WebhookService {
             if (!delivery.isSuccess()) {
                 delivery.setErrorMessage("HTTP " + response.getStatusCode());
                 throw new RuntimeException("Webhook returned non-2xx: " + response.getStatusCode());
-            } else {
-                log.info("Webhook sent successfully to {} (event: {})", config.getUrl(), config.getEventType());
             }
-
         } catch (Exception e) {
             delivery.setSuccess(false);
             delivery.setErrorMessage(e.getMessage());
@@ -172,15 +160,13 @@ public class WebhookService {
     }
 
     private Map<String, Object> buildPayload(String eventType, Object[] payloadObjects) {
-        Map<String, Object> payload = new java.util.HashMap<>();
+        Map<String, Object> payload = new HashMap<>();
         payload.put("eventType", eventType);
         payload.put("timestamp", java.time.Instant.now().toString());
-        if (payloadObjects.length > 0) {
+        for (Object obj : payloadObjects) {
             try {
-                for (Object obj : payloadObjects) {
-                    payload.put(obj.getClass().getSimpleName().toLowerCase(),
+                payload.put(obj.getClass().getSimpleName().toLowerCase(),
                         objectMapper.convertValue(obj, Map.class));
-                }
             } catch (Exception e) {
                 log.warn("Could not convert payload to map", e);
             }
@@ -191,10 +177,9 @@ public class WebhookService {
     private String computeHmac(String payload) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
-            SecretKeySpec secretKeySpec = new SecretKeySpec(hmacSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-            mac.init(secretKeySpec);
-            byte[] hmacBytes = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
-            return bytesToHex(hmacBytes);
+            SecretKeySpec spec = new SecretKeySpec(hmacSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            mac.init(spec);
+            return bytesToHex(mac.doFinal(payload.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             log.error("Failed to compute HMAC", e);
             return "";
@@ -203,36 +188,28 @@ public class WebhookService {
 
     private static String bytesToHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
-        }
+        for (byte b : bytes) sb.append(String.format("%02x", b));
         return sb.toString();
     }
 
-    // ============================================================
-    // RETRY: re-send using the SAME delivery record
-    // ============================================================
     @Transactional
     public WebhookDelivery retryDelivery(Long deliveryId) {
         WebhookDelivery delivery = deliveryRepository.findById(deliveryId)
                 .orElseThrow(() -> new RuntimeException("Delivery not found: " + deliveryId));
-
         WebhookConfig config = webhookRepository.findById(delivery.getWebhookConfigId())
                 .orElseThrow(() -> new RuntimeException("Webhook config not found"));
 
         try {
             Map<String, Object> payload = objectMapper.readValue(delivery.getPayload(), Map.class);
             sendWebhook(config, payload);
-
             List<WebhookDelivery> deliveries = deliveryRepository
                     .findByWebhookConfigIdOrderByCreatedAtDesc(config.getId());
             return deliveries.isEmpty() ? delivery : deliveries.get(0);
-
         } catch (Exception e) {
             log.error("Retry failed for delivery {}", deliveryId, e);
-
             WebhookDelivery failed = new WebhookDelivery();
             failed.setWebhookConfigId(config.getId());
+            failed.setTenantId(config.getTenantId());
             failed.setEventType(delivery.getEventType());
             failed.setUrl(config.getUrl());
             failed.setPayload(delivery.getPayload());
@@ -243,26 +220,19 @@ public class WebhookService {
         }
     }
 
-    // ============================================================
-    // MANUAL REPLAY
-    // ============================================================
     @Transactional
     public WebhookDelivery replayDelivery(Long deliveryId, String reason) {
         WebhookDelivery original = deliveryRepository.findById(deliveryId)
                 .orElseThrow(() -> new RuntimeException("Delivery not found: " + deliveryId));
-
         WebhookConfig config = webhookRepository.findById(original.getWebhookConfigId())
                 .orElseThrow(() -> new RuntimeException("Webhook config not found"));
-
         if (original.getPayload() == null || original.getPayload().isEmpty()) {
             throw new RuntimeException("Original delivery has no payload to replay");
         }
 
-        log.info("🔁 Replaying delivery {} to {} (reason: {})",
-                deliveryId, config.getUrl(), reason != null ? reason : "manual replay");
-
         WebhookDelivery replay = new WebhookDelivery();
         replay.setWebhookConfigId(config.getId());
+        replay.setTenantId(config.getTenantId());
         replay.setEventType(original.getEventType());
         replay.setUrl(config.getUrl());
         replay.setPayload(original.getPayload());
@@ -272,10 +242,8 @@ public class WebhookService {
         replay.setReplayReason(reason);
 
         long startTime = System.currentTimeMillis();
-
         try {
             String payloadJson = original.getPayload();
-
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("X-Webhook-Signature", computeHmac(payloadJson));
@@ -283,35 +251,22 @@ public class WebhookService {
             headers.set("X-Webhook-Replay-Of", String.valueOf(deliveryId));
 
             HttpEntity<String> request = new HttpEntity<>(payloadJson, headers);
-
             ResponseEntity<String> response = restTemplate.postForEntity(
-                    config.getUrl(),
-                    request,
-                    String.class
-            );
-
-            long duration = System.currentTimeMillis() - startTime;
+                    config.getUrl(), request, String.class);
 
             replay.setStatusCode(response.getStatusCode().value());
             replay.setResponseBody(response.getBody());
             replay.setSuccess(response.getStatusCode().is2xxSuccessful());
-            replay.setResponseTimeMs(duration);
-
+            replay.setResponseTimeMs(System.currentTimeMillis() - startTime);
             if (!replay.isSuccess()) {
                 replay.setErrorMessage("HTTP " + response.getStatusCode());
-                log.warn("🔁 Replay {} returned {}", deliveryId, response.getStatusCode());
-            } else {
-                log.info("✅ Replay {} succeeded in {}ms", deliveryId, duration);
             }
-
         } catch (Exception e) {
-            long duration = System.currentTimeMillis() - startTime;
             replay.setSuccess(false);
             replay.setErrorMessage(e.getMessage());
-            replay.setResponseTimeMs(duration);
-            log.error("❌ Replay {} failed: {}", deliveryId, e.getMessage());
+            replay.setResponseTimeMs(System.currentTimeMillis() - startTime);
+            log.error("Replay {} failed: {}", deliveryId, e.getMessage());
         }
-
         return deliveryRepository.save(replay);
     }
 }

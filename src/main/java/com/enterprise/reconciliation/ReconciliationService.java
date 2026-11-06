@@ -42,22 +42,26 @@ public class ReconciliationService {
 
     @Transactional
     public ReconciliationRecord runReconciliation() {
-        log.info("Starting reconciliation run");
+        Long tenantId = TenantContext.getRequiredTenantId();
+        log.info("Starting reconciliation for tenant {}", tenantId);
         LocalDateTime startedAt = LocalDateTime.now();
 
-        int pageSize = 100;
-        int page = 0;
-        int total = 0;
-        int matched = 0;
-        int mismatched = 0;
-        int missingLedgerCount = 0;
-        int amountMismatchCount = 0;
+        int pageSize = 100, page = 0;
+        int total = 0, matched = 0, mismatched = 0;
+        int missingLedgerCount = 0, amountMismatchCount = 0;
         List<ReconciliationDetail> details = new ArrayList<>();
 
+        // ✅ Only iterate THIS tenant's transactions explicitly — not relying on
+        //    the filter to be enabled (filter is still enabled at the SQL level
+        //    for consistency, but this is the authoritative scope).
         Page<Transaction> transactionPage;
         do {
             transactionPage = transactionRepository.findAll(PageRequest.of(page, pageSize));
             List<Transaction> transactions = transactionPage.getContent();
+            // Belt & suspenders: skip any rows whose tenantId doesn't match
+            transactions = transactions.stream()
+                    .filter(tx -> tenantId.equals(tx.getTenantId()))
+                    .toList();
             total += transactions.size();
 
             if (!transactions.isEmpty()) {
@@ -80,7 +84,6 @@ public class ReconciliationService {
                         details.add(detail);
                         continue;
                     }
-
                     BigDecimal sumDebit = entries.stream()
                             .filter(e -> "DEBIT".equals(e.getEntryType().name()))
                             .map(LedgerEntry::getAmount)
@@ -89,7 +92,6 @@ public class ReconciliationService {
                             .filter(e -> "CREDIT".equals(e.getEntryType().name()))
                             .map(LedgerEntry::getAmount)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
-
                     if (sumDebit.compareTo(tx.getAmount()) != 0 || sumCredit.compareTo(tx.getAmount()) != 0) {
                         amountMismatchCount++;
                         mismatched++;
@@ -118,18 +120,15 @@ public class ReconciliationService {
         record.setMissingLedgerCount(missingLedgerCount);
         record.setAmountMismatchCount(amountMismatchCount);
         record.setDetails(String.format("Total: %d, Matched: %d, Mismatched: %d", total, matched, mismatched));
-
-        // ✅ FIX: Use required tenant ID – fail closed
-        record.setTenantId(TenantContext.getRequiredTenantId());
+        record.setTenantId(tenantId);
 
         ReconciliationRecord savedRecord = recordRepository.save(record);
-
         for (ReconciliationDetail detail : details) {
             detail.setReconciliationRecord(savedRecord);
             detailRepository.save(detail);
         }
-
-        log.info("Reconciliation completed: status={}, total={}, mismatched={}", record.getStatus(), total, mismatched);
+        log.info("Reconciliation completed: status={}, total={}, mismatched={}",
+                record.getStatus(), total, mismatched);
         return savedRecord;
     }
 

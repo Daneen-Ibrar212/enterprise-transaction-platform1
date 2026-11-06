@@ -14,39 +14,31 @@ import java.util.Optional;
 
 public interface AuditRepository extends JpaRepository<AuditEvent, Long>, JpaSpecificationExecutor<AuditEvent> {
 
-    // ===== Basic queries =====
     List<AuditEvent> findByUserIdOrderByCreatedAtAsc(Long userId);
-
     Optional<AuditEvent> findFirstByOrderByCreatedAtDesc();
-
     Optional<AuditEvent> findFirstByTenantIdOrderByCreatedAtDesc(Long tenantId);
 
     @Query("SELECT DISTINCT a.eventType FROM AuditEvent a WHERE a.tenantId = :tenantId ORDER BY a.eventType")
     List<String> findDistinctEventTypesByTenantId(@Param("tenantId") Long tenantId);
 
-    // ===== Transaction timeline =====
     List<AuditEvent> findByEntityTypeAndEntityIdOrderByCreatedAtAsc(String entityType, Long entityId);
-
-    // ===== Paginated by tenant for verification =====
     Page<AuditEvent> findByTenantIdOrderByCreatedAtAsc(Long tenantId, Pageable pageable);
 
-    // ================================================================
-    // FIXED: Use Spring Data's findFirst with lock (returns only ONE result)
-    // ================================================================
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<AuditEvent> findFirstByEntityTypeAndEntityIdOrderByIdDesc(String entityType, Long entityId);
 
-    // ================================================================
-    // OR use native query with LIMIT 1
-    // ================================================================
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query(value = "SELECT * FROM audit_event WHERE entity_type = :entityType AND entity_id = :entityId ORDER BY id DESC LIMIT 1", nativeQuery = true)
-    Optional<AuditEvent> findLastEventWithLock(@Param("entityType") String entityType, @Param("entityId") Long entityId);
+    Optional<AuditEvent> findLastEventWithLock(@Param("entityType") String entityType,
+                                                @Param("entityId") Long entityId);
 
-    // ===== NEW: Tenant‑aware findAll and count =====
     @Query("SELECT a FROM AuditEvent a WHERE a.tenantId = :tenantId")
     List<AuditEvent> findAllByTenantId(@Param("tenantId") Long tenantId);
 
     @Query("SELECT COUNT(a) FROM AuditEvent a WHERE a.tenantId = :tenantId")
     long countByTenantId(@Param("tenantId") Long tenantId);
+
+    // ✅ Bounded verification: last N events per tenant
+    @Query("SELECT a FROM AuditEvent a WHERE a.tenantId = :tenantId ORDER BY a.id DESC")
+    List<AuditEvent> findRecentByTenantId(@Param("tenantId") Long tenantId, Pageable pageable);
 }

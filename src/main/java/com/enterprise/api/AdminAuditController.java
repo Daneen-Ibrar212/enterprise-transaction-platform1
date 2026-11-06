@@ -34,6 +34,9 @@ public class AdminAuditController {
 
     private static final Logger log = LoggerFactory.getLogger(AdminAuditController.class);
 
+    /** Bounded verification window — enough to detect tampering since last page load. */
+    private static final int VERIFY_LOOKBACK = 500;
+
     private final AuditService auditService;
     private final AuditRepository auditRepository;
     private final AuditDiffService auditDiffService;
@@ -61,60 +64,49 @@ public class AdminAuditController {
             Model model,
             Authentication authentication) {
 
-        // 👇 Get the current user
         AppUser currentUser = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
         boolean isSuperAdmin = currentUser.getRoles().stream()
                 .anyMatch(r -> r.getName().equals("SUPER_ADMIN"));
 
-        // 👇 Build the specification
         Specification<AuditEvent> spec = Specification
                 .where(AuditEventSpecifications.hasUserId(userId))
                 .and(AuditEventSpecifications.hasEventType(eventType))
                 .and(AuditEventSpecifications.hasEntityType(entityType))
                 .and(AuditEventSpecifications.createdBetween(startDate, endDate));
 
-        // 👇 Only apply tenant filter if NOT Super Admin
         if (!isSuperAdmin) {
             Long tenantId = TenantContext.getTenantId();
             spec = spec.and(AuditEventSpecifications.hasTenantId(tenantId));
         }
 
-        Page<AuditEvent> events = auditRepository.findAll(
-                spec,
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
-        );
+        Page<AuditEvent> events = auditRepository.findAll(spec,
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
 
-        boolean chainValid = auditService.verifyChain();
+        // ✅ Bounded verification — previously called verifyChain() (full scan).
+        boolean chainValid = auditService.verifyRecentChain(VERIFY_LOOKBACK);
 
-        // Event types dropdown
-        List<String> eventTypes;
-        if (isSuperAdmin) {
-            eventTypes = auditRepository.findAll().stream()
-                    .map(AuditEvent::getEventType)
-                    .distinct()
-                    .sorted()
-                    .collect(Collectors.toList());
-        } else {
-            Long tenantId = TenantContext.getTenantId();
-            eventTypes = auditRepository.findDistinctEventTypesByTenantId(tenantId);
-        }
+        List<String> eventTypes = isSuperAdmin
+                ? auditRepository.findAll().stream()
+                        .map(AuditEvent::getEventType).distinct().sorted()
+                        .collect(Collectors.toList())
+                : auditRepository.findDistinctEventTypesByTenantId(TenantContext.getTenantId());
 
         model.addAttribute("events", events);
         model.addAttribute("currentPage", page);
         model.addAttribute("totalPages", events.getTotalPages());
         model.addAttribute("chainValid", chainValid);
+        model.addAttribute("chainVerifiedWindow", VERIFY_LOOKBACK);
         model.addAttribute("eventTypes", eventTypes);
         model.addAttribute("selectedUserId", userId);
         model.addAttribute("selectedEventType", eventType);
         model.addAttribute("selectedEntityType", entityType);
         model.addAttribute("startDate", startDate);
         model.addAttribute("endDate", endDate);
-
         return "admin/audit/list";
     }
 
+    /** Full chain verification — on-demand only. */
     @GetMapping("/verify")
     @ResponseBody
     public Map<String, Object> verifyChainJson() {
@@ -122,8 +114,7 @@ public class AdminAuditController {
         return Map.of(
                 "valid", valid,
                 "status", valid ? "INTEGRITY_VALID" : "INTEGRITY_BROKEN",
-                "timestamp", java.time.Instant.now().toString()
-        );
+                "timestamp", java.time.Instant.now().toString());
     }
 
     @GetMapping("/verify-fragment")
@@ -142,7 +133,6 @@ public class AdminAuditController {
 
         List<AuditDiffService.DiffEntry> diffs = new ArrayList<>();
         String errorMessage = null;
-
         if (event.getPreviousState() != null && event.getCurrentState() != null) {
             try {
                 diffs = auditDiffService.diff(event.getPreviousState(), event.getCurrentState());
@@ -151,11 +141,9 @@ public class AdminAuditController {
                 errorMessage = "Could not compute diff: " + e.getMessage();
             }
         }
-
         model.addAttribute("event", event);
         model.addAttribute("diffs", diffs != null ? diffs : new ArrayList<>());
         model.addAttribute("error", errorMessage);
-
         return "admin/audit/diff";
     }
 }

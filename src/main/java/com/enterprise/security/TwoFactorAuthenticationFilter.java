@@ -15,16 +15,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
 
 public class TwoFactorAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(TwoFactorAuthenticationFilter.class);
-
-    private static final List<String> PUBLIC_PATHS = Arrays.asList(
-            "/2fa/**", "/logout", "/css/", "/js/"
-    );
 
     private final FeatureFlagService featureFlagService;
     private final UserRepository userRepository;
@@ -46,7 +40,7 @@ public class TwoFactorAuthenticationFilter extends OncePerRequestFilter {
         }
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated() || auth.getPrincipal().equals("anonymousUser")) {
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -58,62 +52,39 @@ public class TwoFactorAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String uri = request.getRequestURI();
+        if (uri.startsWith("/2fa/") || uri.startsWith("/logout")
+                || uri.startsWith("/css/") || uri.startsWith("/js/")
+                || uri.startsWith("/images/") || uri.startsWith("/fonts/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-        // ============================================================
-        // ✅ CHECK ADMIN OVERRIDE - allows user to skip 2FA
-        // ============================================================
+        // Admin override check
         boolean hasActiveOverride = false;
         try {
             AppUser user = userRepository.findByEmail(auth.getName()).orElse(null);
             if (user != null && user.isTwoFactorEffectivelyDisabled() && user.isTwoFactorEnabled()) {
                 hasActiveOverride = true;
-                log.debug("✅ 2FA bypassed for {} due to admin override", auth.getName());
             }
         } catch (Exception e) {
             log.warn("Failed to check 2FA override for {}: {}", auth.getName(), e.getMessage());
         }
 
-        // ----- CHECK 2FA REQUIRED FOR ADMIN -----
         Boolean required = (Boolean) session.getAttribute("2FA_REQUIRED");
-        if (required != null && required) {
-            // Allow 2FA pages, logout, static resources
-            if (uri.startsWith("/2fa/") || uri.startsWith("/logout") || 
-                uri.startsWith("/css/") || uri.startsWith("/js/")) {
-                filterChain.doFilter(request, response);
-                return;
-            }
-            // ✅ If admin override is active, allow through
-            if (hasActiveOverride) {
-                filterChain.doFilter(request, response);
-                return;
-            }
-            // Otherwise redirect to 2FA setup
+        if (Boolean.TRUE.equals(required) && !hasActiveOverride) {
             response.sendRedirect("/2fa/setup?required=true");
             return;
         }
 
-        // ----- NORMAL 2FA VERIFICATION -----
         Boolean pending = (Boolean) session.getAttribute("2FA_PENDING");
         Boolean authenticated = (Boolean) session.getAttribute("2FA_AUTHENTICATED");
-
-        if (pending == null || !pending || (authenticated != null && authenticated)) {
-            filterChain.doFilter(request, response);
+        if (Boolean.TRUE.equals(pending)
+                && !Boolean.TRUE.equals(authenticated)
+                && !hasActiveOverride) {
+            response.sendRedirect("/2fa/verify");
             return;
         }
 
-        // Allow 2FA pages, logout, static resources
-        if (uri.startsWith("/2fa/") || uri.startsWith("/logout") || 
-            uri.startsWith("/css/") || uri.startsWith("/js/")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        // ✅ If admin override is active, allow through
-        if (hasActiveOverride) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        response.sendRedirect("/2fa/verify");
+        filterChain.doFilter(request, response);
     }
 }

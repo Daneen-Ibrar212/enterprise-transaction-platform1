@@ -20,7 +20,6 @@
         body { background: #f0f4f8; color: #0f172a; padding: 24px; min-height: 100vh; }
         .container { max-width: 1200px; margin: 0 auto; }
 
-        /* ===== Header ===== */
         .page-header {
             background: linear-gradient(135deg, #0b1a33 0%, #1a3a6e 50%, #2d6bb8 100%);
             border-radius: 16px;
@@ -111,7 +110,6 @@
         }
         .switch-btn:hover { background: rgba(255,255,255,0.3); }
 
-        /* ===== Section titles ===== */
         .section-title {
             font-size: 1.125rem;
             font-weight: 500;
@@ -122,7 +120,6 @@
             margin-bottom: 16px;
         }
 
-        /* ===== Stat cards ===== */
         .stat-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -181,7 +178,6 @@
         .stat-card.alert .stat-label { color: #78350f; }
         .stat-card.alert .stat-scope { color: #92400e; opacity: 0.75; }
 
-        /* ===== Admin actions grid ===== */
         .card {
             background: white;
             border-radius: 16px;
@@ -227,7 +223,6 @@
             box-shadow: 0 6px 16px rgba(239,68,68,0.12);
         }
 
-        /* ===== Divider ===== */
         .divider {
             height: 1px;
             background: #e2e8f0;
@@ -235,7 +230,6 @@
             border: none;
         }
 
-        /* ===== Logout ===== */
         .logout-row {
             display: flex;
             justify-content: flex-end;
@@ -274,7 +268,6 @@
 <body>
 <div class="container">
 
-    <!-- ===== Header ===== -->
     <div class="page-header">
         <h1><span style="font-size:1.75rem;">⚙️</span> Admin Dashboard</h1>
         <p class="subtitle">Manage your platform — invoices, users, rules, integrations and health.</p>
@@ -282,7 +275,6 @@
         <div class="header-badges">
             <span class="role-badge">👤 <span th:text="${roleBadge}">Merchant Admin</span></span>
 
-            <!-- Tenant scope is explicit so an admin always knows which tenant's numbers they're seeing -->
             <span class="tenant-badge" th:if="${tenantId != null}">
                 🏢 Tenant <strong th:text="${tenantId}">1</strong>
             </span>
@@ -295,7 +287,6 @@
         </div>
     </div>
 
-    <!-- ===== Stats (all cards are tenant-scoped) ===== -->
     <div class="stat-grid">
         <div class="stat-card">
             <span class="stat-icon">💰</span>
@@ -315,10 +306,11 @@
             <div class="stat-label">Pending DLQ</div>
             <span class="stat-scope">for this tenant</span>
         </div>
+        <!-- ✅ Renamed from ${reconciled} to ${reconciliationRuns} -->
         <div class="stat-card">
             <span class="stat-icon">✅</span>
-            <div class="stat-number" th:text="${reconciled}">0</div>
-            <div class="stat-label">Reconciliations</div>
+            <div class="stat-number" th:text="${reconciliationRuns}">0</div>
+            <div class="stat-label">Reconciliation Runs</div>
             <span class="stat-scope">for this tenant</span>
         </div>
         <div th:if="${suspiciousCount != null}" class="stat-card alert">
@@ -329,7 +321,6 @@
         </div>
     </div>
 
-    <!-- ===== Admin Actions ===== -->
     <div class="card">
         <h2 class="section-title">📋 Admin Actions</h2>
 
@@ -364,10 +355,10 @@
         </div>
     </div>
 
-    <!-- ===== Logout ===== -->
     <hr class="divider"/>
     <div class="logout-row">
         <form method="post" th:action="@{/logout}">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
             <button type="submit" class="btn-danger">🚪 Logout</button>
         </form>
     </div>

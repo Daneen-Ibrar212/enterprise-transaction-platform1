@@ -5,7 +5,9 @@ import com.enterprise.identity.UserRepository;
 import com.enterprise.notification.NotificationService;
 import com.enterprise.reporting.PdfExportService;
 import com.enterprise.reporting.ReportHistoryService;
-import com.enterprise.reporting.ReportingService;
+import com.enterprise.tenant.Tenant;
+import com.enterprise.tenant.TenantContext;
+import com.enterprise.tenant.TenantRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,87 +22,73 @@ public class ReportScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(ReportScheduler.class);
 
-    private final ReportingService reportingService;
     private final PdfExportService pdfExportService;
     private final ReportHistoryService reportHistoryService;
     private final NotificationService notificationService;
     private final UserRepository userRepository;
+    private final TenantRepository tenantRepository;
 
-    public ReportScheduler(ReportingService reportingService,
-                           PdfExportService pdfExportService,
+    public ReportScheduler(PdfExportService pdfExportService,
                            ReportHistoryService reportHistoryService,
                            NotificationService notificationService,
-                           UserRepository userRepository) {
-        this.reportingService = reportingService;
+                           UserRepository userRepository,
+                           TenantRepository tenantRepository) {
         this.pdfExportService = pdfExportService;
         this.reportHistoryService = reportHistoryService;
         this.notificationService = notificationService;
         this.userRepository = userRepository;
+        this.tenantRepository = tenantRepository;
     }
 
-    // Weekly report – every Monday at 9 AM
     @Scheduled(cron = "0 0 9 * * MON")
     public void sendWeeklyReport() {
-        log.info("Generating weekly report...");
-        // For scheduled reports, we use tenant 1 as default
-        Long tenantId = 1L;
-        generateAndStoreReport("WEEKLY", 7, tenantId);
+        runForAllTenants("WEEKLY", 7);
     }
 
-    // Daily summary – every day at 6 PM
     @Scheduled(cron = "0 0 18 * * *")
     public void sendDailySummary() {
-        log.info("Generating daily summary...");
-        Long tenantId = 1L;
-        generateAndStoreReport("DAILY", 1, tenantId);
+        runForAllTenants("DAILY", 1);
+    }
+
+    /**
+     * ✅ Iterates ALL tenants. Previous version generated reports for tenant 1
+     *    only — every other tenant silently received nothing.
+     */
+    private void runForAllTenants(String reportType, int daysBack) {
+        for (Tenant tenant : tenantRepository.findAll()) {
+            try {
+                TenantContext.setTenantId(tenant.getId());
+                generateAndStoreReport(reportType, daysBack, tenant.getId());
+            } catch (Exception e) {
+                log.error("Report {} failed for tenant {}: {}",
+                        reportType, tenant.getId(), e.getMessage(), e);
+            } finally {
+                TenantContext.clear();
+            }
+        }
     }
 
     private void generateAndStoreReport(String reportType, int daysBack, Long tenantId) {
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = endDate.minusDays(daysBack);
-        String dateRange = startDate.format(DateTimeFormatter.ISO_LOCAL_DATE) + " to " + endDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
-
+        String dateRange = startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                + " to " + endDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
         try {
-            // Generate PDF – 👈 now passing tenantId
             byte[] pdfBytes = pdfExportService.generateReport(startDate, endDate, tenantId).toByteArray();
-
-            // Store in database
             String filename = reportType.toLowerCase() + "_report_" + startDate + ".pdf";
-            var report = reportHistoryService.saveReport(
-                    filename,
-                    reportType,
-                    startDate,
-                    endDate,
-                    pdfBytes,
-                    "application/pdf"
-            );
+            reportHistoryService.saveReport(filename, reportType, startDate, endDate,
+                    pdfBytes, "application/pdf");
 
-            // Notify admins
-            List<AppUser> admins = userRepository.findByRolesName("ADMIN");
-            if (admins.isEmpty()) {
-                log.warn("No admin users found to notify.");
-                return;
-            }
-
+            List<AppUser> admins = userRepository.findByTenantIdAndRoleName(tenantId, "ADMIN");
             String title = reportType + " Report Ready";
-            String message = "Your " + reportType.toLowerCase() + " report (" + dateRange + ") is ready to download.";
-            String link = "/admin/reports/history";
-
+            String message = "Your " + reportType.toLowerCase() + " report (" + dateRange + ") is ready.";
             for (AppUser admin : admins) {
-                notificationService.createNotification(
-                        admin.getId(),
-                        "REPORT_READY",
-                        title,
-                        message,
-                        link
-                );
-                log.info("Notification sent to admin: {}", admin.getEmail());
+                notificationService.createNotification(admin.getId(), "REPORT_READY",
+                        title, message, "/admin/reports/history");
             }
-
-            log.info("Report stored and notifications sent for {}", reportType);
-
         } catch (Exception e) {
-            log.error("Failed to generate/store {} report: {}", reportType, e.getMessage(), e);
+            log.error("Failed to generate {} report for tenant {}: {}",
+                    reportType, tenantId, e.getMessage(), e);
         }
     }
 }

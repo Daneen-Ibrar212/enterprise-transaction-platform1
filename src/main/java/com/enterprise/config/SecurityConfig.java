@@ -20,18 +20,26 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;   // ★ NEW
-import org.springframework.security.web.context.SecurityContextRepository;            // ★ NEW
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.header.writers.StaticHeadersWriter;
 
-import java.util.Arrays;
-
+/**
+ * Security configuration.
+ *
+ * Note: PasswordEncoder is NOT defined here — it lives in PasswordEncoderConfig
+ * to avoid a bean-construction cycle:
+ *
+ *   SecurityConfig → ApiKeyAuthenticationFilter → ApiKeyService → PasswordEncoder
+ *
+ * If PasswordEncoder is defined in this class, ApiKeyService can't be constructed
+ * without SecurityConfig, which can't be constructed without ApiKeyService.
+ * Moving the encoder to its own config makes it a leaf bean.
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
@@ -67,50 +75,45 @@ public class SecurityConfig {
         this.environment = environment;
     }
 
-    /**
-     * API chain — JSON-only, stateless, CSRF disabled (correct for token/auth-header clients).
-     */
+    // ============================================================
+    // API chain — stateless, JSON only, CSRF disabled (correct for
+    // token/auth-header clients; there is no cookie-based session).
+    // ============================================================
     @Bean
     @Order(1)
     public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
         http
             .securityMatcher("/api/**")
             .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/public/**").permitAll()
-                .requestMatchers("/api/woocommerce/**").permitAll()
                 .requestMatchers("/api/notifications/stream").authenticated()
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(apiKeyAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(rateLimitingFilter, ApiKeyAuthenticationFilter.class);
+            .addFilterBefore(apiKeyAuthenticationFilter,
+                    UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(rateLimitingFilter,
+                    ApiKeyAuthenticationFilter.class);
         return http.build();
     }
 
-    /**
-     * UI chain — server-rendered Thymeleaf pages.
-     *
-     * IMPORTANT: CSRF MUST remain enabled for all HTML form pages that render
-     * `th:action` or reference `${_csrf}`. Disabling CSRF for a path while the
-     * template still tries to resolve the CSRF token causes Spring Security's
-     * deferred CSRF loading to attempt session creation mid-render, i.e.
-     * "Cannot create a session after the response has been committed".
-     */
+    // ============================================================
+    // UI chain — server-rendered Thymeleaf, CSRF enabled for all HTML.
+    // ============================================================
     @Bean
     @Order(2)
     public SecurityFilterChain uiFilterChain(HttpSecurity http) throws Exception {
-        boolean isDev = Arrays.asList(environment.getActiveProfiles()).contains("dev");
-
-        // Use the eager (non-deferred) CSRF token handler so the token is
-        // materialized as soon as CsrfFilter runs — before Thymeleaf renders.
         CsrfTokenRequestAttributeHandler csrfRequestHandler = new CsrfTokenRequestAttributeHandler();
         csrfRequestHandler.setCsrfRequestAttributeName("_csrf");
 
         http
             .securityMatcher("/**")
             .headers(headers -> headers
-                .addHeaderWriter(new StaticHeadersWriter("Strict-Transport-Security", "max-age=31536000; includeSubDomains"))
+                .addHeaderWriter(new StaticHeadersWriter(
+                        "Strict-Transport-Security",
+                        "max-age=31536000; includeSubDomains"))
                 .contentSecurityPolicy(csp -> csp
                     .policyDirectives(
                         "default-src 'self'; " +
@@ -139,17 +142,14 @@ public class SecurityConfig {
                 .frameOptions(frame -> frame.deny())
                 .addHeaderWriter(new StaticHeadersWriter("X-XSS-Protection", "1; mode=block"))
                 .addHeaderWriter(new StaticHeadersWriter("X-Content-Type-Options", "nosniff"))
-                .addHeaderWriter(new StaticHeadersWriter("Referrer-Policy", "strict-origin-when-cross-origin"))
+                .addHeaderWriter(new StaticHeadersWriter(
+                        "Referrer-Policy", "strict-origin-when-cross-origin"))
             )
             .csrf(csrf -> csrf
                 .csrfTokenRequestHandler(csrfRequestHandler)
-                .ignoringRequestMatchers(
-                    "/api/**",
-                    "/admin/**",
-                    "/invoices/**",
-                    "/pay/**",
-                    "/webhooks/**"
-                )
+                // Only /api/** is exempt (that's the stateless chain).
+                // No HTML path may skip CSRF.
+                .ignoringRequestMatchers("/api/**")
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
@@ -170,8 +170,6 @@ public class SecurityConfig {
                 ).permitAll()
                 .requestMatchers(
                     "/health/**",
-                    "/pay/**",
-                    "/test/email",
                     "/2fa/**",
                     "/swagger-ui/**",
                     "/v3/api-docs/**",
@@ -181,6 +179,9 @@ public class SecurityConfig {
                     "/actuator/prometheus",
                     "/notifications/stream"
                 ).permitAll()
+                // /pay/** requires authentication — previously permitAll
+                // allowed anyone to attempt payments on any invoice.
+                // /test/email removed — was an open email relay.
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
@@ -198,17 +199,10 @@ public class SecurityConfig {
                 .maximumSessions(1)
                 .maxSessionsPreventsLogin(false)
             )
-            // ★ NEW — persist SecurityContext in the HTTP session (which is
-            //   backed by Spring Session JDBC). Required for:
-            //   • ImpersonationController to save the swapped auth across requests
-            //   • Normal login to survive across requests
             .securityContext(sc -> sc
                 .securityContextRepository(securityContextRepository())
             )
-            .addFilterBefore(
-                new EarlySessionSecurityFilter(),
-                CsrfFilter.class
-            )
+            .addFilterBefore(new EarlySessionSecurityFilter(), CsrfFilter.class)
             .addFilterAfter(
                 new TwoFactorAuthenticationFilter(featureFlagService, userRepository),
                 UsernamePasswordAuthenticationFilter.class
@@ -217,12 +211,11 @@ public class SecurityConfig {
         return http.build();
     }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+    // ============================================================
+    // ⚠️ passwordEncoder() has been MOVED to PasswordEncoderConfig.
+    //    Do not re-add it here — that recreates the bean cycle.
+    // ============================================================
 
-    // ★ NEW — bean for ImpersonationController + filter chain
     @Bean
     public SecurityContextRepository securityContextRepository() {
         return new HttpSessionSecurityContextRepository();
@@ -230,7 +223,8 @@ public class SecurityConfig {
 
     @Bean
     public MethodSecurityExpressionHandler methodSecurityExpressionHandler() {
-        DefaultMethodSecurityExpressionHandler handler = new DefaultMethodSecurityExpressionHandler();
+        DefaultMethodSecurityExpressionHandler handler =
+                new DefaultMethodSecurityExpressionHandler();
         handler.setPermissionEvaluator(customPermissionEvaluator);
         return handler;
     }

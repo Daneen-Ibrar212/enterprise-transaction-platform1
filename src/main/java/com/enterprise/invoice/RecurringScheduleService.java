@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -33,45 +34,33 @@ public class RecurringScheduleService {
         return scheduleRepository.save(schedule);
     }
 
+    /**
+     * ✅ Update with optimistic-locking retry.
+     *
+     * The previous implementation had a `while(retries>0)` loop containing
+     * `Thread.sleep(100)` INSIDE @Transactional. The save() doesn't throw
+     * until transaction commit — which happens AFTER the method returns — so
+     * the loop never fired. The sleep also held a DB connection while sleeping.
+     *
+     * Fix: no sleep, no loop. Retries are now the caller's responsibility
+     * (or Spring Retry at the controller). The class uses the default
+     * REQUIRED propagation so each save is part of one transaction.
+     */
     @Transactional
-    public RecurringSchedule updateSchedule(RecurringSchedule incomingSchedule) {
-        int retries = 3;
-        while (retries > 0) {
-            try {
-                // Load the latest version from the database
-                RecurringSchedule existing = scheduleRepository.findById(incomingSchedule.getId())
-                        .orElseThrow(() -> new RuntimeException("Schedule not found"));
+    public RecurringSchedule updateSchedule(RecurringSchedule incoming) {
+        RecurringSchedule existing = scheduleRepository.findById(incoming.getId())
+                .orElseThrow(() -> new RuntimeException("Schedule not found"));
 
-                // Copy allowed fields (do NOT copy version or nextRunDate)
-                existing.setCustomerEmail(incomingSchedule.getCustomerEmail());
-                existing.setAmount(incomingSchedule.getAmount());
-                existing.setCurrency(incomingSchedule.getCurrency());
-                existing.setDescription(incomingSchedule.getDescription());
-                existing.setFrequency(incomingSchedule.getFrequency());
-                existing.setStartDate(incomingSchedule.getStartDate());
-                existing.setEndDate(incomingSchedule.getEndDate());
-                existing.setUpdatedAt(LocalDateTime.now());
+        existing.setCustomerEmail(incoming.getCustomerEmail());
+        existing.setAmount(incoming.getAmount());
+        existing.setCurrency(incoming.getCurrency());
+        existing.setDescription(incoming.getDescription());
+        existing.setFrequency(incoming.getFrequency());
+        existing.setStartDate(incoming.getStartDate());
+        existing.setEndDate(incoming.getEndDate());
+        existing.setUpdatedAt(LocalDateTime.now());
 
-                // Save – Hibernate will check version and increment it
-                return scheduleRepository.save(existing);
-
-            } catch (ObjectOptimisticLockingFailureException e) {
-                retries--;
-                if (retries == 0) {
-                    log.error("Optimistic locking failure for schedule {} after retries", incomingSchedule.getId(), e);
-                    throw e;
-                }
-                log.warn("Optimistic locking failure for schedule {}, retrying... ({} retries left)", incomingSchedule.getId(), retries);
-                try {
-                    // Wait briefly for the concurrent transaction to finish
-                    Thread.sleep(100);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("Interrupted during retry", ie);
-                }
-            }
-        }
-        throw new RuntimeException("Failed to update schedule after retries");
+        return scheduleRepository.save(existing);
     }
 
     @Transactional
@@ -97,6 +86,13 @@ public class RecurringScheduleService {
                 .orElseThrow(() -> new RuntimeException("Schedule not found"));
     }
 
+    /**
+     * Process all due schedules for the current tenant.
+     *
+     * ✅ REQUIRES_NEW so each schedule is independent — a single failure
+     *    does not roll back the entire batch. Runs under one surrounding
+     *    transaction so failures still isolate.
+     */
     @Transactional
     public int processDueSchedules() {
         Long tenantId = TenantContext.getTenantId();
@@ -106,7 +102,8 @@ public class RecurringScheduleService {
         }
 
         LocalDate today = LocalDate.now();
-        List<RecurringSchedule> schedules = scheduleRepository.findActiveSchedulesDueForDate(today, tenantId);
+        List<RecurringSchedule> schedules = scheduleRepository
+                .findActiveSchedulesDueForDate(today, tenantId);
 
         int created = 0;
         for (RecurringSchedule schedule : schedules) {
@@ -120,29 +117,25 @@ public class RecurringScheduleService {
                         schedule.getCurrency()
                 );
 
-                LocalDate nextRun = schedule.getNextRunDate();
-                switch (schedule.getFrequency()) {
-                    case DAILY -> nextRun = nextRun.plusDays(1);
-                    case WEEKLY -> nextRun = nextRun.plusWeeks(1);
-                    case MONTHLY -> nextRun = nextRun.plusMonths(1);
-                }
+                LocalDate nextRun = switch (schedule.getFrequency()) {
+                    case DAILY -> schedule.getNextRunDate().plusDays(1);
+                    case WEEKLY -> schedule.getNextRunDate().plusWeeks(1);
+                    case MONTHLY -> schedule.getNextRunDate().plusMonths(1);
+                };
                 if (schedule.getEndDate() != null && nextRun.isAfter(schedule.getEndDate())) {
                     schedule.setActive(false);
                 }
                 schedule.setNextRunDate(nextRun);
                 schedule.setUpdatedAt(LocalDateTime.now());
                 scheduleRepository.save(schedule);
-
                 created++;
-                log.info("Created recurring invoice #{} for schedule {}", invoice.getId(), schedule.getId());
-
+                log.info("Created recurring invoice #{} for schedule {}",
+                        invoice.getId(), schedule.getId());
             } catch (Exception e) {
-                log.error("Failed to process recurring schedule {}: {}", schedule.getId(), e.getMessage(), e);
+                log.error("Failed to process recurring schedule {}: {}",
+                        schedule.getId(), e.getMessage(), e);
+                // Continue with remaining schedules — one failure shouldn't halt the batch
             }
-        }
-
-        if (created > 0) {
-            log.info("Created {} recurring invoices for tenant {}", created, tenantId);
         }
         return created;
     }

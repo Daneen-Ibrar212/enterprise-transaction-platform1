@@ -14,41 +14,20 @@ import java.util.Optional;
 @Repository
 public interface WebhookDeliveryRepository extends JpaRepository<WebhookDelivery, Long> {
 
-    // ============================================================
-    // ✅ Paginated by config
-    // ============================================================
     Page<WebhookDelivery> findByWebhookConfigIdOrderByCreatedAtDesc(Long configId, Pageable pageable);
-
-    // ============================================================
-    // ✅ Non-paginated by config
-    // ============================================================
     List<WebhookDelivery> findByWebhookConfigIdOrderByCreatedAtDesc(Long configId);
-
-    // ============================================================
-    // ✅ Scheduled retry of failed deliveries
-    // ============================================================
     List<WebhookDelivery> findBySuccessFalseAndAttemptNumberLessThan(int maxAttempts);
-
-    // ============================================================
-    // ✅ NEW: Find most recent delivery for a config (for retry/replay)
-    // ============================================================
     Optional<WebhookDelivery> findFirstByWebhookConfigIdOrderByCreatedAtDesc(Long configId);
-
-    // ============================================================
-    // ✅ NEW: Replay-specific queries
-    // ============================================================
     List<WebhookDelivery> findByReplayOfId(Long originalDeliveryId);
-
     List<WebhookDelivery> findByIsReplayTrueOrderByCreatedAtDesc();
-
-    // ============================================================
-    // ✅ NEW: Find all deliveries (paginated, tenant aware via filter)
-    // ============================================================
     Page<WebhookDelivery> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
-    // ============================================================
-    // ✅ NEW: Analytics
-    // ============================================================
+    // ✅ Tenant-scoped queries
+    Page<WebhookDelivery> findByTenantIdOrderByCreatedAtDesc(Long tenantId, Pageable pageable);
+
+    // ✅ Ownership check — used by controllers before acting on a delivery
+    boolean existsByIdAndTenantId(Long id, Long tenantId);
+
     @Query("SELECT COUNT(d) FROM WebhookDelivery d WHERE d.webhookConfigId = :configId AND d.success = true")
     long countSuccessByConfigId(@Param("configId") Long configId);
 
@@ -58,10 +37,7 @@ public interface WebhookDeliveryRepository extends JpaRepository<WebhookDelivery
     @Query("SELECT COUNT(d) FROM WebhookDelivery d WHERE d.webhookConfigId = :configId")
     long countAllByConfigId(@Param("configId") Long configId);
 
-    // ============================================================
-    // ✅ NEW: Find recent failures for retry scheduler
-    // ============================================================
     @Query("SELECT d FROM WebhookDelivery d WHERE d.success = false AND d.attemptNumber < :maxAttempts AND d.createdAt > :since ORDER BY d.createdAt DESC")
     List<WebhookDelivery> findRecentFailures(@Param("maxAttempts") int maxAttempts,
-                                             @Param("since") LocalDateTime since);
+                                              @Param("since") LocalDateTime since);
 }

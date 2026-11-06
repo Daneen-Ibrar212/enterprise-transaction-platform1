@@ -12,9 +12,14 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
 
+/**
+ * ✅ Exchange rates are GLOBAL (ExchangeRate has no tenantId).
+ *    A MERCHANT_ADMIN editing rates would affect every tenant.
+ *    Restricted to SUPER_ADMIN.
+ */
 @Controller
 @RequestMapping("/admin/exchange-rates")
-@PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MERCHANT_ADMIN')")
+@PreAuthorize("hasRole('SUPER_ADMIN')")
 public class AdminExchangeRateController {
 
     private final ExchangeRateService exchangeRateService;
@@ -43,14 +48,14 @@ public class AdminExchangeRateController {
                              RedirectAttributes redirectAttributes) {
         try {
             exchangeRateService.updateRate(fromCurrency, toCurrency, rate);
-            redirectAttributes.addFlashAttribute("success", 
-                String.format("Exchange rate %s -> %s created (inverse auto-created).", fromCurrency, toCurrency));
+            redirectAttributes.addFlashAttribute("success",
+                    "Exchange rate " + fromCurrency + " → " + toCurrency + " created.");
         } catch (DataIntegrityViolationException e) {
-            redirectAttributes.addFlashAttribute("error", 
-                "Rate for " + fromCurrency + " -> " + toCurrency + " already exists. Use Edit instead.");
+            redirectAttributes.addFlashAttribute("error",
+                    "Rate already exists. Use Edit instead.");
             return "redirect:/admin/exchange-rates/create";
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "Failed to create rate: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "Failed: " + e.getMessage());
             return "redirect:/admin/exchange-rates/create";
         }
         return "redirect:/admin/exchange-rates";
@@ -59,7 +64,7 @@ public class AdminExchangeRateController {
     @GetMapping("/{id}/edit")
     public String showEditForm(@PathVariable Long id, Model model) {
         ExchangeRate rate = exchangeRateService.getRate(id)
-                .orElseThrow(() -> new RuntimeException("Exchange rate not found"));
+                .orElseThrow(() -> new RuntimeException("Rate not found"));
         model.addAttribute("rate", rate);
         model.addAttribute("currencies", CurrencyCodes.getAllCurrencies());
         return "admin/exchange-rates/form";
@@ -70,13 +75,12 @@ public class AdminExchangeRateController {
                              @RequestParam BigDecimal rate,
                              RedirectAttributes redirectAttributes) {
         ExchangeRate existing = exchangeRateService.getRate(id)
-                .orElseThrow(() -> new RuntimeException("Exchange rate not found"));
+                .orElseThrow(() -> new RuntimeException("Rate not found"));
         try {
             exchangeRateService.updateRate(existing.getFromCurrency(), existing.getToCurrency(), rate);
-            redirectAttributes.addFlashAttribute("success", 
-                "Rate updated (inverse auto-updated).");
+            redirectAttributes.addFlashAttribute("success", "Rate updated.");
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "Failed to update rate: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "Failed: " + e.getMessage());
             return "redirect:/admin/exchange-rates/" + id + "/edit";
         }
         return "redirect:/admin/exchange-rates";
@@ -86,9 +90,9 @@ public class AdminExchangeRateController {
     public String deleteRate(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {
             exchangeRateService.deleteRate(id);
-            redirectAttributes.addFlashAttribute("success", "Rate and its inverse deleted.");
+            redirectAttributes.addFlashAttribute("success", "Rate deleted.");
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "Failed to delete rate: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "Failed: " + e.getMessage());
         }
         return "redirect:/admin/exchange-rates";
     }

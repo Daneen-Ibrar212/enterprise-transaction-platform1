@@ -32,7 +32,6 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-
         String path = request.getRequestURI();
 
         // Skip non-API endpoints
@@ -42,16 +41,12 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         }
 
         // Allow public API endpoints without key
-        if (path.startsWith("/api/public")) {
-            log.debug("Public API endpoint: {}", path);
+        if (path.startsWith("/api/public/")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // For all other /api/ endpoints, validate API key
         String apiKey = request.getHeader("X-API-Key");
-        log.info("API Key received for protected endpoint: {}", path);
-
         if (apiKey == null || apiKey.trim().isEmpty()) {
             log.warn("Missing X-API-Key header for: {}", path);
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -72,7 +67,6 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         ApiKey key = keyOptional.get();
         apiKeyService.updateLastUsed(key);
 
-        // Authenticate the request
         var auth = new UsernamePasswordAuthenticationToken(
                 key.getUser().getEmail(),
                 null,
@@ -83,12 +77,16 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         // ✅ Set tenant context for this request
         if (key.getUser().getTenantId() != null) {
             TenantContext.setTenantId(key.getUser().getTenantId());
-            log.debug("Tenant context set to: {}", key.getUser().getTenantId());
         } else {
             log.warn("API key user has no tenant ID: {}", key.getUser().getEmail());
         }
 
-        log.info("API Key authenticated for user: {}", key.getUser().getEmail());
-        filterChain.doFilter(request, response);
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            // ✅ Clear tenant context — the previous version never did this,
+            //    leaking the tenant across thread-pooled requests.
+            TenantContext.clear();
+        }
     }
 }

@@ -17,6 +17,7 @@ com/enterprise/invoice/InvoiceMessage.class
 com/enterprise/invoice/InvoicePdfService.class
 com/enterprise/api/ReportingController.class
 com/enterprise/security/RateLimitService$RateLimitType.class
+com/enterprise/config/PasswordEncoderConfig.class
 com/enterprise/reliability/RetryPolicy.class
 com/enterprise/api/AdminApprovalController$1.class
 com/enterprise/xero/service/XeroOAuthService$XeroCredentials.class
@@ -26,6 +27,7 @@ com/enterprise/xero/config/XeroConfig.class
 com/enterprise/tax/TaxService.class
 com/enterprise/apikey/ApiKeyRepository.class
 com/enterprise/currency/CurrencyCodes.class
+com/enterprise/aop/TenantFilterDefinition$TenantFilterRegistrar.class
 com/enterprise/refund/RefundAggregate.class
 com/enterprise/api/AdminRuleAuditController.class
 com/enterprise/invoice/ApprovalService.class
@@ -144,6 +146,7 @@ com/enterprise/reporting/ReportHistoryService.class
 com/enterprise/simulator/SimulatorService.class
 com/enterprise/reliability/Reliable.class
 com/enterprise/subscription/CustomerSubscriptionRepository.class
+com/enterprise/api/AdminApprovalController$RuleDto.class
 com/enterprise/api/AdminActivityController.class
 com/enterprise/security/PasswordResetTokenRepository.class
 com/enterprise/identity/RolePermissionService.class
@@ -170,6 +173,7 @@ com/enterprise/idempotency/IdempotencyKey.class
 com/enterprise/transaction/PaymentRequest.class
 com/enterprise/audit/RuleAudit.class
 com/enterprise/xero/service/XeroOAuthService.class
+com/enterprise/config/CacheConfig.class
 com/enterprise/config/SecurityConfig.class
 com/enterprise/ledger/LedgerService.class
 com/enterprise/database/SequenceSyncService.class
@@ -227,6 +231,7 @@ com/enterprise/config/OpenApiConfig.class
 com/enterprise/ledger/EntryType.class
 com/enterprise/invoice/InvoiceService.class
 com/enterprise/security/TwoFactorAuthenticationFilter.class
+com/enterprise/feature/FeatureFlagService$1.class
 com/enterprise/api/LandingController.class
 com/enterprise/security/TOTPService.class
 com/enterprise/reminder/ReminderType.class
@@ -256,6 +261,7 @@ com/enterprise/api/NotificationController.class
 com/enterprise/security/RateLimitingFilter.class
 com/enterprise/aop/TenantFilterAspect.class
 com/enterprise/api/AdminTenantController.class
+com/enterprise/api/AdminSuspicionController$RuleDto.class
 com/enterprise/api/GlobalControllerAdvice.class
 com/enterprise/security/PasswordService.class
 com/enterprise/subscription/SubscriptionUsageService.class
@@ -297,6 +303,7 @@ com/enterprise/identity/DatabaseUserDetailsService.class
 com/enterprise/api/ReconciliationDetailController.class
 com/enterprise/feature/FeatureFlagDefaults.class
 com/enterprise/invoice/RecurringScheduleService.class
+com/enterprise/api/AdminRefundRuleController$RuleDto.class
 com/enterprise/api/AdminExchangeRateController.class
 com/enterprise/identity/AppUser.class
 com/enterprise/tax/TaxRuleRepository.class
@@ -317,6 +324,7 @@ com/enterprise/reliability/BackoffPolicy.class
 com/enterprise/api/AdminRefundController.class
 com/enterprise/currency/CurrencyHelper.class
 com/enterprise/api/v1/PaymentResponse.class
+com/enterprise/feature/FeatureFlagService$2.class
 com/enterprise/invoice/InvoiceRepository.class
 com/enterprise/ratelimit/RateLimitViolationRepository.class
 com/enterprise/api/AdminRoleController.class

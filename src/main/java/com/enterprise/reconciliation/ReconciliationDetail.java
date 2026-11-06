@@ -3,9 +3,14 @@ package com.enterprise.reconciliation;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import org.hibernate.annotations.Filter;
 
 @Entity
-@Table(name = "reconciliation_detail")
+@Table(name = "reconciliation_detail", indexes = {
+    @Index(name = "idx_recon_detail_tenant", columnList = "tenant_id"),
+    @Index(name = "idx_recon_detail_record", columnList = "reconciliation_record_id")
+})
+@Filter(name = "tenantFilter", condition = "tenant_id = :tenantId")
 public class ReconciliationDetail {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -15,11 +20,14 @@ public class ReconciliationDetail {
     @JoinColumn(name = "reconciliation_record_id", nullable = false)
     private ReconciliationRecord reconciliationRecord;
 
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
     @Column(name = "transaction_id", nullable = false)
     private Long transactionId;
 
     @Column(name = "discrepancy_type", nullable = false)
-    private String discrepancyType; // MISSING_LEDGER, AMOUNT_MISMATCH, DUPLICATE
+    private String discrepancyType;
 
     @Column(name = "expected_amount", precision = 19, scale = 2)
     private BigDecimal expectedAmount;
@@ -30,11 +38,8 @@ public class ReconciliationDetail {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    // ============================================================
-    // REPAIR TRACKING
-    // ============================================================
     @Column(name = "repair_status", nullable = false)
-    private String repairStatus = "PENDING"; // PENDING, REPAIRED, ESCALATED, SKIPPED, FAILED
+    private String repairStatus = "PENDING";
 
     @Column(name = "repaired_at")
     private LocalDateTime repairedAt;
@@ -48,11 +53,12 @@ public class ReconciliationDetail {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    // Getters and setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public ReconciliationRecord getReconciliationRecord() { return reconciliationRecord; }
-    public void setReconciliationRecord(ReconciliationRecord reconciliationRecord) { this.reconciliationRecord = reconciliationRecord; }
+    public void setReconciliationRecord(ReconciliationRecord r) { this.reconciliationRecord = r; }
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public Long getTransactionId() { return transactionId; }
     public void setTransactionId(Long transactionId) { this.transactionId = transactionId; }
     public String getDiscrepancyType() { return discrepancyType; }

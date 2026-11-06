@@ -247,17 +247,20 @@ public class AdminReliabilityPolicyController {
         return "admin/reliability/policies/failure-classification/form";
     }
 
-    @PostMapping("/failure-classification")
-    public String createFailureClassificationRule(@ModelAttribute FailureClassificationRule rule, RedirectAttributes redirectAttributes) {
-        try {
-            rule.setCreatedAt(LocalDateTime.now());
-            failureClassificationRuleRepository.save(rule);
-            redirectAttributes.addFlashAttribute("success", "✅ Failure classification rule created.");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "❌ Failed to create rule: " + e.getMessage());
-        }
-        return "redirect:/admin/reliability/policies/failure-classification";
+ @PostMapping("/failure-classification")
+public String createFailureClassificationRule(@ModelAttribute FailureClassificationRule rule,
+                                               RedirectAttributes redirectAttributes) {
+    try {
+        rule.setCreatedAt(LocalDateTime.now());
+        // ✅ REQUIRED: FailureClassificationRule.tenantId is NOT NULL.
+        rule.setTenantId(com.enterprise.tenant.TenantContext.getRequiredTenantId());
+        failureClassificationRuleRepository.save(rule);
+        redirectAttributes.addFlashAttribute("success", "✅ Failure classification rule created.");
+    } catch (Exception e) {
+        redirectAttributes.addFlashAttribute("error", "❌ Failed to create rule: " + e.getMessage());
     }
+    return "redirect:/admin/reliability/policies/failure-classification";
+}
 
     @GetMapping("/failure-classification/{id}/edit")
     public String showEditFailureClassificationForm(@PathVariable Long id, Model model) {

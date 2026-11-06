@@ -89,7 +89,6 @@
         }
         .chip-create:hover { background: white; transform: translateY(-1px); }
 
-        /* Flash */
         .flash {
             padding: 14px 20px;
             border-radius: 12px;
@@ -102,7 +101,6 @@
         .flash-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
         .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
 
-        /* Filter */
         .filter-card {
             background: white;
             border-radius: 16px;
@@ -264,7 +262,6 @@
         .empty { text-align: center; padding: 60px 20px; color: #94a3b8; font-size: 0.875rem; }
         .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
 
-        /* Modal */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -359,7 +356,6 @@
         </div>
     </div>
 
-    <!-- Flash -->
     <div th:if="${success}" class="flash flash-success">
         <span style="font-size:1.125rem;">✅</span>
         <span th:text="${success}">Success</span>
@@ -369,7 +365,6 @@
         <span th:text="${error}">Error</span>
     </div>
 
-    <!-- Filters -->
     <div class="filter-card">
         <form method="get" th:action="@{/admin/users}">
             <div class="filter-form">
@@ -392,7 +387,6 @@
         </form>
     </div>
 
-    <!-- Table -->
     <div class="card">
         <table class="data-table" th:unless="${users.empty}">
             <thead>
@@ -420,7 +414,6 @@
                         <span th:unless="${user.active}" class="badge badge-inactive">Inactive</span>
                     </td>
 
-                    <!-- 2FA STATUS -->
                     <td>
                         <span th:if="${user.twoFactorDisabledByAdmin}" class="badge badge-2fa-override"
                               th:title="'Disabled by admin. Reason: ' + ${user.twoFactorDisableReason}">
@@ -439,13 +432,18 @@
                         <div class="action-cell">
                             <a th:href="@{/admin/users/{id}/edit(id=${user.id})}" class="btn btn-edit">✏️ Edit</a>
 
-                            <form method="post" th:action="@{/admin/users/{id}/impersonate(id=${user.id})}"
+                            <!--
+                              ✅ Impersonation now POSTs directly to /admin/users/impersonate
+                                 with the target username. Previously redirected to a GET
+                                 endpoint that no longer exists (405). CSRF token included.
+                            -->
+                            <form method="post" th:action="@{/admin/users/impersonate}"
                                   style="display:inline;" th:if="${user.active}">
                                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <input type="hidden" name="username" th:value="${user.email}" />
                                 <button type="submit" class="btn btn-impersonate">🎭 Impersonate</button>
                             </form>
 
-                            <!-- 2FA OVERRIDE (Super Admin only) -->
                             <div sec:authorize="hasRole('SUPER_ADMIN')" style="display:inline-block;">
                                 <form th:if="${user.twoFactorDisabledByAdmin}"
                                       method="post"
@@ -489,9 +487,7 @@
 
 </div>
 
-<!-- ============================================================ -->
 <!-- 2FA OVERRIDE MODAL -->
-<!-- ============================================================ -->
 <div id="twoFactorModal" class="modal-overlay">
     <div class="modal">
         <h3>🔓 Disable 2FA for User</h3>

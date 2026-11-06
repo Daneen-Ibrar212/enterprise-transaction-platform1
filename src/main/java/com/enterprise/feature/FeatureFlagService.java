@@ -5,12 +5,15 @@ import com.enterprise.tenant.TenantContext;
 import com.enterprise.xero.service.XeroOAuthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,55 +23,80 @@ import java.util.Map;
 public class FeatureFlagService {
 
     private static final Logger log = LoggerFactory.getLogger(FeatureFlagService.class);
+
     private final FeatureFlagRepository repository;
     private final ApplicationEventPublisher eventPublisher;
     private final XeroOAuthService xeroOAuthService;
+    private final CacheManager cacheManager;
 
     public FeatureFlagService(FeatureFlagRepository repository,
                               ApplicationEventPublisher eventPublisher,
-                              XeroOAuthService xeroOAuthService) {
+                              XeroOAuthService xeroOAuthService,
+                              CacheManager cacheManager) {
         this.repository = repository;
         this.eventPublisher = eventPublisher;
         this.xeroOAuthService = xeroOAuthService;
+        this.cacheManager = cacheManager;
     }
 
-    @Cacheable(value = "featureFlags", key = "#name + '_' + #tenantId")
+    @Cacheable(value = "featureFlags", key = "#name + '_' + T(com.enterprise.tenant.TenantContext).getTenantId()")
     public boolean isEnabled(String name) {
         Long tenantId = TenantContext.getTenantId();
         if (tenantId == null) {
             log.warn("No tenant context – defaulting to false for flag: {}", name);
             return false;
         }
-
         if ("XERO_AUTO_SYNC".equals(name)) {
             try {
-                boolean isConnected = xeroOAuthService.isConnected(tenantId);
-                if (!isConnected) {
-                    log.debug("🔌 Xero not connected for tenant {}, returning false for XERO_AUTO_SYNC", tenantId);
-                    return false;
-                }
-                return repository.findByNameAndTenantId(name, tenantId)
-                        .map(FeatureFlag::isEnabled)
-                        .orElse(false);
+                if (!xeroOAuthService.isConnected(tenantId)) return false;
             } catch (Exception e) {
-                log.warn("⚠️ Could not check Xero connection for tenant {}: {}", tenantId, e.getMessage());
+                log.warn("Could not check Xero connection for tenant {}: {}", tenantId, e.getMessage());
                 return false;
             }
         }
-
-        log.debug("Checking feature flag: {} for tenant {}", name, tenantId);
         return repository.findByNameAndTenantId(name, tenantId)
                 .map(FeatureFlag::isEnabled)
                 .orElse(false);
     }
 
     /**
-     * Toggle a flag for the current request's tenant.
-     * REQUIRES_NEW so a failure here can't mark the caller's transaction
-     * as rollback-only.
+     * Evicts the flag AFTER the transaction commits — prevents the
+     * stale-repopulation race where another thread reads the cache before
+     * we commit and puts the OLD value back.
      */
-    @CacheEvict(value = "featureFlags", key = "#name + '_' + #tenantId")
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    private void evictAfterCommit(String name, Long tenantId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    Cache cache = cacheManager.getCache("featureFlags");
+                    if (cache != null) {
+                        cache.evict(name + "_" + tenantId);
+                    }
+                }
+            });
+        } else {
+            Cache cache = cacheManager.getCache("featureFlags");
+            if (cache != null) cache.evict(name + "_" + tenantId);
+        }
+    }
+
+    private void evictAllAfterCommit() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    Cache cache = cacheManager.getCache("featureFlags");
+                    if (cache != null) cache.clear();
+                }
+            });
+        } else {
+            Cache cache = cacheManager.getCache("featureFlags");
+            if (cache != null) cache.clear();
+        }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRED)
     public void setEnabled(String name, boolean enabled) {
         Long tenantId = TenantContext.getRequiredTenantId();
         FeatureFlag flag = repository.findByNameAndTenantId(name, tenantId)
@@ -79,48 +107,30 @@ public class FeatureFlagService {
         repository.save(flag);
         log.info("Feature flag {} set to {} for tenant {}", name, enabled, tenantId);
 
+        evictAfterCommit(name, tenantId);
+
         if ("SUSPICION_DETECTION".equals(name) && enabled) {
-            log.info("Suspicion detection enabled for tenant {} – publishing re-evaluation event", tenantId);
             eventPublisher.publishEvent(new SuspicionEnabledEvent());
         }
     }
 
-    /**
-     * Set a feature flag for an explicit tenant.
-     * Used during signup when no HTTP context / TenantContext is available.
-     *
-     * REQUIRES_NEW: runs in its own transaction so that if the flag doesn't
-     * exist (or any other error occurs), the outer signup transaction is
-     * NOT marked rollback-only.
-     *
-     * Silent no-op if the flag doesn't exist — this is a best-effort
-     * side-effect during signup, not a critical operation.
-     */
-    @CacheEvict(value = "featureFlags", allEntries = true)
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRED)
     public void setEnabledForTenant(String name, boolean enabled, Long tenantId) {
-        if (tenantId == null) {
-            throw new IllegalArgumentException("tenantId is required");
-        }
-
+        if (tenantId == null) throw new IllegalArgumentException("tenantId is required");
         repository.findByNameAndTenantId(name, tenantId).ifPresentOrElse(
-            flag -> {
-                flag.setEnabled(enabled);
-                flag.setUpdatedAt(LocalDateTime.now());
-                repository.save(flag);
-                log.info("Feature flag {} set to {} for tenant {}", name, enabled, tenantId);
-
-                if ("SUSPICION_DETECTION".equals(name) && enabled) {
-                    log.info("Suspicion detection enabled for tenant {} – publishing re-evaluation event", tenantId);
-                    eventPublisher.publishEvent(new SuspicionEnabledEvent());
-                }
-            },
-            () -> log.debug("Feature flag {} not found for tenant {} — skipping (best-effort)",
-                    name, tenantId)
-        );
+                flag -> {
+                    flag.setEnabled(enabled);
+                    flag.setUpdatedAt(LocalDateTime.now());
+                    repository.save(flag);
+                    log.info("Feature flag {} set to {} for tenant {}", name, enabled, tenantId);
+                    evictAfterCommit(name, tenantId);
+                    if ("SUSPICION_DETECTION".equals(name) && enabled) {
+                        eventPublisher.publishEvent(new SuspicionEnabledEvent());
+                    }
+                },
+                () -> log.debug("Feature flag {} not found for tenant {}", name, tenantId));
     }
 
-    @CacheEvict(value = "featureFlags", key = "#name + '_' + #tenantId")
     @Transactional
     public FeatureFlag createFlag(String name, String description, boolean enabled) {
         Long tenantId = TenantContext.getRequiredTenantId();
@@ -130,32 +140,29 @@ public class FeatureFlagService {
         flag.setEnabled(enabled);
         flag.setUpdatedAt(LocalDateTime.now());
         flag.setTenantId(tenantId);
+        evictAllAfterCommit();
         return repository.save(flag);
     }
 
     @Transactional
     public void deleteFlag(Long id) {
         repository.deleteById(id);
+        evictAllAfterCommit();
     }
 
     /**
-     * Provision default feature flags for a new tenant.
-     * REQUIRES_NEW so signup isn't poisoned by a partial failure.
+     * Provision defaults in the caller's transaction (REQUIRED) — required so
+     * that when called from SignupService immediately after creating a Tenant,
+     * the FK check on feature_flag.tenant_id can see the uncommitted tenant row.
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRED)
     public void provisionDefaultsForTenant(Long tenantId) {
         log.info("🔧 Provisioning default feature flags for tenant {}", tenantId);
-
         int created = 0;
         for (Map.Entry<String, Boolean> entry : FeatureFlagDefaults.DEFAULTS.entrySet()) {
             String name = entry.getKey();
             Boolean enabled = entry.getValue();
-
-            // Skip if already exists
-            if (repository.findByNameAndTenantId(name, tenantId).isPresent()) {
-                continue;
-            }
-
+            if (repository.findByNameAndTenantId(name, tenantId).isPresent()) continue;
             FeatureFlag flag = new FeatureFlag();
             flag.setName(name);
             flag.setDescription(FeatureFlagDefaults.DESCRIPTIONS.get(name));
@@ -165,11 +172,11 @@ public class FeatureFlagService {
             repository.save(flag);
             created++;
         }
+        evictAllAfterCommit();
         log.info("✅ Provisioned {} default feature flags for tenant {}", created, tenantId);
     }
 
     public List<FeatureFlag> findAll() {
-        Long tenantId = TenantContext.getRequiredTenantId();
-        return repository.findAllByTenantId(tenantId);
+        return repository.findAllByTenantId(TenantContext.getRequiredTenantId());
     }
 }

@@ -49,8 +49,7 @@ public class TwoFactorController {
         if (user.isTwoFactorEnabled()) {
             model.addAttribute("enabled", true);
             model.addAttribute("backupCodesCount", backupCodeService.getRemainingCodeCount(user.getId()));
-            boolean isAdmin = user.getRoles().stream().anyMatch(r -> r.getName().equals("ADMIN"));
-            model.addAttribute("isAdmin", isAdmin);
+            model.addAttribute("isAdmin", isAdmin(user));
             model.addAttribute("required", required);
             return "twofactor/status";
         }
@@ -58,6 +57,7 @@ public class TwoFactorController {
         String secretKey = totpService.generateSecretKey();
         String otpAuthUrl = totpService.getOtpAuthUrl(secretKey, user.getEmail());
 
+        // ✅ Secret is included in the page but never logged
         model.addAttribute("secretKey", secretKey);
         model.addAttribute("otpAuthUrl", otpAuthUrl);
         model.addAttribute("required", required);
@@ -73,7 +73,8 @@ public class TwoFactorController {
         AppUser user = getAuthenticatedUser(authentication);
         String trimmedSecret = secretKey.trim();
 
-        log.info("Enabling 2FA for user {}, secret: {}", user.getEmail(), trimmedSecret);
+        // ✅ Do NOT log the secret. Log only the user + outcome.
+        log.info("Enabling 2FA for user {}", user.getEmail());
 
         if (totpService.verifyCode(trimmedSecret, code)) {
             user.setSecretKey(trimmedSecret);
@@ -84,17 +85,15 @@ public class TwoFactorController {
             session.removeAttribute("2FA_REQUIRED");
 
             List<String> backupCodes = backupCodeService.generateBackupCodes(user.getId());
-
             model.addAttribute("enabled", true);
             model.addAttribute("backupCodes", backupCodes);
-            boolean isAdmin = user.getRoles().stream().anyMatch(r -> r.getName().equals("ADMIN"));
-            model.addAttribute("isAdmin", isAdmin);
+            model.addAttribute("isAdmin", isAdmin(user));
             return "twofactor/status";
         } else {
             model.addAttribute("error", "Invalid code. Please try again.");
             model.addAttribute("secretKey", trimmedSecret);
-            String otpAuthUrl = totpService.getOtpAuthUrl(trimmedSecret, user.getEmail());
-            model.addAttribute("otpAuthUrl", otpAuthUrl);
+            model.addAttribute("otpAuthUrl",
+                    totpService.getOtpAuthUrl(trimmedSecret, user.getEmail()));
             model.addAttribute("required", true);
             return "twofactor/setup";
         }
@@ -103,18 +102,14 @@ public class TwoFactorController {
     @PostMapping("/disable")
     public String disable(Authentication authentication) {
         AppUser user = getAuthenticatedUser(authentication);
-
-        boolean isAdmin = user.getRoles().stream().anyMatch(r -> r.getName().equals("ADMIN"));
-        if (isAdmin) {
+        // ✅ Any user with an admin role (SUPER_ADMIN, MERCHANT_ADMIN, ADMIN) cannot self-disable
+        if (isAdmin(user)) {
             throw new SecurityException("Administrators cannot disable two-factor authentication.");
         }
-
         user.setTwoFactorEnabled(false);
         user.setSecretKey(null);
         userRepository.save(user);
-
         backupCodeService.regenerateCodes(user.getId());
-
         return "redirect:/2fa/setup?disabled";
     }
 
@@ -131,34 +126,28 @@ public class TwoFactorController {
                          Model model) {
         try {
             AppUser user = getAuthenticatedUser(authentication);
-
-            if (user.isTwoFactorEnabled()) {
-                boolean verified = false;
-
-                if (code != null) {
-                    verified = totpService.verifyCode(user.getSecretKey(), code);
-                    if (verified) {
-                        session.setAttribute("2FA_AUTHENTICATED", true);
-                        session.removeAttribute("2FA_PENDING");
-                        return "redirect:/dashboard";
-                    }
-                }
-
-                if (backupCode != null && !backupCode.isEmpty()) {
-                    verified = backupCodeService.verifyBackupCode(user.getId(), backupCode);
-                    if (verified) {
-                        session.setAttribute("2FA_AUTHENTICATED", true);
-                        session.removeAttribute("2FA_PENDING");
-                        return "redirect:/dashboard";
-                    }
-                }
-
-                model.addAttribute("error", "Invalid code. Please try again.");
-                return "twofactor/verify";
-            } else {
+            if (!user.isTwoFactorEnabled()) {
                 return "redirect:/dashboard";
             }
+
+            boolean verified = false;
+            if (code != null) {
+                verified = totpService.verifyCode(user.getSecretKey(), code);
+            }
+            if (!verified && backupCode != null && !backupCode.isEmpty()) {
+                verified = backupCodeService.verifyBackupCode(user.getId(), backupCode);
+            }
+
+            if (verified) {
+                session.setAttribute("2FA_AUTHENTICATED", true);
+                session.removeAttribute("2FA_PENDING");
+                return "redirect:/dashboard";
+            }
+
+            model.addAttribute("error", "Invalid code. Please try again.");
+            return "twofactor/verify";
         } catch (Exception e) {
+            log.error("2FA verification error", e);
             model.addAttribute("error", "Internal error: " + e.getMessage());
             return "twofactor/verify";
         }
@@ -167,32 +156,33 @@ public class TwoFactorController {
     @GetMapping("/backup-codes")
     public String viewBackupCodes(Authentication authentication, Model model) {
         AppUser user = getAuthenticatedUser(authentication);
-
         if (!user.isTwoFactorEnabled()) {
             return "redirect:/2fa/setup";
         }
-
         long remaining = backupCodeService.getRemainingCodeCount(user.getId());
         model.addAttribute("remainingCount", remaining);
         model.addAttribute("hasCodes", remaining > 0);
-        boolean isAdmin = user.getRoles().stream().anyMatch(r -> r.getName().equals("ADMIN"));
-        model.addAttribute("isAdmin", isAdmin);
+        model.addAttribute("isAdmin", isAdmin(user));
         return "twofactor/backup-codes";
     }
 
     @PostMapping("/backup-codes/regenerate")
     public String regenerateBackupCodes(Authentication authentication, Model model) {
         AppUser user = getAuthenticatedUser(authentication);
-
         if (!user.isTwoFactorEnabled()) {
             return "redirect:/2fa/setup";
         }
-
         List<String> newCodes = backupCodeService.generateBackupCodes(user.getId());
         model.addAttribute("backupCodes", newCodes);
         model.addAttribute("regenerated", true);
-        boolean isAdmin = user.getRoles().stream().anyMatch(r -> r.getName().equals("ADMIN"));
-        model.addAttribute("isAdmin", isAdmin);
+        model.addAttribute("isAdmin", isAdmin(user));
         return "twofactor/status";
+    }
+
+    private static boolean isAdmin(AppUser user) {
+        return user.getRoles().stream().anyMatch(r ->
+                "ADMIN".equals(r.getName())
+                        || "SUPER_ADMIN".equals(r.getName())
+                        || "MERCHANT_ADMIN".equals(r.getName()));
     }
 }

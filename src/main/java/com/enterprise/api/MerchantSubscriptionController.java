@@ -10,7 +10,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,8 +20,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import org.springframework.http.MediaType;
-
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -35,13 +35,10 @@ public class MerchantSubscriptionController {
 
     private static final Logger log = LoggerFactory.getLogger(MerchantSubscriptionController.class);
 
-    // === existing deps ===
     private final SubscriptionService subscriptionService;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
-
-    // === new deps for billing ===
     private final SubscriptionBillingService billingService;
     private final SubscriptionUsageService usageService;
 
@@ -59,17 +56,32 @@ public class MerchantSubscriptionController {
         this.usageService = usageService;
     }
 
-    // ============================================================
-    // HELPERS
-    // ============================================================
     private AppUser currentUser(Authentication auth) {
         return userRepository.findByEmail(auth.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    // ============================================================
-    // DASHBOARD
-    // ============================================================
+    /**
+     * ✅ Load a subscription and assert ownership.
+     *
+     * Allowed if:
+     *  - caller is SUPER_ADMIN
+     *  - caller is the subscription's merchant
+     *  - caller is a MERCHANT_ADMIN in the subscription's tenant
+     */
+    private CustomerSubscription loadOwnedSubscription(Long id, AppUser me) {
+        CustomerSubscription sub = subscriptionService.getSubscriptionById(id);
+        if (me.isSuperAdmin()) return sub;
+
+        if (sub.getMerchantId().equals(me.getId())) return sub;
+
+        boolean sameTenantMerchantAdmin = sub.getTenantId().equals(me.getTenantId())
+                && me.getRoles().stream().anyMatch(r -> r.getName().equals("MERCHANT_ADMIN"));
+        if (sameTenantMerchantAdmin) return sub;
+
+        throw new AccessDeniedException("You do not own this subscription");
+    }
+
     @GetMapping
     public String dashboard(Model model, Authentication authentication) {
         AppUser merchant = currentUser(authentication);
@@ -81,9 +93,9 @@ public class MerchantSubscriptionController {
         List<SubscriptionRequest> pendingRequests = subscriptionService.getPendingRequests(merchantId);
         model.addAttribute("pendingRequests", pendingRequests);
 
-        Page<CustomerSubscription> subscriptions = subscriptionService.getMerchantSubscriptionsPaginated(
-                merchantId, PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"))
-        );
+        Page<CustomerSubscription> subscriptions = subscriptionService
+                .getMerchantSubscriptionsPaginated(merchantId,
+                        PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt")));
         model.addAttribute("subscriptions", subscriptions);
 
         List<SubscriptionPlan> plans = subscriptionService.getPlansForTenant(merchant.getTenantId());
@@ -98,8 +110,8 @@ public class MerchantSubscriptionController {
     @GetMapping("/plans")
     public String managePlans(Model model, Authentication authentication) {
         AppUser merchant = currentUser(authentication);
-        List<SubscriptionPlan> plans = subscriptionService.getPlansForTenant(merchant.getTenantId());
-        model.addAttribute("plans", plans);
+        model.addAttribute("plans",
+                subscriptionService.getPlansForTenant(merchant.getTenantId()));
         return "merchant/subscriptions/plans";
     }
 
@@ -176,11 +188,12 @@ public class MerchantSubscriptionController {
     @GetMapping("/customers")
     public String customerSubscriptions(Model model, Authentication authentication) {
         AppUser merchant = currentUser(authentication);
-        Page<CustomerSubscription> subscriptions = subscriptionService.getMerchantSubscriptionsPaginated(
-                merchant.getId(), PageRequest.of(0, 50, Sort.by(Sort.Direction.DESC, "createdAt"))
-        );
+        Page<CustomerSubscription> subscriptions = subscriptionService
+                .getMerchantSubscriptionsPaginated(merchant.getId(),
+                        PageRequest.of(0, 50, Sort.by(Sort.Direction.DESC, "createdAt")));
         model.addAttribute("subscriptions", subscriptions);
-        model.addAttribute("plans", subscriptionService.getPlansForTenant(merchant.getTenantId()));
+        model.addAttribute("plans",
+                subscriptionService.getPlansForTenant(merchant.getTenantId()));
         return "merchant/subscriptions/customers";
     }
 
@@ -236,12 +249,10 @@ public class MerchantSubscriptionController {
                                     RedirectAttributes redirectAttributes) {
         try {
             AppUser merchant = currentUser(authentication);
-
             if (customerEmail == null || customerEmail.trim().isEmpty()) {
                 redirectAttributes.addFlashAttribute("error", "Customer email is required");
                 return "redirect:/merchant/subscriptions";
             }
-
             String trimmedEmail = customerEmail.trim();
             Optional<AppUser> existing = userRepository.findByEmailIgnoreCase(trimmedEmail);
 
@@ -250,44 +261,35 @@ public class MerchantSubscriptionController {
                 customer = existing.get();
             } else {
                 String password = customerPassword != null && !customerPassword.isEmpty()
-                        ? customerPassword
-                        : UUID.randomUUID().toString();
-
+                        ? customerPassword : UUID.randomUUID().toString();
                 AppUser newUser = new AppUser();
                 newUser.setEmail(trimmedEmail);
                 newUser.setPasswordHash(passwordEncoder.encode(password));
                 newUser.setActive(true);
                 newUser.setTenantId(merchant.getTenantId());
-
                 Role customerRole = roleRepository.findByName("CUSTOMER")
                         .orElseThrow(() -> new RuntimeException("CUSTOMER role not found"));
                 newUser.setRoles(Set.of(customerRole));
-
                 customer = userRepository.save(newUser);
             }
 
             subscriptionService.createRequest(customer.getId(), trimmedEmail, merchant.getId(), planId);
-
             redirectAttributes.addFlashAttribute("success",
-                    "✅ Subscription request created for " + trimmedEmail + ". Awaiting admin approval.");
+                    "✅ Subscription request created for " + trimmedEmail + ".");
         } catch (Exception e) {
-            log.error("❌ Error subscribing customer", e);
+            log.error("Error subscribing customer", e);
             redirectAttributes.addFlashAttribute("error", "Failed to subscribe customer: " + e.getMessage());
         }
         return "redirect:/merchant/subscriptions";
     }
 
     // ============================================================
-    // BILLING PAGE
+    // BILLING PAGE — ownership checked
     // ============================================================
     @GetMapping("/{id}/billing")
     public String billingPage(@PathVariable Long id, Model model, Authentication auth) {
         AppUser me = currentUser(auth);
-        CustomerSubscription sub = subscriptionService.getSubscriptionById(id);
-
-        if (!sub.getMerchantId().equals(me.getId()) && !me.isSuperAdmin()) {
-            throw new RuntimeException("Unauthorized");
-        }
+        CustomerSubscription sub = loadOwnedSubscription(id, me);
 
         List<SubscriptionPlan> plans = subscriptionService.getPlansForTenant(sub.getTenantId());
         List<SubscriptionUsage> usage = usageService.listUsage(id);
@@ -301,13 +303,16 @@ public class MerchantSubscriptionController {
     }
 
     // ============================================================
-    // PAUSE / RESUME
+    // PAUSE / RESUME — ownership checked
     // ============================================================
     @PostMapping("/{id}/pause")
     public String pause(@PathVariable Long id,
                         @RequestParam(required = false) String reason,
+                        Authentication auth,
                         RedirectAttributes redirect) {
         try {
+            AppUser me = currentUser(auth);
+            loadOwnedSubscription(id, me);  // ✅ ownership
             billingService.pauseSubscription(id, reason);
             redirect.addFlashAttribute("success", "⏸️ Subscription paused.");
         } catch (Exception e) {
@@ -318,8 +323,12 @@ public class MerchantSubscriptionController {
     }
 
     @PostMapping("/{id}/resume")
-    public String resume(@PathVariable Long id, RedirectAttributes redirect) {
+    public String resume(@PathVariable Long id,
+                         Authentication auth,
+                         RedirectAttributes redirect) {
         try {
+            AppUser me = currentUser(auth);
+            loadOwnedSubscription(id, me);  // ✅ ownership
             billingService.resumeSubscription(id);
             redirect.addFlashAttribute("success", "▶️ Subscription resumed.");
         } catch (Exception e) {
@@ -330,26 +339,29 @@ public class MerchantSubscriptionController {
     }
 
     // ============================================================
-    // PRORATION PREVIEW (AJAX)
+    // PRORATION PREVIEW — ownership checked
     // ============================================================
-@GetMapping(value = "/{id}/preview-proration", produces = MediaType.APPLICATION_JSON_VALUE)
-@ResponseBody
-public ResponseEntity<?> previewProration(@PathVariable Long id,
-                                           @RequestParam Long newPlanId) {
-    try {
-        Map<String, Object> preview = billingService.previewProration(id, newPlanId);
-        return ResponseEntity.ok(preview);
-    } catch (Exception e) {
-        log.error("Proration preview failed for sub {} → plan {}", id, newPlanId, e);
-        return ResponseEntity.badRequest().body(Map.of(
-                "error", e.getMessage(),
-                "subscriptionId", id,
-                "newPlanId", newPlanId
-        ));
+    @GetMapping(value = "/{id}/preview-proration", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> previewProration(@PathVariable Long id,
+                                              @RequestParam Long newPlanId,
+                                              Authentication auth) {
+        try {
+            AppUser me = currentUser(auth);
+            loadOwnedSubscription(id, me);  // ✅ ownership
+            return ResponseEntity.ok(billingService.previewProration(id, newPlanId));
+        } catch (Exception e) {
+            log.error("Proration preview failed for sub {} → plan {}", id, newPlanId, e);
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", e.getMessage(),
+                    "subscriptionId", id,
+                    "newPlanId", newPlanId
+            ));
+        }
     }
-}
+
     // ============================================================
-    // UPGRADE / DOWNGRADE
+    // UPGRADE / DOWNGRADE — ownership checked
     // ============================================================
     @PostMapping("/{id}/upgrade")
     public String upgrade(@PathVariable Long id,
@@ -358,6 +370,7 @@ public ResponseEntity<?> previewProration(@PathVariable Long id,
                           RedirectAttributes redirect) {
         try {
             AppUser admin = currentUser(auth);
+            loadOwnedSubscription(id, admin);  // ✅ ownership
             billingService.upgradeWithProration(id, planId, admin.getId());
             redirect.addFlashAttribute("success", "⬆️ Subscription upgraded.");
         } catch (Exception e) {
@@ -374,6 +387,7 @@ public ResponseEntity<?> previewProration(@PathVariable Long id,
                             RedirectAttributes redirect) {
         try {
             AppUser admin = currentUser(auth);
+            loadOwnedSubscription(id, admin);  // ✅ ownership
             billingService.downgradeWithProration(id, planId, admin.getId());
             redirect.addFlashAttribute("success", "⬇️ Subscription downgraded.");
         } catch (Exception e) {
@@ -384,7 +398,7 @@ public ResponseEntity<?> previewProration(@PathVariable Long id,
     }
 
     // ============================================================
-    // USAGE RECORDING
+    // USAGE — ownership checked
     // ============================================================
     @PostMapping("/{id}/usage")
     @ResponseBody
@@ -392,8 +406,11 @@ public ResponseEntity<?> previewProration(@PathVariable Long id,
                                          @RequestParam String metric,
                                          @RequestParam(defaultValue = "1") Long delta,
                                          @RequestParam(defaultValue = "0") Long included,
-                                         @RequestParam(defaultValue = "0") BigDecimal overageRate) {
+                                         @RequestParam(defaultValue = "0") BigDecimal overageRate,
+                                         Authentication auth) {
         try {
+            AppUser me = currentUser(auth);
+            loadOwnedSubscription(id, me);  // ✅ ownership — prevents billing manipulation
             SubscriptionUsage usage = usageService.recordUsage(id, metric, delta, included, overageRate);
             return ResponseEntity.ok(Map.of(
                     "metric", usage.getMetricName(),
@@ -407,11 +424,15 @@ public ResponseEntity<?> previewProration(@PathVariable Long id,
     }
 
     // ============================================================
-    // CANCEL
+    // CANCEL — ownership checked
     // ============================================================
     @PostMapping("/{id}/cancel")
-    public String cancelSubscription(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+    public String cancelSubscription(@PathVariable Long id,
+                                     Authentication auth,
+                                     RedirectAttributes redirectAttributes) {
         try {
+            AppUser me = currentUser(auth);
+            loadOwnedSubscription(id, me);  // ✅ ownership
             subscriptionService.cancelSubscription(id);
             redirectAttributes.addFlashAttribute("success", "✅ Subscription cancelled successfully");
         } catch (Exception e) {

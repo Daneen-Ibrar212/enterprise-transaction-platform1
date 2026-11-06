@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
-import java.util.Map;
 
 @Controller
 @RequestMapping("/admin/reconciliation")
@@ -48,9 +47,6 @@ public class AdminReconciliationController {
         return reconciliationService.runReconciliation();
     }
 
-    // ============================================================
-    // TEST-ONLY: Manual trigger via browser
-    // ============================================================
     @GetMapping("/run-now")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public String runNow(RedirectAttributes redirect) {
@@ -65,15 +61,16 @@ public class AdminReconciliationController {
         return "redirect:/admin/reconciliation";
     }
 
-    // ============================================================
-    // AUTO-FIX — MISSING_LEDGER
-    // ============================================================
     @PostMapping("/details/{detailId}/auto-fix")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public String autoFix(@PathVariable Long detailId,
                           Authentication auth,
                           RedirectAttributes redirect) {
         Long recordId = recordIdFor(detailId);
+        if (recordId == null) {
+            redirect.addFlashAttribute("error", "Reconciliation detail not found");
+            return "redirect:/admin/reconciliation";
+        }
         try {
             AppUser admin = currentUser(auth);
             autoFixService.repairMissingLedger(detailId, admin.getId());
@@ -85,15 +82,16 @@ public class AdminReconciliationController {
         return "redirect:/admin/reconciliation/" + recordId;
     }
 
-    // ============================================================
-    // ESCALATE — AMOUNT_MISMATCH
-    // ============================================================
     @PostMapping("/details/{detailId}/escalate")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public String escalate(@PathVariable Long detailId,
                            Authentication auth,
                            RedirectAttributes redirect) {
         Long recordId = recordIdFor(detailId);
+        if (recordId == null) {
+            redirect.addFlashAttribute("error", "Reconciliation detail not found");
+            return "redirect:/admin/reconciliation";
+        }
         try {
             AppUser admin = currentUser(auth);
             autoFixService.escalateToDlq(detailId, admin.getId());
@@ -105,9 +103,6 @@ public class AdminReconciliationController {
         return "redirect:/admin/reconciliation/" + recordId;
     }
 
-    // ============================================================
-    // BULK REPAIR
-    // ============================================================
     @PostMapping("/{recordId}/bulk-repair")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public String bulkRepair(@PathVariable Long recordId,
@@ -124,9 +119,6 @@ public class AdminReconciliationController {
         return "redirect:/admin/reconciliation/" + recordId;
     }
 
-    // ============================================================
-    // REST endpoints (keep existing behaviour)
-    // ============================================================
     @GetMapping("/reports")
     @ResponseBody
     @PreAuthorize("hasPermission(null, 'reconciliation:view_report')")
@@ -141,9 +133,10 @@ public class AdminReconciliationController {
         return reconciliationService.getDetailsForRecord(id);
     }
 
+    /** ✅ Returns null (not 0L) if the detail doesn't exist. */
     private Long recordIdFor(Long detailId) {
         return detailRepository.findById(detailId)
-                .map(d -> d.getReconciliationRecord().getId())
-                .orElse(0L);
+                .map(d -> d.getReconciliationRecord() != null ? d.getReconciliationRecord().getId() : null)
+                .orElse(null);
     }
 }

@@ -21,6 +21,13 @@ import java.util.concurrent.ConcurrentHashMap;
 public class NotificationSSEController {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationSSEController.class);
+
+    /** SSE timeout — 30 min, then the client reconnects. */
+    private static final long SSE_TIMEOUT_MS = 30L * 60 * 1000;
+
+    /** Maximum concurrent emitters across all users — protects the heap. */
+    private static final int MAX_TOTAL_EMITTERS = 2000;
+
     private static final Map<Long, SseEmitter> emitters = new ConcurrentHashMap<>();
 
     private final NotificationService notificationService;
@@ -33,40 +40,38 @@ public class NotificationSSEController {
     }
 
     @GetMapping("/stream")
-    @Transactional(readOnly = true)  // short transaction for DB query
+    @Transactional(readOnly = true)
     public SseEmitter stream(Authentication authentication) {
-        // ✅ Authentication is guaranteed by security filter – no need to check here
+        if (emitters.size() >= MAX_TOTAL_EMITTERS) {
+            log.warn("SSE emitter limit reached ({}), rejecting new connection", MAX_TOTAL_EMITTERS);
+            throw new RuntimeException("Notification service at capacity — please retry later");
+        }
+
         String email = authentication.getName();
         AppUser user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         Long userId = user.getId();
 
-        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
-        emitters.put(userId, emitter);
+        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
 
-        emitter.onCompletion(() -> {
-            log.info("SSE connection completed for user {}", userId);
-            emitters.remove(userId);
-        });
-        emitter.onTimeout(() -> {
-            log.info("SSE connection timed out for user {}", userId);
-            emitters.remove(userId);
-        });
-        emitter.onError((e) -> {
-            log.error("SSE error for user {}: {}", userId, e.getMessage());
-            emitters.remove(userId);
-        });
+        // Replace any previous emitter for this user
+        SseEmitter prior = emitters.put(userId, emitter);
+        if (prior != null) {
+            try { prior.complete(); } catch (Exception ignored) {}
+        }
 
-        // Send initial count
+        emitter.onCompletion(() -> { emitters.remove(userId, emitter); });
+        emitter.onTimeout(() -> { emitters.remove(userId, emitter); emitter.complete(); });
+        emitter.onError(e -> { emitters.remove(userId, emitter); });
+
         try {
             long count = notificationService.countUnread(userId);
             emitter.send(SseEmitter.event()
                     .name("notificationCount")
                     .data(String.valueOf(count)));
         } catch (IOException e) {
-            emitters.remove(userId);
+            emitters.remove(userId, emitter);
         }
-
         return emitter;
     }
 
@@ -77,10 +82,9 @@ public class NotificationSSEController {
                 emitter.send(SseEmitter.event()
                         .name("notificationCount")
                         .data(String.valueOf(count)));
-                log.debug("Broadcast notification count {} to user {}", count, userId);
             } catch (IOException e) {
-                emitters.remove(userId);
-                log.warn("Removed stale emitter for user {}", userId);
+                emitters.remove(userId, emitter);
+                log.debug("Removed stale emitter for user {}", userId);
             }
         }
     }

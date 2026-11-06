@@ -21,10 +21,27 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;  // ✅ ADD THIS IMPORT
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * WooCommerce integration endpoint.
+ *
+ * Security model (was: no auth — critical bug):
+ *   • Requires X-API-Key header (enforced by ApiKeyAuthenticationFilter).
+ *   • Tenant context is set from the API-key user's tenant, NOT from the
+ *     request body. A caller can only create invoices for their own tenant.
+ *   • merchantId in the request is validated to belong to the caller's tenant.
+ *
+ * Idempotency:
+ *   • /payment derives its idempotency key from (orderId, orderKey), so a
+ *     retried request returns the original response instead of creating a
+ *     second invoice/transaction.
+ *   • /create-invoice is NOT idempotent — the same orderId will create a new
+ *     invoice on each call. If that matters, add an order-id dedupe on the
+ *     invoice side.
+ */
 @RestController
 @RequestMapping("/api/woocommerce")
 public class WooCommerceController {
@@ -52,14 +69,28 @@ public class WooCommerceController {
         this.passwordEncoder = passwordEncoder;
     }
 
+    // ============================================================
+    // CREATE INVOICE (no payment)
+    // ============================================================
     @PostMapping("/create-invoice")
     public ResponseEntity<Map<String, Object>> createInvoice(@RequestBody WooCommerceOrder order) {
-        Long tenantId = order.getTenantId() != null ? order.getTenantId() : 1L;
-        TenantContext.setTenantId(tenantId);
-        log.info("🔵 Tenant set to: {}", tenantId);
+        // ✅ Tenant comes from API key context — set by ApiKeyAuthenticationFilter.
+        //    Never trust order.getTenantId() from the request body.
+        Long tenantId = TenantContext.getRequiredTenantId();
+        log.info("🔵 WC create-invoice for tenant: {}", tenantId);
 
         try {
-            // ✅ Get or create customer
+            if (order.getMerchantId() == null) {
+                throw new IllegalArgumentException("merchantId is required");
+            }
+
+            // ✅ Assert merchant belongs to the caller's tenant
+            AppUser merchant = userRepository.findById(order.getMerchantId())
+                    .orElseThrow(() -> new IllegalArgumentException("Merchant not found"));
+            if (!tenantId.equals(merchant.getTenantId())) {
+                throw new IllegalArgumentException("Merchant is not in your tenant");
+            }
+
             AppUser customer = getOrCreateCustomer(order, tenantId);
 
             Invoice invoice = invoiceService.createInvoice(
@@ -86,13 +117,31 @@ public class WooCommerceController {
         }
     }
 
+    // ============================================================
+    // CREATE INVOICE + PROCESS PAYMENT (idempotent on orderId+orderKey)
+    // ============================================================
     @PostMapping("/payment")
     public ResponseEntity<WooCommerceResponse> processWooOrder(@RequestBody WooCommerceOrder order) {
-        Long tenantId = order.getTenantId() != null ? order.getTenantId() : 1L;
-        TenantContext.setTenantId(tenantId);
+        Long tenantId = TenantContext.getRequiredTenantId();
 
         try {
-            // ✅ Get or create customer - handles duplicate emails
+            if (order.getMerchantId() == null) {
+                throw new IllegalArgumentException("merchantId is required");
+            }
+            AppUser merchant = userRepository.findById(order.getMerchantId())
+                    .orElseThrow(() -> new IllegalArgumentException("Merchant not found"));
+            if (!tenantId.equals(merchant.getTenantId())) {
+                throw new IllegalArgumentException("Merchant is not in your tenant");
+            }
+
+            if (order.getOrderId() == null
+                    || order.getOrderKey() == null
+                    || order.getOrderKey().isEmpty()) {
+                throw new IllegalArgumentException("orderId and orderKey are required for /payment");
+            }
+
+            String idempotencyKey = "woo-" + order.getOrderId() + "-" + order.getOrderKey();
+
             AppUser customer = getOrCreateCustomer(order, tenantId);
 
             Invoice invoice = invoiceService.createInvoice(
@@ -113,16 +162,21 @@ public class WooCommerceController {
             request.setCurrency(order.getCurrency());
             request.setDescription("WooCommerce order " + order.getOrderId());
 
-            String idempotencyKey = "woo-" + order.getOrderId() + "-" + order.getOrderKey();
             PaymentResponse response = transactionService.processPayment(request, idempotencyKey);
 
-            webhookService.sendWebhooks("WOOCOMMERCE_ORDER_UPDATE", Map.of(
-                    "orderId", order.getOrderId(),
-                    "status", response.getStatus(),
-                    "transactionId", response.getTransactionId(),
-                    "customerId", customer.getId(),
-                    "customerEmail", customer.getEmail()
-            ));
+            try {
+                webhookService.sendWebhooks("WOOCOMMERCE_ORDER_UPDATE", Map.of(
+                        "orderId", order.getOrderId(),
+                        "status", response.getStatus(),
+                        "transactionId", response.getTransactionId(),
+                        "customerId", customer.getId(),
+                        "customerEmail", customer.getEmail()
+                ));
+            } catch (Exception e) {
+                // Webhook failures must not fail the payment response.
+                log.warn("WOOCOMMERCE_ORDER_UPDATE webhook failed for order {}: {}",
+                        order.getOrderId(), e.getMessage());
+            }
 
             WooCommerceResponse wooResponse = new WooCommerceResponse(
                     order.getOrderId(),
@@ -131,81 +185,79 @@ public class WooCommerceController {
                     "Payment " + response.getStatus().toLowerCase()
             );
             return ResponseEntity.ok(wooResponse);
-
         } finally {
             TenantContext.clear();
         }
     }
 
     // ============================================================
-    // ✅ HELPER: Get or Create Customer (Handles Duplicate Emails)
+    // HELPER: Get-or-create customer, tenant-scoped
     // ============================================================
     private AppUser getOrCreateCustomer(WooCommerceOrder order, Long tenantId) {
-        String email = order.getBillingEmail();
-        
-        if (email == null || email.trim().isEmpty()) {
-            log.error("❌ No billing email provided in WooCommerce order");
+        String rawEmail = order.getBillingEmail();
+        if (rawEmail == null || rawEmail.trim().isEmpty()) {
             throw new RuntimeException("Billing email is required");
         }
+        // ✅ final local so lambdas can capture it
+        final String email = rawEmail.trim().toLowerCase();
 
-        // ✅ 1. Try to find existing user by email (case-insensitive)
+        // 1. Try tenant-scoped lookup first (normal path)
         Optional<AppUser> existingUser = userRepository.findByEmailIgnoreCase(email);
-        
         if (existingUser.isPresent()) {
             AppUser user = existingUser.get();
-            log.info("✅ Found existing customer: {} (ID: {})", email, user.getId());
-            
-            // ✅ Check if user is active
             if (!user.isActive()) {
-                log.warn("⚠️ User {} is inactive, reactivating", email);
                 user.setActive(true);
                 user = userRepository.save(user);
             }
-            
-            // ✅ Ensure user has CUSTOMER role
             boolean hasCustomerRole = user.getRoles().stream()
                     .anyMatch(r -> r.getName().equals("CUSTOMER"));
             if (!hasCustomerRole) {
-                log.info("✅ Adding CUSTOMER role to user {}", email);
                 Role customerRole = roleRepository.findByName("CUSTOMER")
                         .orElseThrow(() -> new RuntimeException("CUSTOMER role not found"));
                 user.getRoles().add(customerRole);
                 user = userRepository.save(user);
             }
-            
             return user;
         }
 
-        // ✅ 2. No user found - create new one
-        log.info("📝 Creating new customer for email: {}", email);
-        
+        // 2. Email may already exist in another tenant (email is globally unique).
+        //    Reuse the existing user only if it's in the same tenant; otherwise refuse.
+        Optional<AppUser> globalUser = userRepository.findByEmailIgnoreCaseGlobal(email);
+        if (globalUser.isPresent()) {
+            AppUser user = globalUser.get();
+            if (!user.getTenantId().equals(tenantId)) {
+                throw new IllegalStateException(
+                        "This email is already registered in another tenant. " +
+                        "Use a different billing email or contact support.");
+            }
+            return user;
+        }
+
+        // 3. Create a new customer
         AppUser newUser = new AppUser();
         newUser.setEmail(email);
-        
-        // ✅ 3. Generate password if not provided
         String password = order.getCustomerPassword() != null && !order.getCustomerPassword().isEmpty()
                 ? order.getCustomerPassword()
                 : UUID.randomUUID().toString();
         newUser.setPasswordHash(passwordEncoder.encode(password));
-        
         newUser.setActive(true);
         newUser.setTenantId(tenantId);
-        
-        // ✅ 4. Assign CUSTOMER role
         Role customerRole = roleRepository.findByName("CUSTOMER")
                 .orElseThrow(() -> new RuntimeException("CUSTOMER role not found"));
         newUser.setRoles(Set.of(customerRole));
-        
+
         try {
-            AppUser savedUser = userRepository.save(newUser);
-            log.info("✅ Created new customer: {} (ID: {})", email, savedUser.getId());
-            return savedUser;
-            
+            return userRepository.save(newUser);
         } catch (DataIntegrityViolationException e) {
-            // ✅ 5. Race condition - another thread created the user
-            log.warn("⚠️ User creation race condition for email: {}, fetching existing", email);
-            return userRepository.findByEmailIgnoreCase(email)
-                    .orElseThrow(() -> new RuntimeException("Failed to create or find user: " + email));
+            // Race — another thread created the same user. Fetch it globally.
+            AppUser raced = userRepository.findByEmailIgnoreCaseGlobal(email)
+                    .orElseThrow(() -> new RuntimeException(
+                            "Failed to create or find user: " + email));
+            if (!raced.getTenantId().equals(tenantId)) {
+                throw new IllegalStateException(
+                        "This email is already registered in another tenant.");
+            }
+            return raced;
         }
     }
 
@@ -218,7 +270,7 @@ public class WooCommerceController {
         private String billingEmail;
         private String customerPassword;
         private Long merchantId;
-        private Long tenantId;
+        private Long tenantId;   // accepted but IGNORED — tenant comes from API key
         private String webhookUrl;
         private String returnUrl;
 

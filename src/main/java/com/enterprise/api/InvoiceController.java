@@ -1,18 +1,16 @@
 package com.enterprise.api;
 
 import com.enterprise.currency.ExchangeRateService;
-import com.enterprise.invoice.Invoice;
-import com.enterprise.invoice.InvoiceMessage;
-import com.enterprise.invoice.InvoiceMessageService;
-import com.enterprise.invoice.InvoicePdfService;
-import com.enterprise.invoice.InvoiceService;
 import com.enterprise.identity.AppUser;
 import com.enterprise.identity.UserRepository;
+import com.enterprise.invoice.*;
+import com.enterprise.tenant.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -45,6 +43,46 @@ public class InvoiceController {
         this.invoicePdfService = invoicePdfService;
     }
 
+    /**
+     * Loads an invoice and asserts the caller can access it.
+     *
+     * Access rules:
+     *  - SUPER_ADMIN / MERCHANT_ADMIN / ADMIN  → any invoice in their tenant
+     *  - MERCHANT  → invoices they own
+     *  - CUSTOMER  → invoices where they're the customer email
+     */
+    private Invoice loadAccessibleInvoice(Long id, AppUser user) {
+        Invoice invoice = invoiceService.findById(id)
+                .orElseThrow(() -> new RuntimeException("Invoice not found"));
+
+        // Tenant check — belt and suspenders (filter should already apply)
+        Long callerTenant = TenantContext.getRequiredTenantId();
+        if (invoice.getTenantId() != null && !invoice.getTenantId().equals(callerTenant)) {
+            throw new AccessDeniedException("Invoice not accessible");
+        }
+
+        boolean isAdmin = user.getRoles().stream()
+                .anyMatch(r -> r.getName().equals("SUPER_ADMIN")
+                            || r.getName().equals("MERCHANT_ADMIN")
+                            || r.getName().equals("ADMIN"));
+        if (isAdmin) return invoice;
+
+        boolean isMerchant = user.getId().equals(invoice.getMerchantId());
+        boolean isCustomer = invoice.getCustomerEmail().equalsIgnoreCase(user.getEmail());
+        if (!isMerchant && !isCustomer) {
+            throw new AccessDeniedException("You do not have access to this invoice");
+        }
+        return invoice;
+    }
+
+    private AppUser currentUser(Authentication auth) {
+        return userRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    // ============================================================
+    // CREATE
+    // ============================================================
     @GetMapping("/create")
     public String showCreateForm(Model model) {
         model.addAttribute("invoice", new Invoice());
@@ -58,53 +96,63 @@ public class InvoiceController {
                                 @RequestParam String customerEmail,
                                 @RequestParam(defaultValue = "GBP") String currency,
                                 Authentication authentication) {
-        AppUser merchant = userRepository.findByEmail(authentication.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        Long merchantId = merchant.getId();
-
+        AppUser merchant = currentUser(authentication);
         boolean requiresApproval = amount.compareTo(BigDecimal.valueOf(5000)) > 0;
-
-        invoiceService.createInvoice(amount, description, customerEmail, merchantId, requiresApproval, currency);
+        invoiceService.createInvoice(amount, description, customerEmail,
+                merchant.getId(), requiresApproval, currency);
         return "redirect:/dashboard";
     }
 
+    // ============================================================
+    // LISTS
+    // ============================================================
     @GetMapping("/customer")
     public String customerInvoices(Authentication authentication, Model model) {
-        String email = authentication.getName();
-        List<Invoice> invoices = invoiceService.getInvoicesForCustomer(email);
-        model.addAttribute("invoices", invoices);
+        AppUser user = currentUser(authentication);
+        model.addAttribute("invoices",
+                invoiceService.getInvoicesForCustomer(user.getEmail()));
         return "invoice/customer-list";
     }
 
     @GetMapping("/merchant")
     public String merchantInvoices(Authentication authentication, Model model) {
-        AppUser merchant = userRepository.findByEmail(authentication.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        List<Invoice> invoices = invoiceService.getInvoicesForMerchant(merchant.getId());
-        model.addAttribute("invoices", invoices);
+        AppUser merchant = currentUser(authentication);
+        model.addAttribute("invoices",
+                invoiceService.getInvoicesForMerchant(merchant.getId()));
         return "invoice/merchant-list";
     }
 
+    // ============================================================
+    // VIEW
+    // ============================================================
     @GetMapping("/{id}")
-    public String viewInvoice(@PathVariable Long id, Model model) {
+    public String viewInvoice(@PathVariable Long id,
+                              Authentication authentication,
+                              Model model) {
         try {
-            Invoice invoice = invoiceService.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Invoice not found"));
-            String symbol = exchangeRateService.getSymbol(invoice.getCurrency());
+            AppUser user = currentUser(authentication);
+            Invoice invoice = loadAccessibleInvoice(id, user);
             model.addAttribute("invoice", invoice);
-            model.addAttribute("symbol", symbol);
+            model.addAttribute("symbol", exchangeRateService.getSymbol(invoice.getCurrency()));
             return "invoice/detail";
+        } catch (AccessDeniedException e) {
+            throw e;
         } catch (Exception e) {
-            log.error("Error loading invoice detail for id {}: {}", id, e.getMessage(), e);
+            log.error("Error loading invoice {}", id, e);
             model.addAttribute("error", "Could not load invoice details.");
             return "error";
         }
     }
 
+    // ============================================================
+    // EDIT
+    // ============================================================
     @GetMapping("/{id}/edit")
-    public String showEditForm(@PathVariable Long id, Model model) {
-        Invoice invoice = invoiceService.findById(id)
-                .orElseThrow(() -> new RuntimeException("Invoice not found"));
+    public String showEditForm(@PathVariable Long id,
+                               Authentication authentication,
+                               Model model) {
+        AppUser user = currentUser(authentication);
+        Invoice invoice = loadAccessibleInvoice(id, user);
         model.addAttribute("invoice", invoice);
         model.addAttribute("currencies", com.enterprise.currency.CurrencyCodes.getAllCurrencies());
         return "invoice/edit";
@@ -115,76 +163,71 @@ public class InvoiceController {
                                 @RequestParam String description,
                                 @RequestParam(required = false) String currency,
                                 Authentication authentication) {
-        Invoice invoice = invoiceService.findById(id)
-                .orElseThrow(() -> new RuntimeException("Invoice not found"));
-        AppUser user = userRepository.findByEmail(authentication.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        if (!invoice.getMerchantId().equals(user.getId())) {
-            throw new RuntimeException("You do not own this invoice");
-        }
+        AppUser user = currentUser(authentication);
+        Invoice invoice = loadAccessibleInvoice(id, user);
+
+        // Only merchant (owner) or admin can edit
+        boolean canEdit = invoice.getMerchantId().equals(user.getId())
+                || user.getRoles().stream().anyMatch(r ->
+                        r.getName().equals("SUPER_ADMIN")
+                        || r.getName().equals("MERCHANT_ADMIN")
+                        || r.getName().equals("ADMIN"));
+        if (!canEdit) throw new AccessDeniedException("You cannot edit this invoice");
+
         invoice.setDescription(description);
-        if (currency != null && !currency.isEmpty()) {
-            invoice.setCurrency(currency);
-        }
+        if (currency != null && !currency.isEmpty()) invoice.setCurrency(currency);
         invoice.setUpdatedAt(java.time.LocalDateTime.now());
         invoiceService.updateInvoice(invoice);
         return "redirect:/invoices/" + id;
     }
 
     // ============================================================
-    // ✅ PDF EXPORT ENDPOINT
+    // PDF — access-controlled
     // ============================================================
     @GetMapping("/{id}/pdf")
-    public ResponseEntity<byte[]> exportPdf(@PathVariable Long id) {
+    public ResponseEntity<byte[]> exportPdf(@PathVariable Long id,
+                                            Authentication authentication) {
         try {
-            log.info("📄 Generating PDF for invoice {}", id);
+            AppUser user = currentUser(authentication);
+            Invoice invoice = loadAccessibleInvoice(id, user);
 
-            Invoice invoice = invoiceService.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Invoice not found"));
-
-            if (!"APPROVED".equals(invoice.getStatus()) && 
-                !"PAID".equals(invoice.getStatus()) &&
-                !"PENDING_APPROVAL".equals(invoice.getStatus())) {
-                log.warn("Invoice {} has status {} - PDF not available", id, invoice.getStatus());
+            if (!"APPROVED".equals(invoice.getStatus())
+                    && !"PAID".equals(invoice.getStatus())
+                    && !"PENDING_APPROVAL".equals(invoice.getStatus())) {
                 return ResponseEntity.badRequest().build();
             }
 
-            byte[] pdfBytes = invoicePdfService.generateInvoicePdf(invoice);
-
+            byte[] pdf = invoicePdfService.generateInvoicePdf(invoice);
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDispositionFormData("attachment", "invoice_" + id + ".pdf");
-            headers.setContentLength(pdfBytes.length);
-
-            return ResponseEntity.ok()
-                    .headers(headers)
-                    .body(pdfBytes);
-
+            headers.setContentLength(pdf.length);
+            return ResponseEntity.ok().headers(headers).body(pdf);
+        } catch (AccessDeniedException e) {
+            throw e;
         } catch (Exception e) {
-            log.error("Error generating PDF for invoice {}: {}", id, e.getMessage(), e);
+            log.error("Error generating PDF for invoice {}", id, e);
             return ResponseEntity.internalServerError().build();
         }
     }
 
     @GetMapping("/{id}/pay")
-    public String redirectPay(@PathVariable Long id) {
+    public String redirectPay(@PathVariable Long id,
+                              Authentication authentication) {
+        AppUser user = currentUser(authentication);
+        loadAccessibleInvoice(id, user);  // access check
         return "redirect:/pay/" + id;
     }
 
+    // ============================================================
+    // CHAT — access-controlled
+    // ============================================================
     @GetMapping("/{id}/messages")
-    public String viewChat(@PathVariable Long id, Model model, Authentication authentication) {
-        Invoice invoice = invoiceService.findById(id)
-                .orElseThrow(() -> new RuntimeException("Invoice not found"));
-        AppUser user = userRepository.findByEmail(authentication.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        boolean isMerchant = user.getId().equals(invoice.getMerchantId());
-        boolean isCustomer = invoice.getCustomerEmail().equals(user.getEmail());
-        boolean isAdmin = user.getRoles().stream().anyMatch(r -> r.getName().equals("ADMIN"));
-        if (!(isMerchant || isCustomer || isAdmin)) {
-            throw new RuntimeException("Unauthorized");
-        }
-
+    public String viewChat(@PathVariable Long id,
+                           Model model,
+                           Authentication authentication) {
+        AppUser user = currentUser(authentication);
+        Invoice invoice = loadAccessibleInvoice(id, user);
         List<InvoiceMessage> messages = messageService.getMessagesForInvoice(id);
         model.addAttribute("invoice", invoice);
         model.addAttribute("messages", messages);
@@ -196,18 +239,8 @@ public class InvoiceController {
     public String sendMessage(@PathVariable Long id,
                               @RequestParam String message,
                               Authentication authentication) {
-        Invoice invoice = invoiceService.findById(id)
-                .orElseThrow(() -> new RuntimeException("Invoice not found"));
-        AppUser user = userRepository.findByEmail(authentication.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        boolean isMerchant = user.getId().equals(invoice.getMerchantId());
-        boolean isCustomer = invoice.getCustomerEmail().equals(user.getEmail());
-        boolean isAdmin = user.getRoles().stream().anyMatch(r -> r.getName().equals("ADMIN"));
-        if (!(isMerchant || isCustomer || isAdmin)) {
-            throw new RuntimeException("Unauthorized");
-        }
-
+        AppUser user = currentUser(authentication);
+        Invoice invoice = loadAccessibleInvoice(id, user);
         messageService.sendMessage(invoice, user, message);
         return "redirect:/invoices/" + id + "/messages";
     }

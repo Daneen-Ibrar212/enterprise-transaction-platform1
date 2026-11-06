@@ -25,6 +25,11 @@ public class AdminDisputeController {
 
     private static final Logger log = LoggerFactory.getLogger(AdminDisputeController.class);
 
+    /** ✅ Cap respondDays — previously unlimited, allowing merchants to lock payouts forever. */
+    private static final int MAX_RESPOND_DAYS = 30;
+    /** ✅ Cap evidence file size to prevent storage exhaustion via CSRF. */
+    private static final long MAX_EVIDENCE_BYTES = 10L * 1024 * 1024; // 10 MB
+
     private final DisputeService disputeService;
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
@@ -42,44 +47,28 @@ public class AdminDisputeController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    // ============================================================
-    // LIST
-    // ============================================================
     @GetMapping
     public String list(@RequestParam(required = false) String status,
-                       Authentication auth,
-                       Model model) {
+                       Authentication auth, Model model) {
         AppUser me = currentUser(auth);
-        boolean isSuperAdmin = me.isSuperAdmin();
-
         List<Dispute> all = disputeService.listForTenant();
-
         List<Dispute> filtered = (status == null || status.isEmpty())
                 ? all
-                : all.stream()
-                    .filter(d -> d.getStatus().name().equals(status))
-                    .collect(Collectors.toList());
-
+                : all.stream().filter(d -> d.getStatus().name().equals(status)).collect(Collectors.toList());
         long openCount = all.stream().filter(d -> d.getStatus().isOpen()).count();
-
         model.addAttribute("disputes", filtered);
         model.addAttribute("statusFilter", status);
         model.addAttribute("openCount", openCount);
         model.addAttribute("statuses", DisputeStatus.values());
-        model.addAttribute("isSuperAdmin", isSuperAdmin);
+        model.addAttribute("isSuperAdmin", me.isSuperAdmin());
         return "admin/disputes/list";
     }
 
-    // ============================================================
-    // DETAIL
-    // ============================================================
     @GetMapping("/{id}")
     public String detail(@PathVariable Long id, Model model) {
         Dispute dispute = disputeService.get(id);
-        Transaction tx = transactionRepository.findById(dispute.getTransactionId())
-                .orElse(null);
+        Transaction tx = transactionRepository.findById(dispute.getTransactionId()).orElse(null);
         List<DisputeEvidence> evidence = disputeService.getEvidence(id);
-
         model.addAttribute("dispute", dispute);
         model.addAttribute("transaction", tx);
         model.addAttribute("evidence", evidence);
@@ -89,12 +78,8 @@ public class AdminDisputeController {
         return "admin/disputes/detail";
     }
 
-    // ============================================================
-    // MANUAL OPEN
-    // ============================================================
     @GetMapping("/new")
-    public String newDisputeForm(@RequestParam(required = false) Long transactionId,
-                                 Model model) {
+    public String newDisputeForm(@RequestParam(required = false) Long transactionId, Model model) {
         model.addAttribute("transactionId", transactionId);
         model.addAttribute("reasons", DisputeReason.values());
         return "admin/disputes/new";
@@ -107,7 +92,8 @@ public class AdminDisputeController {
                                 @RequestParam(defaultValue = "7") Integer respondDays,
                                 RedirectAttributes redirect) {
         try {
-            Dispute d = disputeService.create(transactionId, reason, source, respondDays);
+            int days = Math.max(1, Math.min(respondDays, MAX_RESPOND_DAYS));
+            Dispute d = disputeService.create(transactionId, reason, source, days);
             redirect.addFlashAttribute("success", "Dispute #" + d.getId() + " created.");
             return "redirect:/admin/disputes/" + d.getId();
         } catch (Exception e) {
@@ -117,9 +103,6 @@ public class AdminDisputeController {
         }
     }
 
-    // ============================================================
-    // STATUS UPDATE
-    // ============================================================
     @PostMapping("/{id}/status")
     public String updateStatus(@PathVariable Long id,
                                @RequestParam DisputeStatus status,
@@ -135,9 +118,6 @@ public class AdminDisputeController {
         return "redirect:/admin/disputes/" + id;
     }
 
-    // ============================================================
-    // ADD EVIDENCE
-    // ============================================================
     @PostMapping("/{id}/evidence")
     public String addEvidence(@PathVariable Long id,
                               @RequestParam String evidenceType,
@@ -147,20 +127,19 @@ public class AdminDisputeController {
                               RedirectAttributes redirect) {
         try {
             AppUser admin = currentUser(auth);
-
-            String filename = null;
-            String contentType = null;
+            String filename = null, contentType = null;
             byte[] content = null;
-
             if (file != null && !file.isEmpty()) {
+                if (file.getSize() > MAX_EVIDENCE_BYTES) {
+                    throw new IllegalArgumentException(
+                            "Evidence file too large (max " + (MAX_EVIDENCE_BYTES / 1024 / 1024) + " MB)");
+                }
                 filename = file.getOriginalFilename();
                 contentType = file.getContentType();
                 content = file.getBytes();
             }
-
             disputeService.addEvidence(id, evidenceType, description,
                     filename, contentType, content, admin.getId());
-
             redirect.addFlashAttribute("success", "Evidence added.");
         } catch (Exception e) {
             log.error("Failed to add evidence to dispute {}", id, e);

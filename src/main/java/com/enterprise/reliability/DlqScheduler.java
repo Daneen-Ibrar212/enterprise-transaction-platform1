@@ -33,13 +33,12 @@ public class DlqScheduler {
         this.auditService = auditService;
     }
 
-    // Runs every 5 minutes by default – configurable via cron
     @Scheduled(cron = "${app.dlq.scheduler.cron:0 */5 * * * *}")
     public void processDlq() {
         log.info("Starting scheduled DLQ processing");
 
-        // Fetch pending entries that haven't exceeded max retry attempts
-        List<DlqEntry> pending = dlqEntryRepository.findByStatusAndFailureCountLessThan("PENDING", maxRetryAttempts);
+        List<DlqEntry> pending = dlqEntryRepository
+                .findByStatusAndFailureCountLessThan("PENDING", maxRetryAttempts);
 
         if (pending.isEmpty()) {
             log.info("No pending DLQ entries to process");
@@ -48,7 +47,6 @@ public class DlqScheduler {
 
         log.info("Found {} pending DLQ entries to process", pending.size());
 
-        // Process in batches
         int processed = 0;
         int success = 0;
         int failed = 0;
@@ -58,36 +56,48 @@ public class DlqScheduler {
                 log.info("Reached batch size limit ({}), stopping for this run", batchSize);
                 break;
             }
+
             try {
                 log.info("Processing DLQ entry {}", entry.getId());
                 dlqProcessorService.retryDlq(entry.getId());
                 success++;
                 auditService.recordEvent(
-                    "DLQ_RETRY_SUCCESS",
-                    null, // no specific user
-                    Map.of("dlqEntryId", entry.getId(), "operationType", entry.getOperationType())
-                );
+                        "DLQ_RETRY_SUCCESS",
+                        null,
+                        Map.of("dlqEntryId", entry.getId(),
+                                "operationType", entry.getOperationType()));
             } catch (Exception e) {
                 failed++;
                 log.error("Failed to process DLQ entry {}", entry.getId(), e);
-                // Increment failure count
-                entry.setFailureCount(entry.getFailureCount() + 1);
-                if (entry.getFailureCount() >= maxRetryAttempts) {
-                    entry.setStatus("FAILED");
-                    log.warn("DLQ entry {} moved to FAILED after {} attempts", entry.getId(), maxRetryAttempts);
+
+                // ✅ Do NOT increment failureCount here.
+                //    DlqProcessorService.retryDlq() already increments and persists it
+                //    in its catch block. Double-incrementing here meant entries hit
+                //    maxRetryAttempts at half the intended count.
+                //
+                //    Re-read the row so we see the value retryDlq actually persisted.
+                DlqEntry refreshed = dlqEntryRepository.findById(entry.getId()).orElse(null);
+                if (refreshed == null) {
+                    log.warn("DLQ entry {} disappeared between retry and re-read", entry.getId());
+                } else if (refreshed.getFailureCount() >= maxRetryAttempts) {
+                    refreshed.setStatus("FAILED");
+                    dlqEntryRepository.save(refreshed);
+                    log.warn("DLQ entry {} moved to FAILED after {} attempts",
+                            refreshed.getId(), refreshed.getFailureCount());
                     auditService.recordEvent(
-                        "DLQ_RETRY_FAILED",
-                        null,
-                        Map.of("dlqEntryId", entry.getId(), "reason", e.getMessage())
-                    );
-                } else {
-                    entry.setStatus("PENDING");
+                            "DLQ_RETRY_FAILED",
+                            null,
+                            Map.of("dlqEntryId", refreshed.getId(),
+                                    "reason", String.valueOf(e.getMessage())));
                 }
-                dlqEntryRepository.save(entry);
+                // Else: retryDlq already saved status=PENDING with the incremented count.
+                // Nothing more to do.
             }
+
             processed++;
         }
 
-        log.info("DLQ processing completed: processed={}, success={}, failed={}", processed, success, failed);
+        log.info("DLQ processing completed: processed={}, success={}, failed={}",
+                processed, success, failed);
     }
 }

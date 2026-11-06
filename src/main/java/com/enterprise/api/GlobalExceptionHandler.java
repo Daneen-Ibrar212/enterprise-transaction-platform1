@@ -1,7 +1,6 @@
 package com.enterprise.api;
 
 import com.enterprise.exception.DuplicateRequestConflictException;
-
 import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -10,7 +9,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.web.HttpRequestMethodNotSupportedException;  // ✅ ADDED
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -29,9 +28,6 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    // ============================================================
-    // ✅ 405 METHOD NOT ALLOWED (e.g., GET on POST-only endpoint)
-    // ============================================================
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
     @ResponseBody
@@ -40,30 +36,8 @@ public class GlobalExceptionHandler {
         String supported = (e.getSupportedMethods() != null && e.getSupportedMethods().length > 0)
                 ? String.join(", ", e.getSupportedMethods())
                 : "POST";
-
-        // ✅ Log at DEBUG – this is normal HTTP behaviour, not an application error
-        log.debug("Method {} not allowed for {} (supported: {})",
-                e.getMethod(), request.getRequestURI(), supported);
-
-        return new ErrorResponse(
-                "HTTP-405",
-                String.format("Method %s is not supported for this endpoint. Use: %s",
-                        e.getMethod(), supported),
-                getCorrelationId(request),
-                Instant.now(),
-                null
-        );
-    }
-
-    // ============================================================
-    // 500 – Catch-all
-    // ============================================================
-    @ExceptionHandler(Exception.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    @ResponseBody
-    public ErrorResponse handleGeneric(Exception e, HttpServletRequest request) {
-        log.error("Unhandled exception", e);
-        return new ErrorResponse("SYS-001", "Internal server error",
+        return new ErrorResponse("HTTP-405",
+                String.format("Method %s is not supported. Use: %s", e.getMethod(), supported),
                 getCorrelationId(request), Instant.now(), null);
     }
 
@@ -108,7 +82,15 @@ public class GlobalExceptionHandler {
     @ResponseBody
     public ErrorResponse handleOptimisticLock(OptimisticLockException e, HttpServletRequest request) {
         return new ErrorResponse("CONCURRENCY-001",
-                "The rule was updated by another user. Please refresh and try again.",
+                "The record was updated by another user. Please refresh and try again.",
+                getCorrelationId(request), Instant.now(), null);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ResponseBody
+    public ErrorResponse handleIllegalArgument(IllegalArgumentException e, HttpServletRequest request) {
+        return new ErrorResponse("REQ-400", e.getMessage(),
                 getCorrelationId(request), Instant.now(), null);
     }
 
@@ -128,7 +110,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ResponseBody
     public ErrorResponse handleNoSuchElement(NoSuchElementException e, HttpServletRequest request) {
-        return new ErrorResponse("PAY-002", "Invoice not found",
+        return new ErrorResponse("PAY-002", "Resource not found",
                 getCorrelationId(request), Instant.now(), null);
     }
 
@@ -148,29 +130,41 @@ public class GlobalExceptionHandler {
                 getCorrelationId(request), Instant.now(), null);
     }
 
+    /**
+     * ✅ Fallback for raw RuntimeException.
+     *
+     * The previous version derived the HTTP status from the *message text*,
+     * so a transient "Retry exhausted" became 400 Bad Request — which the
+     * client should not retry, even though the failure was transient.
+     *
+     * Now: unauthorised, "not found", and state-related messages map to
+     * 4xx; everything else (including infrastructure retries) maps to 5xx.
+     */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponse> handleRuntime(RuntimeException e, HttpServletRequest request) {
         Throwable cause = e.getCause();
         String message = cause != null ? cause.getMessage() : e.getMessage();
-        if (message == null) {
-            message = "Request error";
-        }
+        if (message == null) message = "Request failed";
 
-        String code = "REQ-001";
-        HttpStatus status = HttpStatus.BAD_REQUEST;
+        String lower = message.toLowerCase();
 
-        if (message.contains("Invoice not found")) {
-            code = "PAY-002";
-            status = HttpStatus.NOT_FOUND;
-        } else if (message.contains("Amount")) {
-            code = "PAY-006";
-            status = HttpStatus.BAD_REQUEST;
-        } else if (message.contains("Currency")) {
-            code = "PAY-007";
-            status = HttpStatus.BAD_REQUEST;
-        } else if (message.contains("not approved")) {
-            code = "PAY-003";
-            status = HttpStatus.BAD_REQUEST;
+        String code;
+        HttpStatus status;
+
+        if (lower.contains("not found") || lower.contains("does not exist")) {
+            code = "REQ-404"; status = HttpStatus.NOT_FOUND;
+        } else if (lower.contains("unauthorized") || lower.contains("not allowed")
+                || lower.contains("access denied") || lower.contains("forbidden")) {
+            code = "REQ-403"; status = HttpStatus.FORBIDDEN;
+        } else if (lower.contains("amount") || lower.contains("currency")
+                || lower.contains("not approved") || lower.contains("invalid")
+                || lower.contains("cannot") || lower.contains("already")
+                || lower.contains("missing") || lower.contains("required")) {
+            code = "REQ-400"; status = HttpStatus.BAD_REQUEST;
+        } else {
+            // Transient / infrastructure / retry-exhausted / unknown
+            code = "SYS-500"; status = HttpStatus.INTERNAL_SERVER_ERROR;
+            log.error("Unhandled runtime failure: {}", message, e);
         }
 
         return ResponseEntity.status(status)
@@ -179,10 +173,8 @@ public class GlobalExceptionHandler {
     }
 
     private String getCorrelationId(HttpServletRequest request) {
-        String correlationId = (String) request.getAttribute("correlationId");
-        if (correlationId == null) {
-            correlationId = request.getHeader("X-Correlation-ID");
-        }
-        return correlationId != null ? correlationId : "unknown";
+        String id = (String) request.getAttribute("correlationId");
+        if (id == null) id = request.getHeader("X-Correlation-ID");
+        return id != null ? id : "unknown";
     }
 }

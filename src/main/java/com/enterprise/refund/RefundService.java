@@ -5,6 +5,7 @@ import com.enterprise.events.RefundProcessedEvent;
 import com.enterprise.feature.FeatureFlagService;
 import com.enterprise.ledger.LedgerService;
 import com.enterprise.notification.NotificationService;
+import com.enterprise.tenant.TenantContext;
 import com.enterprise.transaction.Transaction;
 import com.enterprise.transaction.TransactionRepository;
 import com.enterprise.transaction.TransactionStatus;
@@ -53,10 +54,7 @@ public class RefundService {
     }
 
     public RefundEligibility evaluate(Transaction transaction) {
-        log.info("Evaluating refund eligibility for transaction {}", transaction.getId());
         List<RefundRule> rules = ruleRepository.findByActiveTrueOrderByRulePriorityAsc();
-
-        // ✅ Use SimpleEvaluationContext – safe, read-only, no method calls
         EvaluationContext context = SimpleEvaluationContext.forReadOnlyDataBinding().build();
         context.setVariable("amount", transaction.getAmount());
         context.setVariable("customerId", transaction.getCustomerId());
@@ -67,16 +65,14 @@ public class RefundService {
                 Boolean matches = parser.parseExpression(rule.getConditionExpression())
                         .getValue(context, Boolean.class);
                 if (Boolean.TRUE.equals(matches)) {
-                    log.info("Refund rule matched: action={}", rule.getAction());
                     return new RefundEligibility(rule.getAction(), rule.getRequiredPermission());
                 }
             } catch (Exception e) {
-                log.warn("Rule evaluation failed for expression {}: {}", rule.getConditionExpression(), e.getMessage());
-                // Fail secure: if rule evaluation fails, deny refund
+                log.warn("Rule evaluation failed for expression {}: {}",
+                        rule.getConditionExpression(), e.getMessage());
                 return new RefundEligibility("DENY", null);
             }
         }
-        log.warn("No matching refund rule, defaulting to DENY");
         return new RefundEligibility("DENY", null);
     }
 
@@ -86,7 +82,6 @@ public class RefundService {
             throw new RuntimeException("Refund feature is currently disabled.");
         }
 
-        log.info("Processing refund for transaction {} by admin {}", originalTransactionId, adminId);
         Transaction original = transactionRepository.findById(originalTransactionId)
                 .orElseThrow(() -> new RuntimeException("Transaction not found"));
         if (original.getStatus() != TransactionStatus.SETTLED) {
@@ -98,46 +93,37 @@ public class RefundService {
             throw new RuntimeException("Refund not allowed by policy");
         }
 
+        // ✅ Correct constructor argument order: (invoiceId, customerId, merchantId, ...)
+        //    The previous code passed (invoiceId, merchantId, customerId) — swapped.
         Transaction refund = new Transaction(
                 original.getInvoiceId(),
-                original.getMerchantId(),
-                original.getCustomerId(),
+                original.getCustomerId(),   // ← customer
+                original.getMerchantId(),   // ← merchant
                 original.getAmount().negate(),
                 "refund-" + System.currentTimeMillis()
         );
         refund.setTenantId(original.getTenantId());
+        refund.setCurrency(original.getCurrency());
         refund.setStatus(TransactionStatus.REFUNDED);
         refund = transactionRepository.save(refund);
 
+        // Ledger: reverse the original debit/credit
         ledgerService.recordCredit(original.getCustomerId(), original.getAmount(), refund.getId());
         ledgerService.recordDebit(original.getMerchantId(), original.getAmount(), refund.getId());
+        ledgerService.validateTransactionBalance(refund.getId());
 
         original.setStatus(TransactionStatus.REFUNDED);
         transactionRepository.save(original);
 
         Map<String, Object> beforeMap = new HashMap<>();
         beforeMap.put("id", original.getId());
-        beforeMap.put("invoiceId", original.getInvoiceId());
-        beforeMap.put("customerId", original.getCustomerId());
-        beforeMap.put("merchantId", original.getMerchantId());
-        beforeMap.put("amount", original.getAmount());
-        beforeMap.put("currency", original.getCurrency());
         beforeMap.put("status", original.getStatus().name());
-        beforeMap.put("idempotencyKey", original.getIdempotencyKey());
-        beforeMap.put("createdAt", original.getCreatedAt());
-        beforeMap.put("updatedAt", original.getUpdatedAt());
+        beforeMap.put("amount", original.getAmount());
 
         Map<String, Object> afterMap = new HashMap<>();
         afterMap.put("id", refund.getId());
-        afterMap.put("invoiceId", refund.getInvoiceId());
-        afterMap.put("customerId", refund.getCustomerId());
-        afterMap.put("merchantId", refund.getMerchantId());
-        afterMap.put("amount", refund.getAmount());
-        afterMap.put("currency", refund.getCurrency());
         afterMap.put("status", refund.getStatus().name());
-        afterMap.put("idempotencyKey", refund.getIdempotencyKey());
-        afterMap.put("createdAt", refund.getCreatedAt());
-        afterMap.put("updatedAt", refund.getUpdatedAt());
+        afterMap.put("amount", refund.getAmount());
 
         auditService.recordEvent(
                 "REFUND_PROCESSED",
@@ -164,29 +150,22 @@ public class RefundService {
                 "/transactions/" + refund.getId());
 
         eventPublisher.publishEvent(new RefundProcessedEvent(refund, original));
-        log.info("Refund completed for transaction {}", originalTransactionId);
-
         return refund;
     }
 
     public int bulkRefundTransactions(List<Long> transactionIds, Long adminId, String reason) {
-        log.info("Bulk refunding {} transactions by admin {}", transactionIds.size(), adminId);
         if (!featureFlagService.isEnabled("REFUNDS")) {
             throw new RuntimeException("Refund feature is currently disabled.");
         }
         int refundedCount = 0;
         for (Long txId : transactionIds) {
             try {
-                log.info("Attempting refund for transaction {}", txId);
                 processRefund(txId, adminId, reason);
                 refundedCount++;
-                log.info("Successfully refunded transaction {}", txId);
-                Thread.sleep(50);
             } catch (Exception e) {
                 log.error("Failed to refund transaction {}: {}", txId, e.getMessage(), e);
             }
         }
-        log.info("Bulk refund completed: {} out of {} successful", refundedCount, transactionIds.size());
         return refundedCount;
     }
 

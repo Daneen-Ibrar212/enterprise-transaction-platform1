@@ -29,6 +29,13 @@ public class PrivateChatController {
         this.privateMessageService = privateMessageService;
     }
 
+    private boolean isValidParticipant(AppUser u, Invoice invoice) {
+        boolean isMerchant = u.getId().equals(invoice.getMerchantId());
+        boolean isCustomer = invoice.getCustomerEmail().equals(u.getEmail());
+        boolean isAdmin = u.getRoles().stream().anyMatch(r -> r.getName().equals("ADMIN"));
+        return isMerchant || isCustomer || isAdmin;
+    }
+
     @GetMapping("/{invoiceId}")
     public String chatPage(@PathVariable Long invoiceId,
                            @RequestParam(required = false) Long withUserId,
@@ -37,21 +44,13 @@ public class PrivateChatController {
                            Model model) {
         AppUser currentUser = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
-        // Check if current user is active
         if (!currentUser.isActive()) {
-            model.addAttribute("error", "Your account has been disabled. You cannot access chat.");
+            model.addAttribute("error", "Your account has been disabled.");
             return "private-chat";
         }
-
         Invoice invoice = invoiceService.findById(invoiceId)
                 .orElseThrow(() -> new RuntimeException("Invoice not found"));
-
-        // Authorisation: only merchant, customer, or admin can view this chat
-        boolean isMerchant = currentUser.getId().equals(invoice.getMerchantId());
-        boolean isCustomer = invoice.getCustomerEmail().equals(currentUser.getEmail());
-        boolean isAdmin = currentUser.getRoles().stream().anyMatch(r -> r.getName().equals("ADMIN"));
-        if (!(isMerchant || isCustomer || isAdmin)) {
+        if (!isValidParticipant(currentUser, invoice)) {
             throw new RuntimeException("Unauthorized to view this chat");
         }
 
@@ -66,27 +65,20 @@ public class PrivateChatController {
             throw new RuntimeException("Missing participant identifier");
         }
 
-        // Check if other user is active
         if (!otherUser.isActive()) {
-            model.addAttribute("error", "The user you are trying to chat with has been disabled.");
+            model.addAttribute("error", "The other user is disabled.");
             return "private-chat";
         }
-
-        // Ensure the other user is a valid participant
-        boolean otherIsMerchant = otherUser.getId().equals(invoice.getMerchantId());
-        boolean otherIsCustomer = invoice.getCustomerEmail().equals(otherUser.getEmail());
-        boolean otherIsAdmin = otherUser.getRoles().stream().anyMatch(r -> r.getName().equals("ADMIN"));
-        if (!(otherIsMerchant || otherIsCustomer || otherIsAdmin)) {
+        if (!isValidParticipant(otherUser, invoice)) {
             throw new RuntimeException("Invalid chat participant");
         }
 
-        List<PrivateMessage> messages = privateMessageService.getMessagesBetweenUsers(invoiceId, currentUser.getId(), otherUser.getId());
-
+        List<PrivateMessage> messages = privateMessageService
+                .getMessagesBetweenUsers(invoiceId, currentUser.getId(), otherUser.getId());
         model.addAttribute("invoice", invoice);
         model.addAttribute("otherUser", otherUser);
         model.addAttribute("messages", messages);
         model.addAttribute("currentUserId", currentUser.getId());
-
         return "private-chat";
     }
 
@@ -102,12 +94,15 @@ public class PrivateChatController {
         AppUser recipient = userRepository.findById(recipientId)
                 .orElseThrow(() -> new RuntimeException("Recipient not found"));
 
-        // Check if sender or recipient is active
-        if (!sender.isActive()) {
-            throw new RuntimeException("Your account has been disabled. You cannot send messages.");
+        if (!sender.isActive()) throw new RuntimeException("Your account is disabled.");
+        if (!recipient.isActive()) throw new RuntimeException("Recipient is disabled.");
+
+        // ✅ Both sender AND recipient must be valid participants on this invoice
+        if (!isValidParticipant(sender, invoice)) {
+            throw new RuntimeException("You are not a participant on this invoice");
         }
-        if (!recipient.isActive()) {
-            throw new RuntimeException("The recipient's account has been disabled.");
+        if (!isValidParticipant(recipient, invoice)) {
+            throw new RuntimeException("Recipient is not a participant on this invoice");
         }
 
         privateMessageService.sendPrivateMessage(invoice, sender, recipient, message);

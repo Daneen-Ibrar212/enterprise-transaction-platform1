@@ -1,5 +1,6 @@
 package com.enterprise.api;
 
+import com.enterprise.audit.AuditService;
 import com.enterprise.identity.AppUser;
 import com.enterprise.identity.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,13 +18,18 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * ✅ SECURITY:
+ *  - POST only (previously GET allowed — CSRF via <img>)
+ *  - Every impersonation start/stop is audited
+ *  - Cross-tenant check uses ROLE_SUPER_ADMIN authority (not just entity flag)
+ */
 @Controller
 @RequestMapping("/admin/users")
 public class ImpersonationController {
@@ -32,70 +38,54 @@ public class ImpersonationController {
 
     private final UserRepository userRepository;
     private final SecurityContextRepository securityContextRepository;
+    private final AuditService auditService;
 
     public ImpersonationController(UserRepository userRepository,
-                                   SecurityContextRepository securityContextRepository) {
+                                   SecurityContextRepository securityContextRepository,
+                                   AuditService auditService) {
         this.userRepository = userRepository;
         this.securityContextRepository = securityContextRepository;
+        this.auditService = auditService;
     }
 
+    /** ✅ POST only — GET is intentionally removed. */
     @PostMapping("/impersonate")
-    public String impersonatePost(@RequestParam String username,
-                                  HttpServletRequest request,
-                                  HttpServletResponse response) {
-        return impersonate(username, request, response);
-    }
-
-    @GetMapping("/impersonate")
-    public String impersonateGet(@RequestParam String username,
-                                 HttpServletRequest request,
-                                 HttpServletResponse response) {
-        return impersonate(username, request, response);
-    }
-
-    private String impersonate(String username,
-                               HttpServletRequest request,
-                               HttpServletResponse response) {
-
+    public String impersonate(@RequestParam String username,
+                              HttpServletRequest request,
+                              HttpServletResponse response,
+                              RedirectAttributes redirect) {
         String trimmedUsername = username.trim();
-        log.info("🔍 Impersonation requested for username: '{}' (length: {})",
-                trimmedUsername, trimmedUsername.length());
-
-        AppUser targetUser = userRepository.findByEmailIgnoreCaseGlobal(trimmedUsername)
-                .orElseThrow(() -> {
-                    log.error("❌ User not found for email: '{}'", trimmedUsername);
-                    return new RuntimeException("User not found");
-                });
-
-        log.info("✅ Target user found: {} (ID: {}, tenant: {}, active: {}, 2FA: {})",
-                targetUser.getEmail(), targetUser.getId(), targetUser.getTenantId(),
-                targetUser.isActive(), targetUser.isTwoFactorEnabled());
-
-        if (!targetUser.isActive()) {
-            log.warn("⛔ Target user is inactive: {}", targetUser.getEmail());
-            throw new RuntimeException("User account is disabled");
+        Authentication currentAuth = SecurityContextHolder.getContext().getAuthentication();
+        if (currentAuth == null || !currentAuth.isAuthenticated()) {
+            throw new org.springframework.security.access.AccessDeniedException("Not authenticated");
         }
 
-        // Optional safety: don't allow impersonating yourself (would clobber the original)
-        Authentication currentAuth = SecurityContextHolder.getContext().getAuthentication();
-        if (currentAuth != null
-                && currentAuth.getName().equalsIgnoreCase(targetUser.getEmail())) {
-            log.warn("⚠️ Refusing to impersonate self: {}", targetUser.getEmail());
+        AppUser targetUser = userRepository.findByEmailIgnoreCaseGlobal(trimmedUsername)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!targetUser.isActive()) {
+            throw new RuntimeException("User account is disabled");
+        }
+        if (currentAuth.getName().equalsIgnoreCase(targetUser.getEmail())) {
+            redirect.addFlashAttribute("error", "Cannot impersonate yourself");
             return "redirect:/dashboard";
         }
 
-        // Optional: tenant guard for non-super-admins
         AppUser actor = userRepository.findByEmailIgnoreCaseGlobal(currentAuth.getName())
                 .orElseThrow(() -> new RuntimeException("Actor not found"));
-        boolean isSuperAdmin = actor.isSuperAdmin();
+
+        // Super-admin detection via AUTHORITY (reliable), not just entity flag
+        boolean isSuperAdmin = currentAuth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_SUPER_ADMIN".equals(a.getAuthority()))
+                || actor.isSuperAdmin();
+
         if (!isSuperAdmin && !targetUser.getTenantId().equals(actor.getTenantId())) {
-            log.warn("⛔ Tenant admin tried to impersonate cross-tenant user: {} -> {}",
+            log.warn("Tenant admin tried to impersonate cross-tenant: {} -> {}",
                     actor.getEmail(), targetUser.getEmail());
             throw new org.springframework.security.access.AccessDeniedException(
                     "You cannot impersonate users outside your tenant");
         }
 
-        // Build UserDetails for the target
         UserDetails userDetails = User.withUsername(targetUser.getEmail())
                 .password(targetUser.getPasswordHash() != null ? targetUser.getPasswordHash() : "")
                 .authorities(targetUser.getRoles().stream()
@@ -103,39 +93,51 @@ public class ImpersonationController {
                         .collect(Collectors.toList()))
                 .build();
 
-        UsernamePasswordAuthenticationToken newAuth = new UsernamePasswordAuthenticationToken(
-                userDetails, null, userDetails.getAuthorities());
+        UsernamePasswordAuthenticationToken newAuth =
+                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
         newAuth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-        // Save the original so exit-impersonation can restore it
         HttpSession session = request.getSession();
         session.setAttribute("ORIGINAL_AUTH", currentAuth);
 
-        // ★ Replace the context object — do not mutate the current one
         SecurityContext newContext = SecurityContextHolder.createEmptyContext();
         newContext.setAuthentication(newAuth);
         SecurityContextHolder.setContext(newContext);
-
-        // ★ CRITICAL: persist to the Spring-Security-managed repository
         securityContextRepository.saveContext(newContext, request, response);
 
-        log.info("🔄 Impersonation successful: {} -> {}",
-                currentAuth.getName(), targetUser.getEmail());
+        // ✅ Audit trail
+        try {
+            auditService.recordEvent(
+                    "IMPERSONATION_STARTED",
+                    actor.getId(),
+                    Map.of(
+                            "actorEmail", actor.getEmail(),
+                            "targetEmail", targetUser.getEmail(),
+                            "targetTenant", targetUser.getTenantId()
+                    ),
+                    "User", targetUser.getId(), null, null);
+        } catch (Exception e) {
+            log.warn("Failed to audit impersonation start: {}", e.getMessage());
+        }
+
+        log.info("Impersonation started: {} -> {}", actor.getEmail(), targetUser.getEmail());
         return "redirect:/dashboard";
     }
 
-    @GetMapping("/exit-impersonation")
-    public String exitImpersonation(HttpServletRequest request, HttpServletResponse response) {
+    @PostMapping("/exit-impersonation")
+    public String exitImpersonation(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    RedirectAttributes redirect) {
         HttpSession session = request.getSession(false);
-        if (session == null) {
-            return "redirect:/login";
-        }
+        if (session == null) return "redirect:/login";
 
         Authentication originalAuth = (Authentication) session.getAttribute("ORIGINAL_AUTH");
         if (originalAuth == null) {
-            log.warn("Exit impersonation called but no ORIGINAL_AUTH in session");
+            redirect.addFlashAttribute("error", "Not currently impersonating");
             return "redirect:/dashboard";
         }
+
+        Authentication impersonated = SecurityContextHolder.getContext().getAuthentication();
 
         SecurityContext restored = SecurityContextHolder.createEmptyContext();
         restored.setAuthentication(originalAuth);
@@ -144,7 +146,20 @@ public class ImpersonationController {
 
         session.removeAttribute("ORIGINAL_AUTH");
 
-        log.info("🔙 Exited impersonation, restored original auth: {}", originalAuth.getName());
+        try {
+            auditService.recordEvent(
+                    "IMPERSONATION_ENDED",
+                    null,
+                    Map.of(
+                            "restoredTo", originalAuth.getName(),
+                            "wasImpersonating", impersonated != null ? impersonated.getName() : "unknown"
+                    ),
+                    null, null, null, null);
+        } catch (Exception e) {
+            log.warn("Failed to audit impersonation end: {}", e.getMessage());
+        }
+
+        log.info("Impersonation ended, restored {}", originalAuth.getName());
         return "redirect:/dashboard";
     }
 }

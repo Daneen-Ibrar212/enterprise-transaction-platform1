@@ -8,9 +8,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface FeatureFlagRepository extends JpaRepository<FeatureFlag, Long> {
+
     Optional<FeatureFlag> findByName(String name);
 
-    // 👇 NEW: Tenant‑aware methods
     @Query("SELECT f FROM FeatureFlag f WHERE f.tenantId = :tenantId")
     List<FeatureFlag> findAllByTenantId(@Param("tenantId") Long tenantId);
 

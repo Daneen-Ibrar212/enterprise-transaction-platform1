@@ -16,9 +16,11 @@ public interface WebhookRepository extends JpaRepository<WebhookConfig, Long> {
     boolean existsByTenantIdAndEventTypeAndUrlAndIdNot(
             Long tenantId, String eventType, String url, Long id);
 
-    @Query(value = "SELECT * FROM webhook_config", nativeQuery = true)
-    List<WebhookConfig> findAllWithoutTenantFilter();
-
     @Query("SELECT w FROM WebhookConfig w WHERE w.tenantId = :tenantId")
     List<WebhookConfig> findAllByTenantId(@Param("tenantId") Long tenantId);
+
+    // ✅ Explicit cross-tenant query — no more native bypass. The service layer
+    //    must verify the caller is a SUPER_ADMIN before invoking this.
+    @Query(value = "SELECT * FROM webhook_config ORDER BY id", nativeQuery = true)
+    List<WebhookConfig> findAllCrossTenant();
 }

@@ -6,6 +6,9 @@ import org.hibernate.annotations.Filter;
 
 @Entity
 @Table(name = "feature_flag", uniqueConstraints = {
+    // The ONLY uniqueness constraint is (name, tenant_id). The previous
+    // `unique = true` on `name` alone prevented multi-tenancy — only one
+    // tenant could ever own a given flag name.
     @UniqueConstraint(columnNames = {"name", "tenant_id"})
 })
 @Filter(name = "tenantFilter", condition = "tenant_id = :tenantId")
@@ -14,7 +17,7 @@ public class FeatureFlag {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String name;
 
     @Column(nullable = false)
@@ -25,11 +28,10 @@ public class FeatureFlag {
     @Column(name = "updated_at", updatable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 
-    // ----- TENANT ID -----
     @Column(name = "tenant_id", nullable = false)
     private Long tenantId;
 
-    // Getters and setters
+    // Getters and setters (unchanged from before)
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getName() { return name; }
@@ -40,7 +42,6 @@ public class FeatureFlag {
     public void setDescription(String description) { this.description = description; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
-
     public Long getTenantId() { return tenantId; }
     public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
 }

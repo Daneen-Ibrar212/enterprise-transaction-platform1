@@ -52,7 +52,7 @@ public class AdminWebhookController {
     }
 
     // ============================================================
-    // LIST — shows every webhook for the tenant (fan-out friendly)
+    // LIST
     // ============================================================
     @GetMapping
     public String listWebhooks(Model model, Authentication authentication) {
@@ -61,7 +61,8 @@ public class AdminWebhookController {
         List<WebhookConfig> webhooks;
 
         if (isSuperAdmin) {
-            webhooks = webhookRepository.findAllWithoutTenantFilter();
+            // ✅ Renamed from findAllWithoutTenantFilter() (P3-20)
+            webhooks = webhookRepository.findAllCrossTenant();
             log.debug("Super Admin {} viewing {} webhooks", admin.getEmail(), webhooks.size());
         } else {
             Long tenantId = TenantContext.getRequiredTenantId();
@@ -77,7 +78,7 @@ public class AdminWebhookController {
     }
 
     // ============================================================
-    // CREATE — allow multiple per (tenant, event), reject exact dup URL
+    // CREATE
     // ============================================================
     @GetMapping("/create")
     public String showCreateForm(Model model) {
@@ -145,7 +146,6 @@ public class AdminWebhookController {
                     .orElseThrow(() -> new RuntimeException("Webhook not found"));
             assertTenantAccess(existing, admin);
 
-            // Guard against editing into a duplicate (same tenant+event+url as another row)
             if (webhookRepository.existsByTenantIdAndEventTypeAndUrlAndIdNot(
                     existing.getTenantId(), webhook.getEventType(), webhook.getUrl(), id)) {
                 redirectAttributes.addFlashAttribute("error",
@@ -170,7 +170,7 @@ public class AdminWebhookController {
     }
 
     // ============================================================
-    // DELETE (POST only — fixes 405)
+    // DELETE
     // ============================================================
     @PostMapping("/{id}/delete")
     public String deleteWebhook(@PathVariable Long id,
@@ -194,7 +194,7 @@ public class AdminWebhookController {
     }
 
     // ============================================================
-    // TOGGLE (POST only — fixes 405)
+    // TOGGLE
     // ============================================================
     @PostMapping("/{id}/toggle")
     public String toggleWebhook(@PathVariable Long id,

@@ -16,14 +16,25 @@ public class CurrencyService {
     }
 
     public String format(BigDecimal amount, String currencyCode) {
+        // ✅ Null-safe — previously NPE'd if currencyCode was null
+        if (amount == null) return "";
+        if (currencyCode == null || currencyCode.isBlank()) return amount.toPlainString();
+
         Locale locale = switch (currencyCode.toUpperCase()) {
             case "USD" -> Locale.US;
             case "EUR" -> Locale.GERMANY;
             case "GBP" -> Locale.UK;
-            default -> Locale.UK; // fallback
+            default -> Locale.UK;
         };
-        NumberFormat format = NumberFormat.getCurrencyInstance(locale);
-        return format.format(amount);
+        try {
+            NumberFormat format = NumberFormat.getCurrencyInstance(locale);
+            java.util.Currency currency = java.util.Currency.getInstance(currencyCode.toUpperCase());
+            format.setCurrency(currency);
+            return format.format(amount);
+        } catch (IllegalArgumentException e) {
+            // Unknown currency — fall back to a plain numeric format
+            return amount.toPlainString() + " " + currencyCode.toUpperCase();
+        }
     }
 
     public BigDecimal convert(BigDecimal amount, String fromCurrency, String toCurrency) {

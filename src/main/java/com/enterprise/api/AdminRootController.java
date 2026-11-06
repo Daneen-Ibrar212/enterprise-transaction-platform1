@@ -42,7 +42,6 @@ public class AdminRootController {
 
     @GetMapping
     public String adminRoot(Model model, Authentication authentication) {
-        // ===== Resolve current tenant =====
         AppUser user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new IllegalStateException("Authenticated user not found"));
         Long tenantId = user.getTenantId();
@@ -52,29 +51,25 @@ public class AdminRootController {
         boolean isMerchantAdmin = authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_MERCHANT_ADMIN"));
 
-        // ===== Tenant-scoped stats =====
         long totalTransactions = transactionRepository.countByTenantId(tenantId);
-        long totalAuditEvents  = auditRepository.countByTenantId(tenantId);
-        long pendingDlq        = dlqEntryRepository.countByTenantIdAndStatus(tenantId, "PENDING");
-        long reconciled        = reconciliationRecordRepository.countByTenantId(tenantId);
+        long totalAuditEvents = auditRepository.countByTenantId(tenantId);
+        long pendingDlq = dlqEntryRepository.countByTenantIdAndStatus(tenantId, "PENDING");
+        long reconciliationRuns = reconciliationRecordRepository.countByTenantId(tenantId);
 
         model.addAttribute("totalTransactions", totalTransactions);
-        model.addAttribute("totalAuditEvents",  totalAuditEvents);
-        model.addAttribute("pendingDlq",        pendingDlq);
-        model.addAttribute("reconciled",        reconciled);
+        model.addAttribute("totalAuditEvents", totalAuditEvents);
+        model.addAttribute("pendingDlq", pendingDlq);
+        model.addAttribute("reconciliationRuns", reconciliationRuns);  // renamed from "reconciled"
 
-        // ===== Tenant-scoped suspicious invoices =====
         if (isSuperAdmin || isMerchantAdmin) {
             model.addAttribute("suspiciousCount",
                     invoiceRepository.countSuspiciousByTenantId(tenantId));
         }
-
         model.addAttribute("isSuperAdmin", isSuperAdmin);
         model.addAttribute("isMerchantAdmin", isMerchantAdmin);
         model.addAttribute("roleBadge", isSuperAdmin ? "Super Admin" : "Merchant Admin");
         model.addAttribute("viewType", "admin");
         model.addAttribute("tenantId", tenantId);
-
         return "admin/dashboard";
     }
 }

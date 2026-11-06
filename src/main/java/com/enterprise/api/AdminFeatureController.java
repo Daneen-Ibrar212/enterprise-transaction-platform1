@@ -33,24 +33,28 @@ public class AdminFeatureController {
     }
 
     @GetMapping
-    public String listFeatures(Model model, Authentication authentication) {
-        Long tenantId = getCurrentAdmin(authentication).getTenantId();
-        List<FeatureFlag> flags = featureFlagService.findAll();
-        model.addAttribute("flags", flags);
+    public String listFeatures(Model model) {
+        model.addAttribute("flags", featureFlagService.findAll());
         return "admin/features/list";
     }
 
-    // ===== Toggle supports both GET and POST =====
-    @RequestMapping(value = "/{id}/toggle", method = {RequestMethod.GET, RequestMethod.POST})
-    public String toggleFeature(@PathVariable Long id, 
-                                Authentication authentication,
+    /**
+     * ✅ POST only — previously allowed GET, which combined with disabled
+     *    CSRF on /admin/** made it CSRF-triggerable via <a href>.
+     */
+    @PostMapping("/{id}/toggle")
+    public String toggleFeature(@PathVariable Long id,
                                 RedirectAttributes redirectAttributes) {
-        FeatureFlag flag = featureFlagService.findAll().stream()
-                .filter(f -> f.getId().equals(id))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Feature not found"));
-        featureFlagService.setEnabled(flag.getName(), !flag.isEnabled());
-        redirectAttributes.addFlashAttribute("success", "Feature toggled successfully.");
+        try {
+            FeatureFlag flag = featureFlagService.findAll().stream()
+                    .filter(f -> f.getId().equals(id))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Feature not found"));
+            featureFlagService.setEnabled(flag.getName(), !flag.isEnabled());
+            redirectAttributes.addFlashAttribute("success", "Feature toggled.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "Failed: " + e.getMessage());
+        }
         return "redirect:/admin/features";
     }
 
@@ -64,18 +68,24 @@ public class AdminFeatureController {
     public String createFeature(@RequestParam String name,
                                 @RequestParam String description,
                                 @RequestParam(required = false) Boolean enabled,
-                                Authentication authentication,
                                 RedirectAttributes redirectAttributes) {
-        AppUser admin = getCurrentAdmin(authentication);
-        featureFlagService.createFlag(name, description, enabled != null && enabled);
-        redirectAttributes.addFlashAttribute("success", "Feature created.");
+        try {
+            featureFlagService.createFlag(name, description, enabled != null && enabled);
+            redirectAttributes.addFlashAttribute("success", "Feature created.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "Failed: " + e.getMessage());
+        }
         return "redirect:/admin/features";
     }
 
     @PostMapping("/{id}/delete")
     public String deleteFeature(@PathVariable Long id, RedirectAttributes redirectAttributes) {
-        featureFlagService.deleteFlag(id);
-        redirectAttributes.addFlashAttribute("success", "Feature deleted.");
+        try {
+            featureFlagService.deleteFlag(id);
+            redirectAttributes.addFlashAttribute("success", "Feature deleted.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "Failed: " + e.getMessage());
+        }
         return "redirect:/admin/features";
     }
 }

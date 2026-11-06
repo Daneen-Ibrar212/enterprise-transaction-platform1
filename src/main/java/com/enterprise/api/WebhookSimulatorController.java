@@ -8,10 +8,21 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.InetAddress;
+import java.net.URI;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * ✅ SECURITY: previously this accepted ANY URL from the request and POSTed to it
+ * via RestTemplate — a full SSRF gadget (AWS metadata, internal services, etc.).
+ *
+ * Fix:
+ *  - Only allow http/https
+ *  - Reject RFC1918 / loopback / link-local / ULA addresses
+ *  - Reject localhost / *.internal / *.local DNS names
+ */
 @Controller
 @RequestMapping("/admin/webhooks/simulator")
 @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MERCHANT_ADMIN')")
@@ -20,31 +31,24 @@ public class WebhookSimulatorController {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    public WebhookSimulatorController(RestTemplate restTemplate,
-                                      ObjectMapper objectMapper) {
+    public WebhookSimulatorController(RestTemplate restTemplate, ObjectMapper objectMapper) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
     }
 
     @GetMapping
     public String simulatorPage(Model model) {
-        // Pre-fill with a sample payload
-        Map<String, Object> samplePayload = new HashMap<>();
-        samplePayload.put("eventType", "TRANSACTION_SETTLED");
-        samplePayload.put("timestamp", Instant.now().toString());
-        samplePayload.put("transactionId", 12345);
-        samplePayload.put("amount", "100.00");
-        samplePayload.put("currency", "GBP");
-        samplePayload.put("invoiceId", 6789);
-        samplePayload.put("merchantId", 1);
-
+        Map<String, Object> sample = new HashMap<>();
+        sample.put("eventType", "TRANSACTION_SETTLED");
+        sample.put("timestamp", Instant.now().toString());
+        sample.put("transactionId", 12345);
+        sample.put("amount", "100.00");
+        sample.put("currency", "GBP");
         try {
-            String sampleJson = objectMapper.writeValueAsString(samplePayload);
-            model.addAttribute("samplePayload", sampleJson);
+            model.addAttribute("samplePayload", objectMapper.writeValueAsString(sample));
         } catch (Exception e) {
             model.addAttribute("samplePayload", "{\"eventType\":\"TRANSACTION_SETTLED\"}");
         }
-
         model.addAttribute("eventTypes", new String[]{"TRANSACTION_SETTLED", "REFUND_PROCESSED"});
         return "admin/webhooks/simulator";
     }
@@ -55,9 +59,13 @@ public class WebhookSimulatorController {
                                                @RequestParam(required = false, defaultValue = "TRANSACTION_SETTLED") String eventType,
                                                @RequestParam(required = false) String payload) {
         Map<String, Object> response = new HashMap<>();
-
         try {
-            // Build payload
+            if (!isPublicHttpUrl(url)) {
+                response.put("success", false);
+                response.put("error", "URL rejected: must be a public http(s) endpoint");
+                return response;
+            }
+
             Map<String, Object> payloadMap;
             if (payload != null && !payload.trim().isEmpty()) {
                 payloadMap = objectMapper.readValue(payload, Map.class);
@@ -66,41 +74,65 @@ public class WebhookSimulatorController {
                 payloadMap.put("eventType", eventType);
                 payloadMap.put("timestamp", Instant.now().toString());
                 payloadMap.put("test", true);
-                payloadMap.put("message", "This is a test webhook from the simulator.");
             }
-
             String payloadJson = objectMapper.writeValueAsString(payloadMap);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<String> request = new HttpEntity<>(payloadJson, headers);
 
-            long startTime = System.currentTimeMillis();
+            long start = System.currentTimeMillis();
             ResponseEntity<String> httpResponse = restTemplate.postForEntity(url, request, String.class);
-            long duration = System.currentTimeMillis() - startTime;
-
-            // ✅ Fix: get reason phrase safely
-            String reasonPhrase = "";
-            try {
-                HttpStatus status = HttpStatus.valueOf(httpResponse.getStatusCode().value());
-                reasonPhrase = status.getReasonPhrase();
-            } catch (IllegalArgumentException e) {
-                reasonPhrase = "Unknown";
-            }
+            long duration = System.currentTimeMillis() - start;
 
             response.put("success", true);
             response.put("statusCode", httpResponse.getStatusCode().value());
-            response.put("statusText", reasonPhrase);
-            response.put("headers", httpResponse.getHeaders().toSingleValueMap());
             response.put("body", httpResponse.getBody());
             response.put("durationMs", duration);
             response.put("sentPayload", payloadMap);
-
         } catch (Exception e) {
             response.put("success", false);
             response.put("error", e.getMessage());
         }
-
         return response;
+    }
+
+    /**
+     * SSRF guard: resolve the host and reject private/loopback/link-local ranges,
+     * and reject hostnames that look like internal aliases.
+     */
+    private boolean isPublicHttpUrl(String url) {
+        try {
+            URI uri = URI.create(url);
+            String scheme = uri.getScheme();
+            if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+                return false;
+            }
+            String host = uri.getHost();
+            if (host == null) return false;
+            String lower = host.toLowerCase();
+            if (lower.equals("localhost") || lower.endsWith(".local")
+                    || lower.endsWith(".internal") || lower.endsWith(".svc")) {
+                return false;
+            }
+            InetAddress[] addresses = InetAddress.getAllByName(host);
+            for (InetAddress addr : addresses) {
+                if (addr.isAnyLocalAddress() || addr.isLoopbackAddress()
+                        || addr.isLinkLocalAddress() || addr.isSiteLocalAddress()
+                        || addr.isMulticastAddress()) {
+                    return false;
+                }
+                // IPv6 ULA (fc00::/7) or metadata 169.254.169.254
+                byte[] raw = addr.getAddress();
+                if (raw.length == 16) {
+                    int first = raw[0] & 0xFF;
+                    if ((first & 0xFE) == 0xFC) return false;
+                }
+                if (addr.isSiteLocalAddress()) return false;
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

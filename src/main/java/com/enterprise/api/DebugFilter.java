@@ -6,15 +6,20 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.annotation.Order;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Enumeration;
 
+/**
+ * ✅ Dev-only — previously logged every header (including JSESSIONID,
+ *    Authorization, X-API-Key) for /admin/invoices requests to INFO,
+ *    leaking session tokens into production logs.
+ */
 @Component
-@Order(1)
+@Profile("dev")
 public class DebugFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(DebugFilter.class);
@@ -23,43 +28,17 @@ public class DebugFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
-
         String uri = request.getRequestURI();
-        String method = request.getMethod();
-
-        // Only log admin/invoice endpoints
-        if (uri.startsWith("/admin/invoices")) {
-            log.info("📨 ===== REQUEST ===== ");
-            log.info("   Method: {}", method);
-            log.info("   URI: {}", uri);
-            log.info("   Query String: {}", request.getQueryString());
-
-            // Log all parameters
-            Enumeration<String> paramNames = request.getParameterNames();
-            if (paramNames.hasMoreElements()) {
-                log.info("   Parameters:");
-                while (paramNames.hasMoreElements()) {
-                    String name = paramNames.nextElement();
-                    String value = request.getParameter(name);
-                    log.info("      {} = {}", name, value);
-                }
-            }
-
-            // Log all headers
-            Enumeration<String> headerNames = request.getHeaderNames();
-            if (headerNames.hasMoreElements()) {
-                log.info("   Headers:");
-                while (headerNames.hasMoreElements()) {
-                    String name = headerNames.nextElement();
-                    String value = request.getHeader(name);
-                    log.info("      {} = {}", name, value);
-                }
-            }
-
-            log.info("   Remote IP: {}", request.getRemoteAddr());
-            log.info("================================");
+        if (!uri.startsWith("/admin/invoices")) {
+            chain.doFilter(request, response);
+            return;
         }
-
+        log.debug("📨 {} {} from {}", request.getMethod(), uri, request.getRemoteAddr());
+        Enumeration<String> params = request.getParameterNames();
+        while (params.hasMoreElements()) {
+            String name = params.nextElement();
+            log.debug("   param: {} = {}", name, request.getParameter(name));
+        }
         chain.doFilter(request, response);
     }
 }
